@@ -10,20 +10,21 @@ shots = [int(shot.strip()) for shot in open(SHOTS_FILE).read().split(',') if sho
 # keep only the first 3 shots
 shots = shots[:100]
 
-print(f"Shots: {shots}")
+print(f'Shots: {shots}')
 
 # read the shots
-for shot in shots:
-    print(f"Shot: {shot}")
+for i, shot in enumerate(shots):
+    print(f'Shot: {shot}, {i+1}/{len(shots)}')
     d = loadmat(f'data/{shot}.mat') # load the data
     ss, ts = {}, {}
 
     for sn, tn in zip(SIGNALS, TIME_VECTORS):
-        # get the signal and time vector
-        s = d[sn].flatten()
-        t = d[tn].flatten()
-        print(f'{sn}: {s.shape}, t:{t.shape}')
-        ss[sn], ts[sn] = s, t
+        ss[sn], ts[sn] = d[sn].flatten(), d[tn].flatten()
+
+    # check if there are signals with nan values
+    for sn, tn in zip(SIGNALS, TIME_VECTORS):
+        if np.isnan(ss[sn]).any():
+            print(f'\tWarning: {sn} has nan values')
 
     # plot the signals
     # plasma currents
@@ -36,4 +37,5 @@ for shot in shots:
     plt.legend()
     plt.title(f'Shot {shot} - Plasma Currents')
     plt.savefig(f'figs/IP_{shot}.svg')
+    plt.close()
 
