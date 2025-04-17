@@ -7,6 +7,7 @@ plt.style.use('dark_background')
 plt.rcParams['figure.figsize'] = (10, 6)
 plt.rcParams['axes.grid'] = True
 plt.rcParams['grid.alpha'] = 0.3
+plt.rcParams['font.family'] = 'monospace'
 
 ## Shots and signals
 SHOTS_FILE = 'data/good_shots.txt'
