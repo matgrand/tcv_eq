@@ -23,9 +23,7 @@ tcvTree = 'tcv_shot';
 %% --- Setup ---
 
 % Check if the shot list file exists
-if ~exist(shotListFile, 'file')
-    error('Shot list file not found: %s', shotListFile);
-end
+if ~exist(shotListFile, 'file') error('Shot list file not found: %s', shotListFile); end
 
 %% --- Read Shot List ---
 fprintf('Reading shot list from: %s\n', shotListFile);
