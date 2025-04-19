@@ -1,150 +1,92 @@
-% MATLAB Script: process_tcv_shots.m
-%
-% Iterates through a list of TCV shot numbers, retrieves specified signals
-% using tcvget, and saves the data for each shot into a separate .mat file.
-
 clear; clc; close all;
 
 %% --- Configuration ---
 
 % Input file containing shot numbers (one per line)
-shotListFile = 'data/good_shots.txt';
+SHOT_LIST_FILE = 'good_shots.txt';
 
 % Directory to save the output .mat files
-outputDir = 'data'; % Will be created if it doesn't exist
+OUT_DIR = 'ds'; % testing
+% OUT_DIR = '/NoTivoli/grandin/ds' % more space available
 
-% List of signals to retrieve using tcvget
-% Add or remove signals as needed. Make sure they are valid tcvget keywords.
-signalList = {'IP', 'IPLIUQE', 'IPREF', 'BT', 'SPLASMA', 'ZMAG'};
-
-% TCV MDSplus Tree 
-tcvTree = 'tcv_shot';
+IP_THRSH = 5000; % I plasma threshold to filter time (TODO: the method should be improved)
 
 %% --- Setup ---
 
 % Check if the shot list file exists
-if ~exist(shotListFile, 'file') error('Shot list file not found: %s', shotListFile); end
+if ~exist(SHOT_LIST_FILE, 'file') error('Shot list file not found: %s', SHOT_LIST_FILE); end
+if ~exist(OUT_DIR, 'dir') mkdir(OUT_DIR); end % Create output directory if it doesn't exist
 
 %% --- Read Shot List ---
-fprintf('Reading shot list from: %s\n', shotListFile);
-fid = fopen(shotListFile, 'r');
-if fid == -1
-    error('Could not open shot list file: %s', shotListFile);
-end
+fprintf('Reading shot list from: %s\n', SHOT_LIST_FILE);
+fid = fopen(SHOT_LIST_FILE, 'r');
+if fid == -1 error('Could not open shot list file: %s', SHOT_LIST_FILE); end
 % Read all lines and process shot numbers
-shotList = [];
+shots = [];
 while ~feof(fid)
     line = strtrim(fgetl(fid)); % Read a line and trim whitespace
     if ~isempty(line)
         numbers = sscanf(line, '%d,'); % Extract numbers separated by commas
-        shotList = [shotList; numbers]; % Append to the shot list
+        shots = [shots; numbers]; % Append to the shot list
     end
 end
 fclose(fid);
-fprintf('Found %d shot numbers to process.\n', length(shotList));
+fprintf('Found %d shot numbers to process.\n', length(shots));
 
 
-% keep only the first 3 shots
-shotList = shotList(1:100);
+% keep only the first x shots
+shots = shots(1:4);
 
 
 %% --- Main Processing Loop ---
 
 fprintf('\nStarting data retrieval loop...\n');
 
-for i = 1:length(shotList)
-    currentShot = shotList(i);
-    fprintf('--- Processing Shot %d (%d/%d) ---\n', currentShot, i, length(shotList));
+for i = 1:length(shots)
 
-    % Define the output filename for this shot
-    outputFilename = sprintf('%d.mat', currentShot);
-    outputFilepath = fullfile(outputDir, outputFilename);
+    shot = shots(i); % Get the current shot number
+    fprintf('Processing shot %d (%d of %d)\n', shot, i, length(shots));
 
-    % Skip if the output file already exists (optional)
-    % if exist(outputFilepath, 'file')
-    %     fprintf('Output file already exists, skipping: %s\n', outputFilepath);
-    %     continue;
-    % end
+    mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
-    % Structure to hold data for the current shot
-    shotData = struct();
-    shotData.shotNumber = currentShot; % Store shot number for reference
+    % Call tcvget to retrieve the plasma current (IP)
+    % We omit the 'time' argument to get the full time trace.
+    [t_ip, ip_data] = tcvget('IP'); % calculated using magnetics
+    % [t_ip, ip_data] = tcvget('IPLIUQE'); % calculated using liuqe
 
-    mdsConnectionOpened = false; % Flag to track MDSplus connection
+    % Filter the time vector to remove values below the threshold
+    good_ip_idxs = find(abs(ip_data) > IP_THRSH);
+    good_ip_idxs = good_ip_idxs(1:100:end); % decimate the idxs for now 
 
-    try
-        % 1. Open MDSplus connection for the current shot
-        fprintf('Opening MDSplus connection for shot %d...\n', currentShot);
-        mdsopen(tcvTree, currentShot);
-        mdsConnectionOpened = true;
-        fprintf('Connection opened.\n');
+    ts = t_ip(good_ip_idxs);
+    ips = ip_data(good_ip_idxs);
 
-        % 2. Loop through the requested signals
-        for j = 1:length(signalList)
-            signalName = signalList{j};
-            fprintf('Retrieving signal: %s ... ', signalName);
+    filtered_percentage = (1 - numel(good_ip_idxs) / numel(ip_data)) * 100;
+    remaining_samples = numel(good_ip_idxs);
+    fprintf('   Filtered -> %.2f%%, left -> %d samples\n', filtered_percentage, remaining_samples); 
 
-            % Use a try-catch block for tcvget in case a signal is missing
-            try
-                [t, x] = tcvget(signalName);
+    % find the mean and std of the time step
+    dts = diff(t_ip(good_ip_idxs));
+    dt_mean = mean(dts);
+    dt_std = std(dts);
+    fprintf('   time step ->  mean: %.2f µs, std: %.2f µs\n', dt_mean * 1e6, dt_std * 1e6);
+    % calculate liuqe equilibrium at the good plasma current time
+    [L,LX,LY] = liuqe(shot, t_ip(good_ip_idxs));
+    Fx = single(LY.Fx); % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
+    Iy = single(LY.Iy); % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
+    Ia = single(LY.Ia); % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
 
-                % Store data in the structure
-                % Create valid field names (e.g., t_IP, data_IP)
-                timeFieldName = sprintf('t_%s', signalName);
-                dataFieldName = signalName; % Keep original signal name for data field
+    Bm = single(LY.Bm); % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
+    Ff = single(LY.Ff); % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
 
-                shotData.(timeFieldName) = t;
-                shotData.(dataFieldName) = x;
-                fprintf('Done.\n');
+    mdsclose; % Close the MDSplus connection
 
-            catch ME_tcvget
-                fprintf('WARNING: Failed to retrieve signal %s for shot %d.\n', signalName, currentShot);
-                fprintf('         Error: %s\n', ME_tcvget.message);
-                % Store NaN or empty to indicate failure
-                timeFieldName = sprintf('t_%s', signalName);
-                 dataFieldName = signalName;
-                shotData.(timeFieldName) = NaN;
-                shotData.(dataFieldName) = NaN;
-            end % end inner try-catch for tcvget
-        end % end signal loop
+    % save data into a .mat file
+    save_file = fullfile(OUT_DIR, sprintf('%d.mat', shot));
+    save(save_file, 'ts', 'ips', 'Fx', 'Iy', 'Ia', 'Bm', 'Ff');
+    fprintf('   Data saved to: %s\n', save_file);
 
-        % 3. Close MDSplus connection
-        fprintf('Closing MDSplus connection for shot %d...\n', currentShot);
-        mdsclose;
-        mdsConnectionOpened = false; % Reset flag
-        fprintf('Connection closed.\n');
-
-        % 4. Save the data structure to a .mat file
-        fprintf('Saving data to: %s\n', outputFilepath);
-        % Use '-struct' flag to save fields of shotData as individual variables
-        save(outputFilepath, '-struct', 'shotData');
-        fprintf('Save complete.\n');
-
-    catch ME_main
-        fprintf('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
-        fprintf('CRITICAL ERROR processing shot %d: %s\n', currentShot, ME_main.message);
-        fprintf('Stack Trace:\n');
-        disp(ME_main.getReport());
-        fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
-
-        % Attempt to close MDSplus connection if it was opened and an error occurred
-        if mdsConnectionOpened
-            try
-                fprintf('Attempting to close MDSplus connection after error...\n');
-                mdsclose;
-                fprintf('Connection closed.\n');
-            catch ME_close
-                fprintf('WARNING: Could not close MDSplus connection after error: %s\n', ME_close.message);
-            end
-        end
-        % Decide whether to continue with the next shot or stop
-        % continue; % Uncomment to try processing next shot despite error
-        % break;    % Uncomment to stop the script on critical error
-    end % end main try-catch
-
-    fprintf('--- Finished Shot %d ---\n\n', currentShot);
-
-end % end shot loop
+end % end shots loop
 
 fprintf('\nProcessing complete for all shots.\n');
-fprintf('Output files saved in: %s\n', outputDir);
+fprintf('Output files saved in: %s\n', OUT_DIR);
