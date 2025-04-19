@@ -8,14 +8,14 @@ from definitions import *
 shots = [int(shot.strip()) for shot in open(SHOTS_FILE).read().split(',') if shot.strip()]
 
 # keep only the first 3 shots
-shots = shots[:100]
+shots = shots[:4]
 
 print(f'Shots: {shots}')
 
 # read the shots
 for i, shot in enumerate(shots):
     print(f'Shot: {shot}, {i+1}/{len(shots)}')
-    d = loadmat(f'data/{shot}.mat') # load the data
+    d = loadmat(f'{DS_DIR}/{shot}.mat') # load the data
     ss, ts = {}, {}
 
     for sn, tn in zip(SIGNALS, TIME_VECTORS):

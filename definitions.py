@@ -9,8 +9,14 @@ plt.rcParams['axes.grid'] = True
 plt.rcParams['grid.alpha'] = 0.3
 plt.rcParams['font.family'] = 'monospace'
 
+import os
+if not os.path.exists('figs'): os.makedirs('figs')
+
 ## Shots and signals
-SHOTS_FILE = 'data/good_shots.txt'
+SHOTS_FILE = 'good_shots.txt'
+DS_DIR = 'ds'
+# DS_DIR = '/NoTivoli/grandin/ds'
+
 # signal names
 IP='IP'
 IPLIUQE='IPLIUQE'
