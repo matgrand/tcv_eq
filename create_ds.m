@@ -41,8 +41,11 @@ fprintf('Found %d shot numbers to process.\n', length(shots));
 % % keep only the first x shots
 % shots = shots(1:15);
 
+% % keep x random shots (+ the first one)
+% shots = [shots(1); shots(randperm(length(shots), N_DS-1))]; %
+
 % keep x random shots (+ the first one)
-shots = [shots(1); shots(randperm(length(shots), 14))]; %
+shots = shots(randperm(length(shots), N_DS)); %
 
 
 %% --- Main Processing Loop ---

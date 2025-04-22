@@ -14,12 +14,11 @@ shots = [int(f.split('.')[0]) for f in os.listdir(DS_DIR) if f.endswith('.mat')]
 # read the grid coordinates
 d = loadmat('tcv_params/grid.mat')
 r, z = d['r'].flatten(), d['z'].flatten()  # grid coordinates
-print(f'Grid coordinates: {r.shape}, {z.shape}')
 rr, zz = np.meshgrid(r, z)  # meshgrid for plotting
 rr1, zz1 = np.meshgrid(r[1:-1], z[1:-1])  # meshgrid for plotting
 
 # keep only the first 3 shots
-shots = shots[:2]
+# shots = shots[:2]
 
 print(f'Shots: {shots}')
 
