@@ -17,3 +17,18 @@ Main data structures:
 - `LY`: Output data structure
 
 
+
+# Notes
+
+- to possibly generate the dataset faster consider this section of `help meqt`:
+    ```
+    % Quantities on interpolation points (when using 'infct')
+    .Fn    Flux at interpolation points L.P.rn, L.P.zn                 (*,t)     [Wb]
+    .Un    Loop voltage at interpolation points                        (*,t)     [V]
+    .Brn   Br at interpolation points                                  (*,t)     [T]
+    .Bzn   Bz at interpolation points                                  (*,t)     [T]
+    .Brrn  dBr/dr at interpolation points                              (*,t)     [T/m]
+    .Brzn  dBr/dz at interpolation points                              (*,t)     [T/m]
+    .Bzzn  dBz/dz at interpolation points                              (*,t)     [T/m]
+    .Bzrn  dBz/dr at interpolation points                              (*,t)     [T/m]
+    ```

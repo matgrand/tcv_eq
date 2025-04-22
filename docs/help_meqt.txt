@@ -1,0 +1,202 @@
+help meqt
+    MEQT helper function, lists meaning of output variables stored in LY
+    Code-specific output quantities are documented in code-specific files, 
+    see  FBTT, LIUT, FGET, FGST
+
+    Dimensions: Q: normalized sqrt poloidal flux including axis (L.pQ)
+                q: normalized sqrt poloidal flux excluding axis (L.pq)
+                rx,zx: computational grid L.rx,L.zx
+                ry,zy: inner computational grid excluding boundary: L.ry,L.zy
+                o: poloidal angle theta grid (L.oq)
+                g: basis functions
+                D: plasma domain (>1 for e.g. doublets)
+                W: wall gaps, nFW: number of flux values being tracked
+                R: rational 1/q surfaces, nR: number of 1/q surfaces being tracked
+                S: flux surfaces with requested outboard r/a values, nS: number of tracked values
+                t: time
+
+    NB: In the code the q and Q suffixes can be used to designate 2D (rho,theta) quantities.
+        For clarity they are broken down here into q/Q for rho and o for theta.
+
+    .shot  Shot number
+    .t     Time base                                                   (t)       [s]
+
+    Main equilibrium and integral quantities:
+    .ag    Basis function coefficients                                 (g,t)     [-]
+    .Bm    Simulated magnetic probe measurements                       (*,t)     [T]
+    .Um    Simulated magnetic field time derivative measurements       (*,t)     [T/s]
+    .bp    Beta poloidal                                               (t)       [-]
+    .bpli2 Betap + li/2                                                (t)       [-]
+    .bt    Beta toroidal                                               (t)       [-]
+    .Ff    Simulated flux loop poloidal flux                           (*,t)     [Wb]
+    .Uf    Simulated flux loop voltage measurements (=d/dt(Ff))        (*,t)     [V]
+    .FR    Ratio of normalized X-point/boundary flux                   (D,t)     [-]
+    .Ft0   Vacuum contribution to the toroidal flux                    (t)       [Wb]
+    .Ft    Plasma contribution to the toroidal flux                    (t)       [Wb]
+    .Fx    Plasma poloidal flux map on                                 (rx,zx,t) [Wb]
+    .Ia    Fitted poloidal field coil currents                         (*,t)     [A]
+    .Ip    Total plasma current                                        (t)       [A]
+    .Is    Vessel segment currents                                     (*,t)     [A]
+    .Iu    Vessel currents in generalized description                  (*,t)     [A]
+    .Iv    Vessel filament currents                                    (*,t)     [A]
+    .Iy    Plasma current distribution                                 (ry,zy,t) [A]
+    .Opy   Plasma domain index                                         (ry,zy,t) [-]
+    .li    Normalised internal inductance                              (t)       [-]
+    .mu    Normalised diamagnetism                                     (t)       [-]
+    .nA    Number of magnetic axes found                               (t)       [-]
+    .PA    Pressure on axis                                            (D,t)     [Pa]
+    .qA    q on axis using small diamagnetic approximation             (D,t)     [-]
+    .FA    Poloidal flux on magnetic axis                              (D,t)     [Wb]
+    .rA    r position of magnetic axis                                 (D,t)     [m]
+    .zA    z position of magnetic axis                                 (D,t)     [m]
+    .dr2FA 2nd derivative wrt r of poloidal flux on axis               (D,t)     [Wb/m^2]
+    .drzFA 2nd derivative wrt r,z of poloidal flux on axis             (D,t)     [Wb/m^2]
+    .dz2FA 2nd derivative wrt z of poloidal flux on axis               (D,t)     [Wb/m^2]
+    .nB    Number of plasma domain boundaries found                    (t)       [-]
+    .lB    Boolean flag indicating if domain boundary has been found   (D,t)     [-]
+    .FB    Poloidal flux at pt. defining plasma domain boundary        (D,t)     [Wb]
+    .rB    r position of point defining plasma domain boundary         (D,t)     [m]
+    .zB    z position of point defining plasma domain boundary         (D,t)     [m]
+    .F0    Poloidal flux at domain center point                        (D,t)     [Wb]
+    .F1    Poloidal flux at domain boundary point                      (D,t)     [Wb]
+    .rBt   Vacuum toroidal field * r                                   (t)       [T.m]
+    .rIp   current distribution weighted by r grid                     (t)       [A.m]
+    .zIp   current distribution weighted by z grid                     (t)       [A.m]
+    .rY    r position of centroid of current distribution (=rIp/Ip)    (t)       [m]
+    .zY    z position of centroid of current distribution (=zIp/Ip)    (t)       [m]
+    .lX    Boolean flag indicating if domain is diverted               (D,t)     [-]
+    .nX    Number of X points found                                    (t)       [-]
+    .FX    Flux at X points                                            (*,t)     [Wb]
+    .rX    r position of X points                                      (*,t)     [m]
+    .zX    z position of X points                                      (*,t)     [m]
+    .dr2FX 2nd derivative wrt r of poloidal flux at X-points           (*,t)     [Wb/m^2]
+    .drzFX 2nd derivative wrt r,z of poloidal flux at X-points         (*,t)     [Wb/m^2]
+    .dz2FX 2nd derivative wrt z of poloidal flux at X-points           (*,t)     [Wb/m^2]
+    .PQ    Pressure profile                                            (Q,D,t)   [Pa]
+    .TQ    T = r*Btor profile                                          (Q,t)     [T.m]
+    .iTQ   1/TQ (if P.smalldia: with small diagmagnetic approximation) (Q,t)     [1/(T.m)]
+    .Wk    Plasma kinetic energy                                       (t)       [J]
+    .WN    Normalisation energy                                        (t)       [J]
+    .Wp    Plasma poloidal magnetic energy                             (t)       [J]
+    .Wt0   Vacuum toroidal magnetic energy                             (t)       [J]
+    .Wt    Plasma toroidal magnetic energy                             (t)       [J]
+    .Vp    Plasma volume                                               (t)       [m^3]
+
+    % Integral quantities per plasma domain
+    .bpD   Beta poloidal per domain                                    (D,t)     [-]
+    .btD   Beta toroidal per domain                                    (D,t)     [-]
+    .FtD   Plasma toroidal flux per domain                             (D,t)     [Wb]
+    .Ft0D  Vacuum toroidal flux per domain                             (D,t)     [Wb]
+    .IpD   Plasma current per domain                                   (D,t)     [A]
+    .liD   Normalised internal inductance per domain                   (D,t)     [-]
+    .TpDg  Integral of basis function values per domain                (g,D,t)   [-]
+    .ITpDg Integral of primitives of basis function values per domain  (g,D,t)   [-]
+    .rYD   r position of centroid of current distribution (=rIpD./IpD) (D,t)     [m]
+    .zYD   z position of centroid of current distribution (=zIpD./IpD) (D,t)     [m]
+    .rIpD  current distribution weighted on r grid                     (D,t)     [A.m] 
+    .zIpD  current distribution weighted on z grid                     (D,t)     [A.m] 
+    .VpD   Plasma volume per domain                                    (D,t)     [m^3]
+    .WkD   Plasma kinetic energy per domain                            (D,t)     [J]
+    .WpD   Plasma poloidal magnetic energy per domain                  (D,t)     [J]
+    .WtD   Plasma toroidal magnetic energy per domain                  (D,t)     [J]
+    .Wt0D  Vacuum toroidal magnetic energy per domain                  (D,t)     [J]
+    .WND   Normalisation energy per domain                             (D,t)     [J]
+
+    % Integral quantities on rho grid per plasma domain
+    .FtQ   Plasma toroidal flux contained in flux surface              (Q,D,t)   [Wb]
+    .Ft0Q  Vacuum toroidal flux contained in flux surface              (Q,D,t)   [Wb]
+    .FtPQ  Total toroidal flux contained in flux surface (FtQ+Ft0Q)    (Q,D,t)   [Wb]                                  
+    .IpQ   Plasma current contained in flux surface                    (Q,D,t)   [A]
+    .OpQ   Number of grid points contained in flux surface             (Q,t)     [-]
+    .PpQg  p' base functions multiplied by their coefficients          (Q,D,g,t) [Pa/Wb]
+    .PpQ   p' profile                                                  (Q,D,t)   [Pa/Wb]
+    .TTpQg TT' base functions multiplied by their coefficients         (Q,D,g,t) [T^2.m^2/Wb]
+    .TTpQ  TT' profile                                                 (Q,D,t)   [T^2.m^2/Wb]
+    .VpQ   Plasma volume contained in flux surface                     (Q,D,t)   [m^3]
+    .WkQ   Plasma kinetic energy contained in flux surface             (Q,D,t)   [J]
+    .WpQ   Plasma poloidal magnetic energy contained in flux surface   (Q,D,t)   [J]
+
+    % Contour-related quantities on rho grid per plasma domain D, only available for iterq>0
+    .aq      distance between point on flux surface and magnetic axis  (o,q,D,t) [m]
+    .zq      z position of flux surface points                         (o,q,D,t) [m]
+    .rq      r position of flux surface points                         (o,q,D,t) [m]
+    .raQ     Outboard r/A value on pQ grid                             (Q,D,t)   [-]
+    .iqQ     1/q profile where q is the safety factor                  (Q,D,t)   [-]
+    .jtorQ   Toroidal current density defined as R0*<jphi/R>           (Q,D,t)   [A/m2]
+    .raqmin  Outboard r/a value of location of minimum safety factor   (t)       [-]
+    .qmin    Minimum safety factor                                     (t)       [-]
+    .q95     safety factor at 95% normalized poloidal flux surface     (D,t)       [-]
+    .Q0Q     <1/R>                                                     (Q,D,t)   [1/m]
+    .Q1Q     -dpsi/dV                                                  (Q,D,t)   [T/m]
+    .Q2Q     <1/R^2>                                                   (Q,D,t)   [1/m^2]
+    .Q3Q     <|grad psi|^2/R^2>                                        (Q,D,t)   [T^2]
+    .Q4Q     <|grad psi|^2>                                            (Q,D,t)   [T^2.m^2]
+    .Q5Q     <|grad psi|/(2pi)>                                        (Q,D,t)   [T.m]
+    .ItQ     Plasma current contained in flux surface                  (Q,D,t)   [A]
+    .LpQ     Length of the poloidal contour: \oint dl                  (Q,D,t)   [m]
+    .rbQ     Radial location of contour barycenter: (\oint R dl) / dl  (Q,D,t)   [m]
+    .VQ      Plasma volume contained in flux surface                   (Q,D,t)   [m^3]
+    .AQ      Cross-section area of flux-surface                        (Q,D,t)   [m^2]
+    .SlQ     Lateral area of flux-surface                              (Q,D,t)   [m^2]
+
+    .raR     Outboard r/a value of location of requested 1/q values    (R,t)     [-]
+    .rS      r position of flux surfaces with requested outboard r/a   (S,t)     [-]
+    .zS      z position of flux surfaces with requested outboard r/a   (S,t)
+
+    % Shape related quantities, only available for iterq>0
+    .aminor  Minor radius: (Rmax-Rmin)/2                               (Q,D,t)   [m]
+    .epsilon Aspect ratio: aminor/rgeom                                (Q,D,t)   [-]
+    .delta   Triangularity: (deltal+deltau)/2                          (Q,D,t)   [-]
+    .deltal  Lower triangularity: (r(zmin )-rgeom)/aminor              (Q,D,t)   [-]
+    .deltau  Upper triangularity: (r(zmmax)-rgeom)/aminor              (Q,D,t)   [-]
+    .kappa   Elongation: (Zmax-Zmin)/(Rmax-Rmin)                       (Q,D,t)   [-]
+    .lp      Length of the LCFS poloidal contour: \oint dl             (D,t)     [m]
+    .rbary   Radial location of LCFS barycenter: (\oint R dl) / dl     (D,t)     [m]
+    .rgeom   r position of geom. center of flux surface: (Rmax+Rmin)/2 (Q,D,t)   [m]
+    .zgeom   z position of geom. center of flux surface: (Zmax+Zmin)/2 (Q,D,t)   [m]
+
+    % Wall gap information available only for iterq>0
+    .aW      Gap distance (defined by L.G.rW,.zW and angle .oW)        (W,nFW,t) [m]         
+    .FW      Flux values that are being tracked by gap algorithm       (1,nFW,t) [Wb]
+        
+    % Magnetic fields (ifield=true) and vacuum fluxes (ivacuum=true)
+    % on x and z grids (z if izgrid=true)
+    .Brx   Radial magnetic field                                       (rx,zx,t) [T]
+    .Bzx   Vertical magnetic field                                     (rx,zx,t) [T]
+    .Brz   Radial magnetic field on z grid                             (rz,zz,t) [T]
+    .Bzz   Vertical magnetic field on z grid                           (rz,zz,t) [T]
+    .Br0x  Radial magnetic field                                       (rx,zx,t) [T]
+    .Bz0x  Vertical magnetic field                                     (rx,zx,t) [T]
+    .Br0z  Radial magnetic field on zgrid                              (rz,zz,t) [T]
+    .Bz0z  Vertical magnetic field on zgrid                            (rz,zz,t) [T]
+    .Fx0   Vacuum flux                                                 (rx,zx,t) [Wb]
+    .Fz0   Vacuum flux on z grid                                       (rz,zz,t) [Wb]
+
+    % Quantities on interpolation points (when using 'infct')
+    .Fn    Flux at interpolation points L.P.rn, L.P.zn                 (*,t)     [Wb]
+    .Un    Loop voltage at interpolation points                        (*,t)     [V]
+    .Brn   Br at interpolation points                                  (*,t)     [T]
+    .Bzn   Bz at interpolation points                                  (*,t)     [T]
+    .Brrn  dBr/dr at interpolation points                              (*,t)     [T/m]
+    .Brzn  dBr/dz at interpolation points                              (*,t)     [T/m]
+    .Bzzn  dBz/dz at interpolation points                              (*,t)     [T/m]
+    .Bzrn  dBz/dr at interpolation points                              (*,t)     [T/m]
+
+    % Quantities related to evolutive equations
+    .Va       Voltage for active circuits                              (*,t)       [V]
+    .IniD     Non-inductive plasma current                             (D,t)       [A]
+
+    % Solver output:
+    .err   sum of error flags (slx only): 
+            err=(|Ip|<L.P.Ipmin)+2*(nA==0)+4*(lB==0)+8*(PA<0) (t)[-]
+    .isconverged Boolean flag indicating if code has converged         (t)       [-]
+    .niter Number of iterations done                                   (t)       [-]
+    .res   Solver residual                                             (t)       [-]
+
+    .rese  Residual of circuit equations                               (t)       [-]
+    .resy  Residual norm of Iy                                         (t)       [-]
+    .resp  Residual norm of plasma current equation                    (t)       [-]
+    .resC  Residual norm of ag constraints                             (t)       [-]
+    .resFx Residual norm of Fx                                         (t)       [-]
+
+    [+MEQ MatlabEQuilibrium Toolbox+]

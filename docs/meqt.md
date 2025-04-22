@@ -37,8 +37,8 @@ Code-specific output quantities are documented in code-specific files: see `FBTT
 | `.bp`    | Beta poloidal | `(t)` | `[-]` |
 | `.bpli2` | Beta poloidal + li/2 | `(t)` | `[-]` |
 | `.bt`    | Beta toroidal | `(t)` | `[-]` |
-| `.Ff`    | Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
-| `.Uf`    | Simulated flux loop voltage measurements (=d/dt(Ff)) | `(*,t)` | `[V]` |
+| `.Uf`    | Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
+| `.Uf`    | Simulated flux loop voltage measurements (=d/dt(Uf)) | `(*,t)` | `[V]` |
 | `.FR`    | Ratio of normalized X-point/boundary flux | `(D,t)` | `[-]` |
 | `.Ft0`   | Vacuum contribution to toroidal flux | `(t)` | `[Wb]` |
 | `.Ft`    | Plasma contribution to toroidal flux | `(t)` | `[Wb]` |
