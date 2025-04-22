@@ -1,7 +1,7 @@
 clear all; close all; clc;
 
 
-SHOT = 83995; % 83995 % 85508 % 79999
+SHOT = 85508; % 83995 % 85508 % 79999
 IP_THRSH = 10000; % I plasma threshold to filter time
 mdsopen('tcv_shot', SHOT); % Open the MDSplus connection to the TCV database
 
@@ -36,15 +36,15 @@ Iy = single(LY.Iy); % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
 Ia = single(LY.Ia); % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
 
 Bm = single(LY.Bm); % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
-Ff = single(LY.Ff); % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
+Uf = single(LY.Uf); % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
 
 fprintf('Fx -> %s\nIy -> %s\nIa -> %s\nBm -> %s\nFf -> %s\n', ...
-    mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Ff)));
+    mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)));
 
 mdsclose; % Close the MDSplus connection
 
 % save data into a .mat file
-save(['data/eq_' num2str(SHOT) '.mat'], 'ts', 'ips', 'Fx', 'Iy', 'Ia', 'Bm', 'Ff');
+save(['data/eq_' num2str(SHOT) '.mat'], 'ts', 'ips', 'Fx', 'Iy', 'Ia', 'Bm', 'Uf');
 
 for plot_idx = 1:numel(good_ip_idxs)
     % Create a 3x2 subplot
@@ -97,12 +97,12 @@ for plot_idx = 1:numel(good_ip_idxs)
     title('magnetic probes (Bm)')
     grid on
 
-    % Subplot 6: Bar plot of Ff at plot_idx
+    % Subplot 6: Bar plot of Uf at plot_idx
     subplot(3, 2, 6)
-    bar(Ff(:, plot_idx))
+    bar(Uf(:, plot_idx))
     xlabel('Flux loop index')
     ylabel('Flux (Wb)')
-    title('flux loops (Ff)')
+    title('flux loops (Uf)')
     grid on
 
     % Save the figure as an SVG file

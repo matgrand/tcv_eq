@@ -142,7 +142,7 @@ help liux
 %% 
 % In the case of |liuqe|, the data structure contains measurements that can be 
 % used to reconstruct the equilibrium, for example |Bm| are the fields measured 
-% at the probes and |Ff| are fluxes measured at flux loops. From |LX.t| you can 
+% at the probes and |Uf| are fluxes measured at flux loops. From |LX.t| you can 
 % see that only one time point is provided for this (ficticious) shot. 
 % 
 % Let's plot some quantities
@@ -152,7 +152,7 @@ subplot(131);
 barh(1:L.G.nm,LX.Bm); 
 set(gca,'YTick',1:L.G.nm,'YTickLabels',L.G.dimm,'TickLabelInterpreter','none');
 subplot(132);
-barh(1:L.G.nf,LX.Ff); 
+barh(1:L.G.nf,LX.Uf); 
 set(gca,'YTick',1:L.G.nf,'YTickLabels',L.G.dimf,'TickLabelInterpreter','none');
 subplot(133);
 barh(1:L.G.na,LX.Ia); 

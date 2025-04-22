@@ -8,6 +8,7 @@ plt.rcParams['figure.figsize'] = (10, 6)
 plt.rcParams['axes.grid'] = True
 plt.rcParams['grid.alpha'] = 0.3
 plt.rcParams['font.family'] = 'monospace'
+plt.rcParams['image.cmap'] = 'inferno'
 
 import os
 if not os.path.exists('figs'): os.makedirs('figs')
@@ -18,15 +19,14 @@ DS_DIR = 'ds'
 # DS_DIR = '/NoTivoli/grandin/ds'
 
 # signal names
-IP='IP'
-IPLIUQE='IPLIUQE'
-IPREF='IPREF'
-BT='BT'
-SPLASMA='SPLASMA'
-ZMAG='ZMAG'
-# define the signals and their time vectors
-SIGNALS = [IP,IPLIUQE,IPREF,BT,SPLASMA,ZMAG]
-TIME_VECTORS = [f't_{s}' for s in SIGNALS]
+T  = 't'  # Time vector | `(t)` | `[s]` |
+IP = 'Ip' # Plasma current | `(t)` | `[A]` |
+FX = 'Fx' # Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
+IY = 'Iy' # Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
+IA = 'Ia' # Fitted poloidal field coil currents | `(*,t)` | `[A]` |
+BM = 'Bm' # Simulated magnetic probe measurements | `(*,t)` | `[T]` |
+UF = 'Uf' # Simulated flux loop voltage measurements (=d/dt(Ff)) | `(*,t)` | `[V]` |
 
+# TCV parameters
 
 
