@@ -35,6 +35,11 @@ for shot in shots:
     Bm = d['Bm']  # magnetic probe measurements
     Uf = d['Uf']  # flux loop poloidal flux
 
+    nt = t.shape[0]  # number of time points
+    assert Fx.shape == (len(z), len(r), nt), f'Fx shape mismatch: {Fx.shape} != ({len(r)}, {len(z)}, {nt})'
+    assert Iy.shape == (len(z)-2, len(r)-2, nt), f'Iy shape mismatch: {Iy.shape} != ({len(r)-2}, {len(z)-2}, {nt})'
+    
+
     # Create figure and subplots
     fig = plt.figure(figsize=(8, 10))
     gs = gridspec.GridSpec(3, 2, figure=fig)
