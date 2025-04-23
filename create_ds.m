@@ -5,14 +5,14 @@ clear; clc; close all;
 % Input file containing shot numbers (one per line)
 SHOT_LIST_FILE = 'good_shots.txt';
 
-N_DS = 10; % Number of shots to process
+N_DS = 100; % Number of shots to process
 MIN_TIME_SAMPLES = 10; % Minimum number of time samples to keep the shot
 
 % Directory to save the output .mat files
 % OUT_DIR = 'ds'; % testing
 OUT_DIR = '/NoTivoli/grandin/ds' % more space available
 
-DECIMATION = 100; % Decimation factor for the time vector
+DECIMATION = 10; % Decimation factor for the time vector
 
 IP_THRSH = 25000; % I plasma threshold to filter time (TODO: the method should be improved)
 
