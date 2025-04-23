@@ -5,13 +5,14 @@ clear; clc; close all;
 % Input file containing shot numbers (one per line)
 SHOT_LIST_FILE = 'good_shots.txt';
 
-N_DS = 100; % Number of shots to process
+N_DS = 10; % Number of shots to process
+MIN_TIME_SAMPLES = 10; % Minimum number of time samples to keep the shot
 
 % Directory to save the output .mat files
 % OUT_DIR = 'ds'; % testing
 OUT_DIR = '/NoTivoli/grandin/ds' % more space available
 
-DECIMATION = 10; % Decimation factor for the time vector
+DECIMATION = 100; % Decimation factor for the time vector
 
 IP_THRSH = 25000; % I plasma threshold to filter time (TODO: the method should be improved)
 
@@ -59,7 +60,7 @@ for i = 1:length(shots)
         start_time = tic; % Start timer for processing each shot
 
         shot = shots(i); % Get the current shot number
-        fprintf('Processing shot %d (%d of %d)\n', shot, i, length(shots));
+        fprintf('\x1b[33mProcessing shot %d (%d of %d)\x1b[0m\n', shot, i, length(shots));
 
         mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
@@ -72,7 +73,7 @@ for i = 1:length(shots)
         good_ip_idxs = find(abs(ip_data) > IP_THRSH);
 
         good_ip_idxs = good_ip_idxs(1:DECIMATION:end); % decimate the idxs for now 
-        assert(numel(good_ip_idxs) > 0, 'No valid plasma current data found.');
+        assert(numel(good_ip_idxs) > MIN_TIME_SAMPLES, 'No valid plasma current data found.');
 
         
         filtered_percentage = (1 - numel(good_ip_idxs) / numel(ip_data)) * 100;
@@ -101,12 +102,12 @@ for i = 1:length(shots)
         % save data into a .mat file
         save_file = fullfile(OUT_DIR, sprintf('%d.mat', shot));
         save(save_file, 't', 'Ip', 'Fx', 'Iy', 'Ia', 'Bm', 'Uf');
-        fprintf('   Data saved to: %s\n', save_file);
+        fprintf('\x1b[32m   Data saved to: %s\x1b[0m\n', save_file);
 
         shot_processing_times(i) = toc(start_time);
         fprintf('   Proc time: %.2f s, ETA: %.0f min\n', shot_processing_times(i), sum(shot_processing_times) / i * (length(shots) - i) / 60);
     catch ME
-        fprintf('   Error processing shot %d: %s\n', shot, ME.message);
+        fprintf('\x1b[31m   Error processing shot %d: %s\x1b[0m\n', shot, ME.message);
         continue; % Skip to the next shot on error
     end
 end % end shots loop

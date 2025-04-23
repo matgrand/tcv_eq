@@ -15,8 +15,8 @@ if not os.path.exists('figs'): os.makedirs('figs')
 
 ## Shots and signals
 SHOTS_FILE = 'good_shots.txt'
-DS_DIR = 'ds'
-# DS_DIR = '/NoTivoli/grandin/ds'
+# DS_DIR = 'ds'
+DS_DIR = '/NoTivoli/grandin/ds'
 
 # signal names
 T  = 't'  # Time vector | `(t)` | `[s]` |
