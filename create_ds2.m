@@ -2,11 +2,11 @@ clear all; close all; clc;
 
 START_SHOT = 77662; % Dec 2022, https://spcwiki.epfl.ch/wiki/Alma_database
 END_SHOT = 85804; % April 2025
-N_SHOTS = 2; % Number of shots to process
+N_SHOTS = 500; % Number of shots to process
 
 % Directory to save the output .mat files
-OUT_DIR = 'ds'; % testing
-% OUT_DIR = '/NoTivoli/grandin/ds'; % more space available
+% OUT_DIR = 'ds'; % testing
+OUT_DIR = '/NoTivoli/grandin/ds'; % more space available
 
 DECIMATION = 10; % Decimation factor for the time vector
 
@@ -25,11 +25,11 @@ fprintf('\tMIN_TIME_SAMPLES: %d\n', MIN_TIME_SAMPLES);
 fprintf('\tMAX_IP_PERC_DIFF: %.2f\n', MAX_IP_PERC_DIFF);
 fprintf('\n');
 
-
+fprintf('Deleting old figures...\n');
 delete(fullfile('figs', 'ip_*.png')); % Delete old figures
 
-if ~exist(OUT_DIR, 'dir') mkdir(OUT_DIR); % Create output directory if it doesn't exist
-else delete(fullfile(OUT_DIR, '*')); % Delete old files
+if ~exist(OUT_DIR, 'dir') mkdir(OUT_DIR); fprintf('Output directory created: %s\n', OUT_DIR);
+else delete(fullfile(OUT_DIR, '*')); fprintf('Output directory already exists. Old files deleted: %s\n', OUT_DIR);
 end % Create output directory if it doesn't exist
 
 shots = randi([START_SHOT, END_SHOT], 1, N_SHOTS);
