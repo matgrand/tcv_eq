@@ -1,6 +1,4 @@
 # common definitions for the project
-from plt_settings import *
-
 import os
 if not os.path.exists('figs'): os.makedirs('figs')
 

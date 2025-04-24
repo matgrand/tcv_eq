@@ -77,6 +77,24 @@ for i = 1:length(shots)
         Uf = single(LY.Uf); % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
         t = single(t);
         Ip = single(ip1);
+
+        % check none of the variables contains NaN
+        assert(~any(isnan(Fx(:))), 'Fx contains NaN values');
+        assert(~any(isnan(Iy(:))), 'Iy contains NaN values');
+        assert(~any(isnan(Ia(:))), 'Ia contains NaN values');
+        assert(~any(isnan(Bm(:))), 'Bm contains NaN values');
+        assert(~any(isnan(Uf(:))), 'Uf contains NaN values');
+        assert(~any(isnan(t(:))), 't contains NaN values');
+        assert(~any(isnan(Ip(:))), 'Ip contains NaN values');
+
+        % check none of the variables contains Inf
+        assert(~any(isinf(Fx(:))), 'Fx contains Inf values');
+        assert(~any(isinf(Iy(:))), 'Iy contains Inf values');
+        assert(~any(isinf(Ia(:))), 'Ia contains Inf values');
+        assert(~any(isinf(Bm(:))), 'Bm contains Inf values');
+        assert(~any(isinf(Uf(:))), 'Uf contains Inf values');
+        assert(~any(isinf(t(:))), 't contains Inf values');
+        assert(~any(isinf(Ip(:))), 'Ip contains Inf values');
         
         mdsclose; % Close the MDSplus connection
         total_shots = total_shots + 1;
