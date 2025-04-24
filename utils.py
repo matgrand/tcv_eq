@@ -5,6 +5,9 @@ from scipy.interpolate import RegularGridInterpolator
 # INTERP_METHOD = 'linear' # fast, but less accurate
 INTERP_METHOD = 'quintic' # slowest, but most accurate
 
+N_GRID_R = 28 # number of grid points in the x direction
+N_GRID_Z = 65 # number of grid points in the y direction
+
 def sample_random_subgrid(rrG, zzG, nr=64, nz=64):
     rm, rM, zm, zM = rrG.min(), rrG.max(), zzG.min(), zzG.max()
     delta_r_min = .33*(rM-rm)
@@ -17,7 +20,10 @@ def sample_random_subgrid(rrG, zzG, nr=64, nz=64):
     z0 = np.random.uniform(zm,zm+delta_z_max-delta_z, 1)
     rr = np.linspace(r0, r0+delta_r, nr)
     zz = np.linspace(z0, z0+delta_z, nz)
-    rrg, zzg = np.meshgrid(rr, zz, indexing='xy')
+    rrg, zzg = np.meshgrid(rr, zz, indexing='xy') # old, working
+    # rrg, zzg = np.meshgrid(rr, zz, indexing='ij') 
+    # rrg, zzg = np.meshgrid(zz, rr, indexing='xy')
+    # rrg, zzg = rrg.T, zzg.T
     return rrg, zzg
 
 def get_box_from_grid(rrg, zzg):
@@ -25,6 +31,8 @@ def get_box_from_grid(rrg, zzg):
     return np.array([[rm,zm],[rM,zm],[rM,zM],[rm,zM],[rm,zm]])
 
 def interp_fun(ψ, rrG, zzG, rrg, zzg, method=INTERP_METHOD):
+    # print(f'rrG[0,:] = {rrG[0,:]}')
+    # print(f'zzG[:,0] = {zzG[:,0]}')
     interp_func = RegularGridInterpolator((rrG[0,:], zzG[:,0]), ψ.T, method=method)
     pts = np.column_stack((rrg.flatten(), zzg.flatten()))
     f_int = interp_func(pts).reshape(rrg.shape)
@@ -38,6 +46,7 @@ def resample_on_new_subgrid(fs:list, rrG, zzG, nr=64, nz=64):
 # kernels
 def calc_laplace_df_dr_ker(hr, hz):
     α = -2*(hr**2 + hz**2)
+    assert np.abs(α) > 1e-10, f"α = {α} <= 0, hr = {hr}, hz = {hz}"
     laplace_ker = np.array(([0, hr**2/α, 0], [hz**2/α, 1, hz**2/α], [0, hr**2/α, 0]))
     dr_ker = np.array(([0, 0, 0], [+1, 0, -1], [0, 0, 0]))/(2*hr*α)*(hr**2*hz**2)
     return laplace_ker, dr_ker
@@ -63,20 +72,24 @@ def gauss_ker(dev=torch.device("cpu")):
     ker = torch.tensor([[1,4,6,4,1],[4,16,24,16,4],[6,24,36,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=torch.float32, device=dev).view(1,1,5,5) / 256
     return ker
 
+# einops TODO: look
+
 def calc_gso(ψ, rr, zz):
-    assert ψ.shape == rr.shape == zz.shape == (64,64), f"ψ.shape = {ψ.shape}, rr.shape = {rr.shape}, zz.shape = {zz.shape}"
-    Ψ, rr, zz = torch.tensor(ψ).view(1,1,64,64), torch.tensor(rr).view(1,1,64,64), torch.tensor(zz).view(1,1,64,64)
+    sΨ2, sΨ3 = ψ.shape[0], ψ.shape[1]
+    srr2, srr3 = rr.shape[0], rr.shape[1]
+    szz2, szz3 = zz.shape[0], zz.shape[1]
+    Ψ, rr, zz = torch.tensor(ψ).view(1,1,sΨ2,sΨ3), torch.tensor(rr).view(1,1,srr2,srr3), torch.tensor(zz).view(1,1,szz2,szz3)
     return calc_gso_batch(Ψ, rr, zz).numpy()[0,0]
 
 def Ϛ(x, ker): # convolve x with ker
     assert x.ndim == 4 and x.shape[1] == 1, f"x.ndim = {x.ndim}, x.shape = {x.shape}"
     assert ker.ndim == 4 and ker.shape[1] == 1, f"ker.ndim = {ker.ndim}, ker.shape = {ker.shape}"
-    if ker.shape[0] > 1: x = x.view(1,-1,64,64) # if the kernel is not the same for all samples
+    s2, s3 = x.shape[2], x.shape[3]
+    if ker.shape[0] > 1: x = x.view(1,-1,s2,s3) # if the kernel is not the same for all samples
     p = ker.shape[2]//2 # padding size
-    return F.pad(F.conv2d(x, ker, groups=ker.shape[0]), (p,p,p,p), mode='replicate').view(-1,1,64,64)
+    return F.pad(F.conv2d(x, ker, groups=ker.shape[0]), (p,p,p,p), mode='replicate').view(-1,1,s2,s3)
 
 def calc_gso_batch(Ψ, rr, zz, dev=torch.device('cpu')):
-    assert Ψ[0].shape == rr[0].shape == zz[0].shape == (1,64,64), f"Ψ.shape = {Ψ.shape}, rr.shape = {rr.shape}, zz.shape = {zz.shape}"
     Δr, Δz = rr[:,0,1,2]-rr[:,0,1,1], zz[:,0,2,1]-zz[:,0,1,1] 
     α = (-2*(Δr**2 + Δz**2))
     β = ((Δr**2 * Δz**2) / α)
