@@ -1,4 +1,5 @@
 # utils functions
+from plt_settings import *
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 # INTERP_METHOD = 'linear' # fast, but less accurate
