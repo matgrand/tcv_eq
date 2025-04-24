@@ -1,0 +1,169 @@
+help tcvget
+  ---------------------------------------------------------------------------
+  Function to load signal, see http://crpplocal/wiki/index.php/Alma_database
+  for further description
+  ---------------------------------------------------------------------------
+  SYNTAX:
+    [t,x] = tcvget(sn[,time{,ParameterName,ParameterValue}]);
+ 
+  INPUT:
+    sn  : Signal name
+          ONTIME/OFFTIME
+          LHTPLAN, HEYPLAN, LHTTYPE, HEYTYPE
+          PHALH
+          UPDATE
+          SHDATE
+          SHOTDATE, SHOTTIME, SHOTTIMES
+          LHTIME, HLTIME, LHDURA
+          ELMTIME, DNELELM, ELMFREQ, ELMFREQ20, ELMFREQ50, ELMAMP
+          TIMOFELM, TIMNEXTELM, TIMPRECELM, ELMAMP, AMPOFELM, AMPNEXTELM, AMPPREVELM (defaults parameters dyy_crit=0.03, dtelm_min=0.006)
+          STPHAATELM
+          TIMPRECELMOLD, TIMNEXTELMOLD, ELMYMAXDURA, ELMYFULLDURA, ELMFREEDURA
+          TIMEFLHS, TIMEFLHD
+          RGEO      Geometrical major radius
+          AMIN      Minor radius
+          RMAG      R of magnetic axis
+          ZMAG      Z of magnetic axis
+          R95, R90
+          GAPIN, DGAPINDT
+          GAPOUT, GAPTOP, GAPBOT
+          SEPLIM    Minimum distance to wall
+          XPLIM, XPLIMT, XPLIMB, XPTGAPIN
+          SEPPLALEN, SEPLEGLEN
+          STRIKPT
+          TILT
+          TER
+          NER
+          SIGMA     Normalized distance between two x-points
+          DRSEP
+          THXPT, THXPB, THXPB_OLD
+          KAPPA, KAPPA_95
+          DELTA, DELTA_95, DELTAU, DELTAL, DELTAU_95, DELTAL_95
+          AREA
+          INDENT
+          SPLASMA
+          VOL
+          CONFIG
+          IGRADB
+          B0, BZERO  Vacuum toroidal field at nominal major radius
+          BT, ABSBT  Vacuum toroidal field at geometrical major radius
+          IP, IPMA, ABSIP, ABSIPMA
+          DIPDT
+          IPLIUQE
+          VSURF, VSURFSMOOTH
+          VLOOP
+          Q0, Q30, Q60, Q90, Q95, Q97, QEDGE
+          DQEDGEDT
+          BEILI2
+          BEIMHD
+          BEPMHD
+          BETMHD
+          BENMHD     Beta normalized
+          LI
+          BEPDIA
+          FLUCTMAG, FLUCTMAGENV
+          NELINT             FIR line integrated density (specify chord with extension)
+          NELINTRAW          FIR finges (specify chord with extension)     
+          NEL,NEL19,NEL20    FIR line averaged density (specify chord with name
+                                 extension, e.g. 'NEL_006' for chord #6)
+          DNELDT
+          NNG                Line averaged density normalised with Greenwald 
+                             density (specify chord with name extension)
+          NGW                Greenwald density                   
+          NBPART
+          NEV
+          DNBPARTDT
+          NE95, NE90, NE9020, NE85, NE60, NE0, NEGRAD, NEAXIS
+          NEAVG,NEAV
+          PEAVG
+          RHONECUTOFF
+          ZEFF, ZEFF_XTOMO, ZEFF_XTE, ZEFF_XTE_FILTER
+          PRAD, PRADKW, PRADMW 
+          PRADCORE, PRADCOREKW, PRADCOREMW
+          PRADSOL, PRADSOLKW, PRADSOLMW
+          POHMNOCORR, POHMNOCORRSMOOTH
+          POHM, POHMMW, POHMSMOOTH, POHMMWSMOOTH, POHMKW, POHMKWSMOOTH
+          ECHFREQ
+          PECHX3REL
+          PECH, PECHKW, PECHMW
+          PL, PLMW, PLSMOOTH, PLMWSMOOTH
+          PLTH, PLH
+          PLMW
+          P[NB1|NB2,DNB], P[NB1|NB2|DNB]KW, P[NB1|NB2|DNB]MW - NBI power (neutrals in TCV) in [W], [kW], [MW]
+          PNBI, PNBIKW, PNBIMW - Total NBI power (neutrals in TCV) in [W], [kW], [MW]
+          PTOT, PTOTKW, PTOTMW - total injected power: NBI + PECRH + OHMIC
+          TE95, TE90, TE85, TE60, TE0, TEGRAD, TEAXIS
+          TEAVG, TEV
+          TIV
+          TI0NPA
+          TI0
+          WMHD
+          DWMHD, DWMHDMW
+          TAUMHD, TAU
+          TAUIPB98Y2 Confinement time according to Eq 20 in ITER Physics Basis 1999, NF
+          H98Y2 confinement factor 
+          DALFA, DALPHA
+          DALFADIV, DALPHADIV
+          DALFAXPT, DALPHAXPT
+          DALFVER
+          DALFMP
+          TAUPSTAR
+          TIMETHOM
+          TIMELIU
+          TEX
+          XTOMO
+          XTOMOEDGE
+          TEXMAX
+          TEXATTH
+          STPHA
+          STFREQ
+          STPHA2
+          TIMST
+          TSTBT
+          TSTAT
+          STTRIGG
+          TIMEFELM
+          PHAC_GEN
+          PHAP_GEN
+          PHAC_L
+          PHAP_L
+          PHAC_DITH
+          PHAP_DITH
+          PHAC_H
+          PHAP_H
+          PHAC_HEF
+          PHAP_HEF
+          PHAC_HEY
+          PHAP_HEY
+          CAUSE
+          TIMEDISR
+          DISR_CONTEXTE
+          TIMEVGAZ
+          VGAZREF
+          VGAZ
+          IPREF
+          DIPREFDT
+          Q_EDGE
+          SICOIL
+          DSICOILDT
+          FLUXGAZ
+          PDJ, SL: return the UserName (string)            
+ 
+    time: Time vector
+ 
+  PARAMETERS
+    source  ['FBTE','LIUQE','LIUQE2','LIUQE3',{'LIUQE.M'}]  Currently only supported by signals
+                        AMIN, IPLIUQE, LI, POHM*, RGEO, RMAG, SIGMA, VSURF, ZMAG, GAPIN, GAPOUT, GAPTOP, GAPBOT
+    tcv_eq_keyword  Keyword passed on in call to tcv_eq.fun (e.g. 'noeval')
+    dyy_crit   TIMEOFELM: Min. norm. time derivative of the d-alpha signal (default: 0.03)
+    dtelm_min  TIMEOFELM: Min. time between ELMs (s) (default: 0.0006)
+ 
+  OUTPUT
+    t   : Time vector (NaN, if variable is constant and no times requested)
+    x   : Data vector
+ 
+  NOTE
+    Constants are returned for every requested time, unless they are CHAR 
+    arrays.
+    
+  ---------------------------------------------------------------------------
