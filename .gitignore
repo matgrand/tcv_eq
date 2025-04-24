@@ -1,4 +1,3 @@
-*.mat
 .venv/*
 *.png
 *__pycache__*
