@@ -10,6 +10,7 @@ plt.rcParams['font.family'] = 'monospace'
 plt.rcParams['image.cmap'] = 'inferno'
 
 import numpy as np
+np.set_printoptions(precision=2)
 from scipy.interpolate import RegularGridInterpolator
 # INTERP_METHOD = 'linear' # fast, but less accurate
 INTERP_METHOD = 'quintic' # slowest, but most accurate
