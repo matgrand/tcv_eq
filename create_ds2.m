@@ -2,15 +2,14 @@ clear all; close all; clc;
 
 START_SHOT = 77662; % Dec 2022, https://spcwiki.epfl.ch/wiki/Alma_database
 END_SHOT = 85804; % April 2025
-N_SHOTS = 5000; % Number of shots to process
+N_SHOTS = 10000; % Number of shots to process
 
 % Directory to save the output .mat files
 % OUT_DIR = 'ds'; % testing
 OUT_DIR = '/NoTivoli/grandin/ds'; % more space available
 
-DECIMATION = 10; % Decimation factor for the time vector
+DECIMATION = 5; % Decimation factor for the time vector
 
-IP_THRSH = 25000; % I plasma threshold to filter time (TODO: the method should be improved)
 MIN_TIME_SAMPLES = 10; % Minimum number of time samples to keep the shot
 MAX_IP_PERC_DIFF = 1.0; % Maximum percentage difference between IPLIUQE and IP
 
@@ -20,7 +19,6 @@ fprintf('\tEND_SHOT: %d\n', END_SHOT);
 fprintf('\tN_SHOTS: %d\n', N_SHOTS);
 fprintf('\tOUT_DIR: %s\n', OUT_DIR);
 fprintf('\tDECIMATION: %d\n', DECIMATION);
-fprintf('\tIP_THRSH: %d\n', IP_THRSH);
 fprintf('\tMIN_TIME_SAMPLES: %d\n', MIN_TIME_SAMPLES);
 fprintf('\tMAX_IP_PERC_DIFF: %.2f\n', MAX_IP_PERC_DIFF);
 fprintf('\n');
