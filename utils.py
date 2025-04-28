@@ -11,6 +11,7 @@ plt.rcParams['image.cmap'] = 'inferno'
 
 import numpy as np
 np.set_printoptions(precision=2)
+from numpy.random import uniform
 
 from scipy.interpolate import RegularGridInterpolator
 INTERP_METHOD = 'linear' # fast, but less accurate
@@ -20,24 +21,30 @@ if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which 
 # N_GRID_R = 28 # number of grid points in the x direction
 # N_GRID_Z = 65 # number of grid points in the y direction
 # N_GRID_R = N_GRID_Z = 64 # number of grid points 
-N_GRID_R = N_GRID_Z = 28 # number of grid points 
+N_GRID_R = N_GRID_Z = 24 # number of grid points 
+
+# def sample_random_subgrid(rrG, zzG, nr=64, nz=64):
+#     rm, rM, zm, zM = rrG.min(), rrG.max(), zzG.min(), zzG.max()
+#     delta_r_min = .33*(rM-rm)
+#     delta_r_max = .75*(rM-rm)
+#     delta_z_min = .2*(zM-zm)
+#     delta_z_max = .75*(zM-zm)
+#     delta_r = uniform(delta_r_min, delta_r_max, 1)
+#     r0 = uniform(rm, rm+delta_r_max-delta_r, 1)
+#     delta_z = uniform(delta_z_min, delta_z_max, 1)
+#     z0 = uniform(zm,zm+delta_z_max-delta_z, 1)
+#     rr = np.linspace(r0, r0+delta_r, nr)
+#     zz = np.linspace(z0, z0+delta_z, nz)
+#     rrg, zzg = np.meshgrid(rr, zz)
+#     return rrg, zzg
 
 def sample_random_subgrid(rrG, zzG, nr=64, nz=64):
-    rm, rM, zm, zM = rrG.min(), rrG.max(), zzG.min(), zzG.max()
-    delta_r_min = .33*(rM-rm)
-    delta_r_max = .75*(rM-rm)
-    delta_z_min = .2*(zM-zm)
-    delta_z_max = .75*(zM-zm)
-    delta_r = np.random.uniform(delta_r_min, delta_r_max, 1)
-    r0 = np.random.uniform(rm, rm+delta_r_max-delta_r, 1)
-    delta_z = np.random.uniform(delta_z_min, delta_z_max, 1)
-    z0 = np.random.uniform(zm,zm+delta_z_max-delta_z, 1)
-    rr = np.linspace(r0, r0+delta_r, nr)
-    zz = np.linspace(z0, z0+delta_z, nz)
-    rrg, zzg = np.meshgrid(rr, zz, indexing='xy') # old, working
-    # rrg, zzg = np.meshgrid(rr, zz, indexing='ij') 
-    # rrg, zzg = np.meshgrid(zz, rr, indexing='xy')
-    # rrg, zzg = rrg.T, zzg.T
+    rm, rM, zm, zM = rrG[0,0], rrG[-1,-1], zzG[0,0], zzG[-1,-1]
+    Δr, Δz = rM-rm, zM-zm 
+    nΔr, nΔz = Δr*uniform(0.4, 1.0), Δz*uniform(0.4, 1.0)
+    r0, z0 = uniform(rm, rM-nΔr), uniform(zm, zM-nΔz)
+    rr, zz = np.linspace(r0, r0+nΔr, nr), np.linspace(z0, z0+nΔz, nz)
+    rrg, zzg = np.meshgrid(rr, zz)
     return rrg, zzg
 
 def get_box_from_grid(rrg, zzg):
@@ -45,10 +52,8 @@ def get_box_from_grid(rrg, zzg):
     return np.array([[rm,zm],[rM,zm],[rM,zM],[rm,zM],[rm,zm]])
 
 def interp_fun(ψ, rrG, zzG, rrg, zzg, method=INTERP_METHOD):
-    # print(f'rrG[0,:] = {rrG[0,:]}')
-    # print(f'zzG[:,0] = {zzG[:,0]}')
     interp_func = RegularGridInterpolator((rrG[0,:], zzG[:,0]), ψ.T, method=method)
-    pts = np.column_stack((rrg.flatten(), zzg.flatten()))
+    pts = np.column_stack((rrg.reshape(-1), zzg.reshape(-1)))
     f_int = interp_func(pts).reshape(rrg.shape)
     return f_int
 
