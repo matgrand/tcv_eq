@@ -11,12 +11,16 @@ plt.rcParams['image.cmap'] = 'inferno'
 
 import numpy as np
 np.set_printoptions(precision=2)
-from scipy.interpolate import RegularGridInterpolator
-# INTERP_METHOD = 'linear' # fast, but less accurate
-INTERP_METHOD = 'quintic' # slowest, but most accurate
 
-N_GRID_R = 28 # number of grid points in the x direction
-N_GRID_Z = 65 # number of grid points in the y direction
+from scipy.interpolate import RegularGridInterpolator
+INTERP_METHOD = 'linear' # fast, but less accurate
+# INTERP_METHOD = 'quintic' # slowest, but most accurate
+if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which is fast but less accurate')
+
+# N_GRID_R = 28 # number of grid points in the x direction
+# N_GRID_Z = 65 # number of grid points in the y direction
+# N_GRID_R = N_GRID_Z = 64 # number of grid points 
+N_GRID_R = N_GRID_Z = 28 # number of grid points 
 
 def sample_random_subgrid(rrG, zzG, nr=64, nz=64):
     rm, rM, zm, zM = rrG.min(), rrG.max(), zzG.min(), zzG.max()
