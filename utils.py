@@ -14,8 +14,8 @@ np.set_printoptions(precision=2)
 from numpy.random import uniform
 
 from scipy.interpolate import RegularGridInterpolator
-INTERP_METHOD = 'linear' # fast, but less accurate
-# INTERP_METHOD = 'quintic' # slowest, but most accurate
+# INTERP_METHOD = 'linear' # fast, but less accurate
+INTERP_METHOD = 'quintic' # slowest, but most accurate
 if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which is fast but less accurate')
 
 # N_GRID_R = 28 # number of grid points in the x direction
@@ -90,6 +90,22 @@ def gauss_ker(dev=torch.device("cpu")):
     # ker = torch.tensor([[1,2,1],[2,4,2],[1,2,1]], dtype=torch.float32, device=dev).view(1,1,3,3) / 16
     ker = torch.tensor([[1,4,6,4,1],[4,16,24,16,4],[6,24,36,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=torch.float32, device=dev).view(1,1,5,5) / 256
     return ker
+
+# simple reshape block for convenience
+class View(torch.nn.Module):
+    def __init__(self, *shape):
+        super(View, self).__init__()
+        self.shape = shape
+    def forward(self, x): 
+        try:
+            xshape0 = x.shape[0]
+            nx = x.contiguous().view(self.shape)
+            if x.ndim > 1: assert nx.shape[0] == xshape0, f"nx.shape[0] = {nx.shape[0]}, xshape0 = {xshape0}, self.shape = {self.shape}"
+        except Exception as e:
+            print(f"Error in View: {e}")
+            print(f"x.shape = {x.shape}, self.shape = {self.shape}")
+            raise e
+        return nx
 
 # einops TODO: look
 
