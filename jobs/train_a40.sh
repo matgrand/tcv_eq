@@ -8,6 +8,6 @@
 #SBATCH --mem=64G
 #SBATCH --time=10:00:00
 #SBATCH --gres=gpu:a40:1
-cd $HOME/repos/PlaNet_Equil_reconstruction
+cd $HOME/repos/tcv_eq
 echo "running job $SLURM_JOB_ID"
 srun jupyter nbconvert mg_train.ipynb --to python && python mg_train.py && rm -rf mg_train.py
