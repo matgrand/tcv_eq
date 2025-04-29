@@ -10,4 +10,4 @@
 #SBATCH --gres=gpu:a40:1
 cd $HOME/repos/tcv_eq
 echo "running job $SLURM_JOB_ID"
-srun jupyter nbconvert mg_train.ipynb --to python && python mg_train.py && rm -rf mg_train.py
+srun jupyter nbconvert train.ipynb --to python && python train.py && rm -rf train.py
