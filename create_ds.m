@@ -98,7 +98,7 @@ for i = 1:length(shots)
         Ip = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');        % Plasma current | `(*,t)` | `[A]` |
         
         % check the time dimensions are the same
-        fprintf('\tsizes -> Fx: %s, Iy: %s, Ia: %s, Bm: %s, Uf: %s, Ip: %s\n', mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), mat2str(size(Ip)));
+        fprintf('\tsizes -> Fx:%s, Iy:%s, Ia:%s, Bm:%s, Uf:%s, t:%s, Ip:%s\n', mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), mat2str(size(t)),  mat2str(size(Ip)));
         assert(size(Fx, 3) == numel(t), 'Fx has wrong time dimension');
         assert(size(Iy, 3) == numel(t), 'Iy has wrong time dimension');
         assert(size(Ia, 2) == numel(t), 'Ia has wrong time dimension');
@@ -122,20 +122,21 @@ for i = 1:length(shots)
 
         % fprintf('\tvalid samples -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(valid)/numel(t)), sum(valid), numel(t));
         assert(sum(valid) > 0.5 * numel(t), 'Nan/Inf filter -> not enough valid samples');
-        Fx = Fx(valid);
-        Iy = Iy(valid);
-        Ia = Ia(valid);
-        Bm = Bm(valid);
-        Uf = Uf(valid);
+                
+        Fx = Fx(:,:,valid);
+        Iy = Iy(:,:,valid);
+        Ia = Ia(:,valid);
+        Bm = Bm(:,valid);
+        Uf = Uf(:,valid);
         t = t(valid);
         Ip = Ip(valid);
 
         % decimate
-        Fx = Fx(1:DECIMATION:end);
-        Iy = Iy(1:DECIMATION:end);
-        Ia = Ia(1:DECIMATION:end);
-        Bm = Bm(1:DECIMATION:end);
-        Uf = Uf(1:DECIMATION:end);
+        Fx = Fx(:,:,1:DECIMATION:end);
+        Iy = Iy(:,:,1:DECIMATION:end);
+        Ia = Ia(:,1:DECIMATION:end);
+        Bm = Bm(:,1:DECIMATION:end);
+        Uf = Uf(:,1:DECIMATION:end);
         t = t(1:DECIMATION:end);
         Ip = Ip(1:DECIMATION:end);
 
@@ -164,7 +165,10 @@ for i = 1:length(shots)
         Bm = single(Bm); % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
         Uf = single(Uf); % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
         t = single(t);
-        Ip = single(ip1);
+        Ip = single(Ip);
+
+        % print final sizes
+        fprintf('\tFinal sizes -> Fx:%s, Iy:%s, Ia:%s, Bm:%s, Uf:%s, t:%s, Ip:%s\n', mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), mat2str(size(t)), mat2str(size(Ip)));
 
         mdsclose; % Close the MDSplus connection
         total_shots = total_shots + 1;
