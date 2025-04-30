@@ -50,21 +50,33 @@ for i = 1:length(shots)
         
         [t2, ip2] = tcvget('IP', t); % calculated using magnetics at liuqe times
         
+        % analyze the time vector
         t_diff = abs(t - t2);
-        
         fprintf('\tTime difference: mean: %.2e [s], max: %.2e [s]\n', mean(t_diff), max(t_diff));
         fprintf('\t# of time samples: %d\n', numel(t));
         assert(max(t_diff) < 1e-8, 'Times do not coincide');
         assert(numel(t) > MIN_TIME_SAMPLES, 'Not enough time samples');
         fprintf('\ttime steps -> n: %d, mean: %.2f [µs], std: %.2f [µs]\n', numel(t), mean(diff(t) * 1e6), std(diff(t) * 1e6));
         
+        
         avg_ip = mean(abs(ip2));
         ip_diff = abs(ip1 - ip2);
         avg_diff = mean(ip_diff);
-        perc_diff = (avg_diff / avg_ip) * 100;
+        % perc_diff = (avg_diff / avg_ip) * 100;
+        perc_diff = ip_diff ./ abs(ip2) * 100;
+        fprintf('\tAverage difference -> %.2f [A] (%.2f%%)\n', avg_diff, mean(perc_diff));
         
-        fprintf('\tAverage difference: %.2f [A] (%.2f%%)\n', avg_diff, perc_diff);
-        assert(perc_diff < MAX_IP_PERC_DIFF, 'Difference between IPLIUQE and IP is too high');
+        % keep only the samples where IP and IPLIUQE are similar
+        % assert(mean(perc_diff) < MAX_IP_PERC_DIFF, 'Difference between IPLIUQE and IP is too high'); % very strict
+        ip_valid_idxs = find(perc_diff < MAX_IP_PERC_DIFF);
+        assert(numel(ip_valid_idxs) > 0.5 * numel(t), 'IP and IPLIUQE are different in too many samples');
+
+        printf('\tfiltered time samples -> %.2f%%, remaining: %d\n', 100 * numel(ip_valid_idxs) / numel(t), numel(ip_valid_idxs));
+
+        % keep only the valid samples
+        t = t(ip_valid_idxs);
+        ip1 = ip1(ip_valid_idxs);
+        ip2 = ip2(ip_valid_idxs);
 
         % calculate liuqe equilibrium at the good plasma current time
         [L,LX,LY] = liuqe(shot, t);
@@ -80,7 +92,7 @@ for i = 1:length(shots)
         assert(~any(isnan(Fx(:))), 'Fx contains NaN values');
         assert(~any(isnan(Iy(:))), 'Iy contains NaN values');
         assert(~any(isnan(Ia(:))), 'Ia contains NaN values');
-        assert(~any(isnan(Bm(:))), 'Bm contains NaN values');
+        assert(~any(isnan(Bm(:))), 'Bm contains NaN values'); 
         assert(~any(isnan(Uf(:))), 'Uf contains NaN values');
         assert(~any(isnan(t(:))), 't contains NaN values');
         assert(~any(isnan(Ip(:))), 'Ip contains NaN values');
