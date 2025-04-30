@@ -30,6 +30,8 @@ if ~exist(OUT_DIR, 'dir') mkdir(OUT_DIR); fprintf('Output directory created: %s\
 else delete(fullfile(OUT_DIR, '*')); fprintf('Output directory already exists. Old files deleted: %s\n', OUT_DIR);
 end % Create output directory if it doesn't exist
 
+mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
+
 shots = randi([START_SHOT, END_SHOT], 1, N_SHOTS);
 total_shots = 0;
 fprintf('Shots: %s\n', mat2str(shots));
@@ -78,8 +80,16 @@ for i = 1:length(shots)
         ip1 = ip1(ip_valid_idxs);
         ip2 = ip2(ip_valid_idxs);
 
-        % calculate liuqe equilibrium at the good plasma current time
-        [L,LX,LY] = liuqe(shot, t);
+        % %% [RECALCULATE] liuqe equilibrium at the good plasma current time
+        % [L,LX,LY] = liuqe(shot, t);
+        % Fx = LY.Fx; % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
+        % Iy = LY.Iy; % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
+        % Ia = LY.Ia; % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
+        % Bm = LY.Bm; % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
+        % Uf = LY.Uf; % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
+        % Ip = ip1; % Plasma current | `(*,t)` | `[A]` |
+
+        %% [LOAD SAVED] liuqe equilibrium at the good plasma current time
         
         % filter out the NaN/Inf values [MILD]
         Fx_valid = ~isnan(Fx) & ~isinf(Fx);
@@ -143,6 +153,8 @@ for i = 1:length(shots)
         continue; % Skip to the next shot on error
     end % try-catch
 end % end shots loop
+
+mdsdisconnect; % Disconnect from MDSplus
 
 fprintf('\nProcessing complete for all shots.\n');
 fprintf('Output files saved in: %s\n', OUT_DIR);
