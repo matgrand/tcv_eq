@@ -5,12 +5,13 @@ clear all; close all; clc;
 START_SHOT = 77662; % Dec 2022, https://spcwiki.epfl.ch/wiki/Alma_database
 END_SHOT = 85804; % April 2025
 N_SHOTS = 30; % Number of shots to process
+% N_SHOTS = END_SHOT-START_SHOT; % Number of shots to process
 
 % Directory to save the output .mat files
 % OUT_DIR = 'ds'; % testing
 OUT_DIR = '/NoTivoli/grandin/ds'; % more space available
 
-DECIMATION = 5; % Decimation factor for the time vector
+DECIMATION = 10; % Decimation factor for the time vector
 
 MIN_TIME_SAMPLES = 10; % Minimum number of time samples to keep the shot
 MAX_IP_PERC_DIFF = 2.5; % Maximum percentage difference between IPLIUQE and IP
@@ -49,8 +50,11 @@ for i = 1:length(shots)
 
         [t, ip1] = tcvget('IPLIUQE'); % precalculated using liuqe
         ip1_mds = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');
+
+        assert(~isempty(t), 'No time vector found');
+        assert(numel(t) > 1, sprintf('Time vector has insufficient elements: t:%s', mat2str(size(t))));
         
-        fprintf('\tIPLIUQE size: %s, IPLIUQE (MDS) size: %s\n', mat2str(size(ip1)), mat2str(size(ip1_mds)));
+        % fprintf('\tIPLIUQE size: %s, IPLIUQE (MDS) size: %s\n', mat2str(size(ip1)), mat2str(size(ip1_mds)));
         assert(all(size(ip1) == size(ip1_mds)), 'IPLIUQE and IPLIUQE (MDS) have different sizes');
         assert(max(abs(ip1 - ip1_mds)) < 1e-8, 'IPLIUQE and IPLIUQE (MDS) are different');
 
@@ -59,24 +63,20 @@ for i = 1:length(shots)
         % analyze the time vector
         t_diff = abs(t - t2);
         fprintf('\ttime steps -> n: %d, mean: %.2f [µs], std: %.2f [µs]\n', numel(t), mean(diff(t) * 1e6), std(diff(t) * 1e6));
-        fprintf('\t# of time samples: %d\n', numel(t));
+        % fprintf('\t# of time samples: %d\n', numel(t));
         % fprintf('\tTime difference: mean: %.2e [s], max: %.2e [s]\n', mean(t_diff), max(t_diff));
         assert(max(t_diff) < 1e-8, 'Times do not coincide');
-        
-        % t = t(1:DECIMATION:end); % decimate the time vector
-        % assert(numel(t) > MIN_TIME_SAMPLES, 'Not enough time samples');
-        % ip1 = ip1(1:DECIMATION:end); % decimate the plasma current vector
         
         avg_ip = mean(abs(ip2));
         ip_diff = abs(ip1 - ip2);
         avg_diff = mean(ip_diff);
         perc_diff = ip_diff ./ abs(ip2) * 100;
-        fprintf('\tip average difference -> %.2f [A] (%.2f%%)\n', avg_diff, mean(perc_diff));
+        fprintf('\tip average difference -> %.2f [A] (%.1f%%)\n', avg_diff, mean(perc_diff));
         
         % keep only the samples where IP and IPLIUQE are similar
-        % assert(mean(perc_diff) < MAX_IP_PERC_DIFF, 'Difference between IPLIUQE and IP is too high'); % very strict
+        % assert(mean(perc_diff) < MAX_IP_PcERC_DIFF, 'Difference between IPLIUQE and IP is too high'); % very strict
         ip_valid1 = perc_diff < MAX_IP_PERC_DIFF;
-        fprintf('\tip filtered -> %.2f%%, remaining -> %d/%d \n', 100*(1-sum(ip_valid1)/numel(t)), sum(ip_valid1), numel(t));
+        fprintf('\tip filtered -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(ip_valid1)/numel(t)), sum(ip_valid1), numel(t));
         assert(sum(ip_valid1) > 0.8 * numel(t), 'IP MEAS and IPLIUQE are different in too many samples');
 
         % %% [RECALCULATE] liuqe equilibrium at the good plasma current times 
@@ -90,12 +90,12 @@ for i = 1:length(shots)
         % Ip = ip1; % Plasma current | `(*,t)` | `[A]` |
 
         %% [LOAD PRECALC] liuqe equilibrium at the plasma current times
-        Fx = mdsdata('tcv_eq("PSI", "LIUQE.M", "NOEVAL")');
-        Iy = mdsdata('tcv_eq("J_TOR", "LIUQE.M", "NOEVAL")');
-        Ia = mdsdata('tcv_eq("I_POL", "LIUQE.M", "NOEVAL")');
-        Bm = mdsdata('tcv_eq("B_PROBE", "LIUQE.M", "NOEVAL")');
-        Uf = mdsdata('tcv_eq("PSI_LOOP", "LIUQE.M", "NOEVAL")');
-        Ip = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');
+        Fx = mdsdata('tcv_eq("PSI", "LIUQE.M", "NOEVAL")');         % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
+        Iy = mdsdata('tcv_eq("J_TOR", "LIUQE.M", "NOEVAL")');       % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
+        Ia = mdsdata('tcv_eq("I_POL", "LIUQE.M", "NOEVAL")');       % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
+        Bm = mdsdata('tcv_eq("B_PROBE", "LIUQE.M", "NOEVAL")');     % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
+        Uf = mdsdata('tcv_eq("PSI_LOOP", "LIUQE.M", "NOEVAL")');    % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
+        Ip = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');        % Plasma current | `(*,t)` | `[A]` |
         
         % check the time dimensions are the same
         fprintf('\tsizes -> Fx: %s, Iy: %s, Ia: %s, Bm: %s, Uf: %s, Ip: %s\n', mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), mat2str(size(Ip)));
@@ -114,11 +114,13 @@ for i = 1:length(shots)
         Uf_valid  = reshape(all(~isnan(Uf) & ~isinf(Uf), 1), [],1);
         t_valid   = ~isnan(t) & ~isinf(t);
         ip_valid2 = ~isnan(Ip) & ~isinf(Ip);
-        fprintf('\t*_valid sizes -> Fx %s, Iy %s, Ia %s, Bm %s, Uf %s, t %s, ip2: %s, ip1 %s\n', mat2str(size(Fx_valid)), mat2str(size(Iy_valid)), mat2str(size(Ia_valid)), mat2str(size(Bm_valid)), mat2str(size(Uf_valid)), mat2str(size(t_valid)), mat2str(size(ip_valid2)), mat2str(size(ip_valid1)));
+        % fprintf('\t*_valid sizes -> Fx %s, Iy %s, Ia %s, Bm %s, Uf %s, t %s, ip2: %s, ip1 %s\n', mat2str(size(Fx_valid)), mat2str(size(Iy_valid)), mat2str(size(Ia_valid)), mat2str(size(Bm_valid)), mat2str(size(Uf_valid)), mat2str(size(t_valid)), mat2str(size(ip_valid2)), mat2str(size(ip_valid1)));
         valid = Fx_valid & Iy_valid & Ia_valid & Bm_valid & Uf_valid & t_valid & ip_valid2 & ip_valid1;
-        fprintf('\tvalid samples -> [TOT: %.2f] Fx: %.2f%%, Iy: %.2f%%, Ia: %.2f%%, Bm: %.2f%%, Uf: %.2f%%, t: %.2f%%, ip2: %.2f%%, ip1: %.2f%%\n', 100*sum(valid)/numel(valid), 100*sum(Fx_valid)/numel(Fx_valid), 100*sum(Iy_valid)/numel(Iy_valid), 100*sum(Ia_valid)/numel(Ia_valid), 100*sum(Bm_valid)/numel(Bm_valid), 100*sum(Uf_valid)/numel(Uf_valid), 100*sum(t_valid)/numel(t_valid), 100*sum(ip_valid2)/numel(ip_valid2), 100*sum(ip_valid1)/numel(ip_valid1));
+        fprintf('\tvalid samples -> [TOT: %.1f%%, %d] Fx:%.1f%%, Iy:%.1f%%, Ia:%.1f%%, Bm:%.1f%%, Uf:%.1f%%, t:%.1f%%, ip2:%.1f%%, ip1:%.1f%%\n', ...
+                100*sum(valid)/numel(valid), sum(valid), 100*sum(Fx_valid)/numel(Fx_valid), 100*sum(Iy_valid)/numel(Iy_valid), 100*sum(Ia_valid)/numel(Ia_valid), ...
+                100*sum(Bm_valid)/numel(Bm_valid), 100*sum(Uf_valid)/numel(Uf_valid), 100*sum(t_valid)/numel(t_valid), 100*sum(ip_valid2)/numel(ip_valid2), 100*sum(ip_valid1)/numel(ip_valid1));
 
-        % fprintf('\tvalid samples -> %.2f%%, remaining -> %d/%d \n', 100*(1-sum(valid)/numel(t)), sum(valid), numel(t));
+        % fprintf('\tvalid samples -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(valid)/numel(t)), sum(valid), numel(t));
         assert(sum(valid) > 0.5 * numel(t), 'Nan/Inf filter -> not enough valid samples');
         Fx = Fx(valid);
         Iy = Iy(valid);
@@ -137,7 +139,7 @@ for i = 1:length(shots)
         t = t(1:DECIMATION:end);
         Ip = Ip(1:DECIMATION:end);
 
-        % check none of the variables contains NaN [STRICT]
+        % check none of the variables contains NaN 
         assert(~any(isnan(Fx(:))), 'Fx contains NaN values');
         assert(~any(isnan(Iy(:))), 'Iy contains NaN values');
         assert(~any(isnan(Ia(:))), 'Ia contains NaN values');
@@ -146,7 +148,7 @@ for i = 1:length(shots)
         assert(~any(isnan(t(:))), 't contains NaN values');
         assert(~any(isnan(Ip(:))), 'Ip contains NaN values');
         
-        % check none of the variables contains Inf [STRICT]
+        % check none of the variables contains Inf
         assert(~any(isinf(Fx(:))), 'Fx contains Inf values');
         assert(~any(isinf(Iy(:))), 'Iy contains Inf values');
         assert(~any(isinf(Ia(:))), 'Ia contains Inf values');
