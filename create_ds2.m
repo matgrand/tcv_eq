@@ -2,7 +2,7 @@ clear all; close all; clc;
 
 START_SHOT = 77662; % Dec 2022, https://spcwiki.epfl.ch/wiki/Alma_database
 END_SHOT = 85804; % April 2025
-N_SHOTS = 10000; % Number of shots to process
+N_SHOTS = 100; % Number of shots to process
 
 % Directory to save the output .mat files
 % OUT_DIR = 'ds'; % testing
@@ -80,15 +80,27 @@ for i = 1:length(shots)
 
         % calculate liuqe equilibrium at the good plasma current time
         [L,LX,LY] = liuqe(shot, t);
-        Fx = single(LY.Fx); % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
-        Iy = single(LY.Iy); % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
-        Ia = single(LY.Ia); % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
-        Bm = single(LY.Bm); % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
-        Uf = single(LY.Uf); % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
-        t = single(t);
-        Ip = single(ip1);
+        
+        % filter out the NaN/Inf values [MILD]
+        Fx_valid = ~isnan(Fx) & ~isinf(Fx);
+        Iy_valid = ~isnan(Iy) & ~isinf(Iy);
+        Ia_valid = ~isnan(Ia) & ~isinf(Ia);
+        Bm_valid = ~isnan(Bm) & ~isinf(Bm);
+        Uf_valid = ~isnan(Uf) & ~isinf(Uf);
+        t_valid = ~isnan(t) & ~isinf(t);
+        Ip_valid = ~isnan(Ip) & ~isinf(Ip);
+        % intersect the valid indices
+        valid_idxs = Fx_valid & Iy_valid & Ia_valid & Bm_valid & Uf_valid & t_valid & Ip_valid;
+        assert(numel(valid_idxs) > 0.5 * numel(t), 'Nan/Inf filter -> not enough valid samples');
+        Fx = Fx(valid_idxs);
+        Iy = Iy(valid_idxs);
+        Ia = Ia(valid_idxs);
+        Bm = Bm(valid_idxs);
+        Uf = Uf(valid_idxs);
+        t = t(valid_idxs);
+        Ip = Ip(valid_idxs);
 
-        % check none of the variables contains NaN
+        % check none of the variables contains NaN [STRICT]
         assert(~any(isnan(Fx(:))), 'Fx contains NaN values');
         assert(~any(isnan(Iy(:))), 'Iy contains NaN values');
         assert(~any(isnan(Ia(:))), 'Ia contains NaN values');
@@ -96,8 +108,8 @@ for i = 1:length(shots)
         assert(~any(isnan(Uf(:))), 'Uf contains NaN values');
         assert(~any(isnan(t(:))), 't contains NaN values');
         assert(~any(isnan(Ip(:))), 'Ip contains NaN values');
-
-        % check none of the variables contains Inf
+        
+        % check none of the variables contains Inf [STRICT]
         assert(~any(isinf(Fx(:))), 'Fx contains Inf values');
         assert(~any(isinf(Iy(:))), 'Iy contains Inf values');
         assert(~any(isinf(Ia(:))), 'Ia contains Inf values');
@@ -106,6 +118,15 @@ for i = 1:length(shots)
         assert(~any(isinf(t(:))), 't contains Inf values');
         assert(~any(isinf(Ip(:))), 'Ip contains Inf values');
         
+        % convert to single precision to save space
+        Fx = single(LY.Fx); % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
+        Iy = single(LY.Iy); % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
+        Ia = single(LY.Ia); % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
+        Bm = single(LY.Bm); % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
+        Uf = single(LY.Uf); % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
+        t = single(t);
+        Ip = single(ip1);
+
         mdsclose; % Close the MDSplus connection
         total_shots = total_shots + 1;
 
