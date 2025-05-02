@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=t1a40
+#SBATCH --job-name=t1rtx
 #SBATCH --error=jobs/%j.txt
 #SBATCH --output=jobs/%j.txt
 #SBATCH --partition=allgroups
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64G
-#SBATCH --time=10:00:00
+#SBATCH --mem=32G
+#SBATCH --time=20:00:00
 #SBATCH --gres=gpu:a40:1
 cd $HOME/repos/tcv_eq
 echo "running job $SLURM_JOB_ID"
