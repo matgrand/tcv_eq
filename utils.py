@@ -25,11 +25,16 @@ if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which 
 # N_GRID_R = N_GRID_Z = 64 # number of grid points 
 N_GRID_R = N_GRID_Z = 24 # number of grid points 
 
+USE_CURRENTS = True # usually True
+USE_PROFILES = True # false -> more realistic
+USE_MAGNETIC = True # usually True
+INPUT_SIZE = int(USE_CURRENTS)*19 + int(USE_PROFILES)*38 + int(USE_MAGNETIC)*38
+
 # load the vessel perimeter
 VESS = loadmat('tcv_params/vess.mat')['vess']
 VESS = np.vstack([VESS, VESS[0]])
 
-# def sample_random_subgrid(rrG, zzG, nr=64, nz=64):
+# def sample_random_subgrid(rrG, zzG, nr=64, nz=64): # old, working
 #     rm, rM, zm, zM = rrG.min(), rrG.max(), zzG.min(), zzG.max()
 #     delta_r_min = .33*(rM-rm)
 #     delta_r_max = .75*(rM-rm)
@@ -44,10 +49,20 @@ VESS = np.vstack([VESS, VESS[0]])
 #     rrg, zzg = np.meshgrid(rr, zz)
 #     return rrg, zzg
 
-def sample_random_subgrid(rrG, zzG, nr=64, nz=64):
+# def sample_random_subgrid(rrG, zzG, nr=64, nz=64): #general, working
+#     rm, rM, zm, zM = rrG[0,0], rrG[-1,-1], zzG[0,0], zzG[-1,-1]
+#     Δr, Δz = rM-rm, zM-zm 
+#     nΔr, nΔz = Δr*uniform(0.4, 1.0), Δz*uniform(0.4, 1.0)
+#     r0, z0 = uniform(rm, rM-nΔr), uniform(zm, zM-nΔz)
+#     rr, zz = np.linspace(r0, r0+nΔr, nr), np.linspace(z0, z0+nΔz, nz)
+#     rrg, zzg = np.meshgrid(rr, zz)
+#     return rrg, zzg
+
+def sample_random_subgrid(rrG, zzG, nr=64, nz=64): # tcv specific
     rm, rM, zm, zM = rrG[0,0], rrG[-1,-1], zzG[0,0], zzG[-1,-1]
     Δr, Δz = rM-rm, zM-zm 
-    nΔr, nΔz = Δr*uniform(0.4, 1.0), Δz*uniform(0.4, 1.0)
+    assert Δr < Δz, f'TCV grid is like this'
+    nΔr = nΔz = Δr*uniform(0.4, 1.0) # force square grid
     r0, z0 = uniform(rm, rM-nΔr), uniform(zm, zM-nΔz)
     rr, zz = np.linspace(r0, r0+nΔr, nr), np.linspace(z0, z0+nΔz, nz)
     rrg, zzg = np.meshgrid(rr, zz)
