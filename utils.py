@@ -13,6 +13,8 @@ import numpy as np
 np.set_printoptions(precision=2)
 from numpy.random import uniform
 
+from scipy.io import loadmat, savemat
+
 from scipy.interpolate import RegularGridInterpolator
 # INTERP_METHOD = 'linear' # fast, but less accurate
 INTERP_METHOD = 'quintic' # slowest, but most accurate
@@ -22,6 +24,10 @@ if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which 
 # N_GRID_Z = 65 # number of grid points in the y direction
 # N_GRID_R = N_GRID_Z = 64 # number of grid points 
 N_GRID_R = N_GRID_Z = 24 # number of grid points 
+
+# load the vessel perimeter
+VESS = loadmat('tcv_params/vess.mat')['vess']
+VESS = np.vstack([VESS, VESS[0]])
 
 # def sample_random_subgrid(rrG, zzG, nr=64, nz=64):
 #     rm, rM, zm, zM = rrG.min(), rrG.max(), zzG.min(), zzG.max()
@@ -131,3 +137,9 @@ def calc_gso_batch(Ψ, rr, zz, dev=torch.device('cpu')):
     ΔΨ = (1/β.view(-1,1,1,1)) * (Ϛ(Ψ, laplace_ker(Δr, Δz, α, dev)) - Ϛ(Ψ, dr_ker(Δr, Δz, α, dev))/rr) # grad-shafranov operator
     # ΔΨ = Ϛ(ΔΨ, gauss_ker(dev)) # apply gauss kernel
     return ΔΨ
+
+
+
+
+
+## PLOTTING
