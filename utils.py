@@ -20,15 +20,15 @@ from scipy.interpolate import RegularGridInterpolator
 INTERP_METHOD = 'quintic' # slowest, but most accurate
 if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which is fast but less accurate')
 
-# N_GRID_R = 28 # number of grid points in the x direction
-# N_GRID_Z = 65 # number of grid points in the y direction
-# N_GRID_R = N_GRID_Z = 64 # number of grid points 
-N_GRID_R = N_GRID_Z = 24 # number of grid points 
+# NGR = 28 # number of grid points in the x direction
+# NGZ = 65 # number of grid points in the y direction
+# NGR = NGZ = 64 # number of grid points 
+NGR = NGZ = 24 # number of grid points 
 
 USE_CURRENTS = True # usually True
 USE_PROFILES = True # false -> more realistic
 USE_MAGNETIC = True # usually True
-INPUT_SIZE = int(USE_CURRENTS)*19 + int(USE_PROFILES)*38 + int(USE_MAGNETIC)*38
+NIN = int(USE_CURRENTS)*19 + int(USE_PROFILES)*38 + int(USE_MAGNETIC)*38 # input size
 
 # load the vessel perimeter
 VESS = loadmat('tcv_params/vess.mat')['vess']
@@ -68,7 +68,16 @@ def sample_random_subgrid(rrG, zzG, nr=64, nz=64): # tcv specific
     rrg, zzg = np.meshgrid(rr, zz)
     return rrg, zzg
 
-def get_box_from_grid(rrg, zzg):
+def spans2grids(rs, zs):
+    assert rs.shape[1:] == (NGR,), f"rs.shape = {rs.shape}, NGR = {NGR}"
+    assert zs.shape[1:] == (NGZ,), f"zs.shape = {zs.shape}, NGZ = {NGZ}"
+    assert rs.shape[0] == zs.shape[0], f"rs.shape = {rs.shape}, zs.shape = {zs.shape}"
+    rrgs, zzgs = np.zeros((len(rs), NGR, NGZ)), np.zeros((len(zs), NGR, NGZ))
+    for i in range(len(rs)):
+        rrgs[i,:], zzgs[i,:] = np.meshgrid(rs[i], zs[i])
+    return rrgs, zzgs
+
+def grid2box(rrg, zzg):
     rm, rM, zm, zM = rrg.min(), rrg.max(), zzg.min(), zzg.max()
     return np.array([[rm,zm],[rM,zm],[rM,zM],[rm,zM],[rm,zm]])
 
