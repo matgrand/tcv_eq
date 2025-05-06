@@ -62,7 +62,7 @@ def sample_random_subgrid(rrG, zzG, nr=64, nz=64): # tcv specific
     rm, rM, zm, zM = rrG[0,0], rrG[-1,-1], zzG[0,0], zzG[-1,-1]
     Δr, Δz = rM-rm, zM-zm 
     assert Δr < Δz, f'TCV grid is like this'
-    nΔr = nΔz = Δr*uniform(0.4, 1.0) # force square grid
+    nΔr = nΔz = Δr*uniform(0.5, 1.0) # force square grid
     r0, z0 = uniform(rm, rM-nΔr), uniform(zm, zM-nΔz)
     rr, zz = np.linspace(r0, r0+nΔr, nr), np.linspace(z0, z0+nΔz, nz)
     rrg, zzg = np.meshgrid(rr, zz)
@@ -139,31 +139,33 @@ class View(torch.nn.Module):
 
 # einops TODO: look
 
-def calc_gso(ψ, rr, zz):
-    sΨ2, sΨ3 = ψ.shape[0], ψ.shape[1]
-    srr2, srr3 = rr.shape[0], rr.shape[1]
-    szz2, szz3 = zz.shape[0], zz.shape[1]
-    Ψ, rr, zz = torch.tensor(ψ).view(1,1,sΨ2,sΨ3), torch.tensor(rr).view(1,1,srr2,srr3), torch.tensor(zz).view(1,1,szz2,szz3)
-    return calc_gso_batch(Ψ, rr, zz).numpy()[0,0]
-
 def Ϛ(x, ker): # convolve x with ker
     assert x.ndim == 4 and x.shape[1] == 1, f"x.ndim = {x.ndim}, x.shape = {x.shape}"
-    assert ker.ndim == 4 and ker.shape[1] == 1, f"ker.ndim = {ker.ndim}, ker.shape = {ker.shape}"
+    assert ker.ndim == 4 and ker.shape[1] == 1, f"ker.ndim = {ker.ndim}, ker.shape =  {ker.shape}"
     s2, s3 = x.shape[2], x.shape[3]
     if ker.shape[0] > 1: x = x.view(1,-1,s2,s3) # if the kernel is not the same for all samples
     p = ker.shape[2]//2 # padding size
     return F.pad(F.conv2d(x, ker, groups=ker.shape[0]), (p,p,p,p), mode='replicate').view(-1,1,s2,s3)
 
-def calc_gso_batch(Ψ, rr, zz, dev=torch.device('cpu')):
-    Δr, Δz = rr[:,0,1,2]-rr[:,0,1,1], zz[:,0,2,1]-zz[:,0,1,1] 
+def calc_gso(ψ, r, z):
+    sΨ2, sΨ3 = ψ.shape[0], ψ.shape[1]
+    assert r.ndim == 1, f'r.ndim = {r.ndim}, r.shape = {r.shape}'
+    assert z.ndim == 1, f'z.ndim = {z.ndim}, z.shape = {z.shape}'
+    sr, sz = r.shape[0], z.shape[0]
+    Ψ, r, z = torch.tensor(ψ).view(1,1,sΨ2,sΨ3), torch.tensor(r).view(1,sr), torch.tensor(z).view(1,sz)
+    return calc_gso_batch(Ψ, r, z).numpy()[0,0]
+
+def calc_gso_batch(Ψ, r, z, dev=torch.device('cpu')):
+    assert r.ndim == 2, f'r.ndim = {r.ndim}, r.shape = {r.shape}'
+    assert z.ndim == 2, f'z.ndim = {z.ndim}, z.shape = {z.shape}'
+    assert r.shape[1] == NGR, f'r.shape[1] = {r.shape[1]}, NGR = {NGR}'
+    assert z.shape[1] == NGZ, f'z.shape[1] = {z.shape[1]}, NGZ = {NGZ}'
+    Δr, Δz = r[:,2]-r[:,1], z[:,2]-z[:,1]
+    rr = r.repeat(1,NGZ).view(-1,1,NGR,NGZ).permute(0,1,3,2)  # repeat for batch
     α = (-2*(Δr**2 + Δz**2))
     β = ((Δr**2 * Δz**2) / α)
     ΔΨ = (1/β.view(-1,1,1,1)) * (Ϛ(Ψ, laplace_ker(Δr, Δz, α, dev)) - Ϛ(Ψ, dr_ker(Δr, Δz, α, dev))/rr) # grad-shafranov operator
     # ΔΨ = Ϛ(ΔΨ, gauss_ker(dev)) # apply gauss kernel
     return ΔΨ
-
-
-
-
 
 ## PLOTTING
