@@ -31,8 +31,17 @@ USE_MAGNETIC = True # usually True
 NIN = int(USE_CURRENTS)*19 + int(USE_PROFILES)*38 + int(USE_MAGNETIC)*38 # input size
 
 # load the vessel perimeter
-VESS = loadmat('tcv_params/vess.mat')['vess']
-VESS = np.vstack([VESS, VESS[0]])
+m = loadmat('tcv_params/vess.mat')
+vr, vz = m['vess_r'], m['vess_z']
+vri, vzi = m['r_in'], m['z_in']
+vro, vzo = m['r_out'], m['z_out']
+v = np.hstack([vr, vz])
+vi, vo = np.hstack([vri, vzi]), np.hstack([vro, vzo])
+VESS = np.vstack([v, v[0]])[::-1]
+VESSI = np.vstack([vi, vi[0]])
+VESSO = np.vstack([vo, vo[0]])
+del m, vr, vz, vri, vzi, vro, vzo, v, vi, vo
+
 
 # def sample_random_subgrid(rrG, zzG, nr=64, nz=64): # old, working
 #     rm, rM, zm, zM = rrG.min(), rrG.max(), zzG.min(), zzG.max()
@@ -169,3 +178,72 @@ def calc_gso_batch(Ψ, r, z, dev=torch.device('cpu')):
     return ΔΨ
 
 ## PLOTTING
+from matplotlib.patches import PathPatch
+from matplotlib.path import Path
+def fill_between_polygons(ax, inner_poly, outer_poly, **kwargs):
+    """
+    Fill the area between two polygons.
+    
+    Parameters:
+    -----------
+    ax : matplotlib.axes.Axes
+        The axes to draw to
+    inner_poly : array-like, shape (n, 2)
+        Vertices of the inner polygon as (x, y) pairs
+    outer_poly : array-like, shape (m, 2)
+        Vertices of the outer polygon as (x, y) pairs
+    **kwargs : dict
+        Additional arguments passed to matplotlib.patches.PathPatch
+        
+    Returns:
+    --------
+    patch : matplotlib.patches.PathPatch
+        The patch representing the filled area
+    """
+    # Convert to numpy arrays if they aren't already
+    inner_poly = np.asarray(inner_poly)
+    outer_poly = np.asarray(outer_poly)
+    # Ensure polygons are closed
+    if not np.array_equal(inner_poly[0], inner_poly[-1]):
+        inner_poly = np.vstack([inner_poly, inner_poly[0]])
+    if not np.array_equal(outer_poly[0], outer_poly[-1]):
+        outer_poly = np.vstack([outer_poly, outer_poly[0]])
+    # Create a path with two polygons
+    # The inner polygon needs to be in reverse order to create a hole
+    vertices = np.vstack([outer_poly, inner_poly[::-1]])
+    # Create path codes
+    n_outer = len(outer_poly)
+    n_inner = len(inner_poly)
+    codes = np.ones(n_outer + n_inner, dtype=Path.code_type) * Path.LINETO
+    codes[0] = Path.MOVETO  # Start of outer polygon
+    codes[n_outer] = Path.MOVETO  # Start of inner polygon
+    # Create the path and patch
+    path = Path(vertices, codes)
+    patch = PathPatch(path, **kwargs)
+    # Add to the axes
+    ax.add_patch(patch)
+    return patch
+
+def plot_vessel(ax=None, color='white', lw=1.5, alpha=1.0):
+    if ax is None: ax = plt.gca()
+    ax.plot(VESS[:,0], VESS[:,1], color=color, lw=lw, alpha=alpha) # most inner
+    ax.plot(VESSI[:,0], VESSI[:,1], color=color, lw=lw, alpha=alpha) # inner
+    ax.plot(VESSO[:,0], VESSO[:,1], color=color, lw=lw, alpha=alpha) # outer
+    fill_between_polygons(ax, VESSI, VESSO, color=color, alpha=alpha*0.6, lw=0)
+    fill_between_polygons(ax, VESS, VESSI, color=color, alpha=alpha*0.3, lw=0)
+    return ax
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+
+    # test the function
+    fig, ax = plt.subplots()
+    plot_vessel(ax)
+    ax.axis('equal')
+    ax.set_title('Vessel 1')
+
+    plt.figure()
+    plot_vessel()
+    plt.axis('equal')
+    plt.title('Vessel 2')
+    plt.show()
