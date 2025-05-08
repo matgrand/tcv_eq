@@ -224,24 +224,19 @@ def fill_between_polygons(ax, inner_poly, outer_poly, **kwargs):
     ax.add_patch(patch)
     return patch
 
-def plot_vessel(ax=None, color='white', lw=1.5, alpha=1.0):
+def plot_vessel(ax=None, lw=1.5, alpha=1.0):
     if ax is None: ax = plt.gca()
-    ax.plot(VESS[:,0], VESS[:,1], color=color, lw=lw, alpha=alpha) # most inner
-    ax.plot(VESSI[:,0], VESSI[:,1], color=color, lw=lw, alpha=alpha) # inner
-    ax.plot(VESSO[:,0], VESSO[:,1], color=color, lw=lw, alpha=alpha) # outer
-    fill_between_polygons(ax, VESSI, VESSO, color=color, alpha=alpha*0.6, lw=0)
-    fill_between_polygons(ax, VESS, VESSI, color=color, alpha=alpha*0.3, lw=0)
+    ax.plot(VESS[:,0], VESS[:,1], color='white', lw=lw, alpha=alpha) # most inner
+    ax.plot(VESSI[:,0], VESSI[:,1], color='white', lw=lw, alpha=alpha) # inner
+    ax.plot(VESSO[:,0], VESSO[:,1], color='white', lw=lw, alpha=alpha) # outer
+    fill_between_polygons(ax, VESSI, VESSO, color='gray', alpha=alpha*0.8, lw=0)
+    fill_between_polygons(ax, VESS, VESSI, color='gray', alpha=alpha*0.3, lw=0)
     return ax
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     # test the function
-    fig, ax = plt.subplots()
-    plot_vessel(ax)
-    ax.axis('equal')
-    ax.set_title('Vessel 1')
-
     plt.figure()
     plot_vessel()
     plt.axis('equal')
