@@ -15,6 +15,8 @@ from numpy.random import uniform
 
 from scipy.io import loadmat, savemat
 
+
+import builtins
 import os
 import torch
 try: 
@@ -58,6 +60,9 @@ VESS = np.vstack([v, v[0]])[::-1]
 VESSI = np.vstack([vi, vi[0]])
 VESSO = np.vstack([vo, vo[0]])
 del m, vr, vz, vri, vzi, vro, vzo, v, vi, vo
+
+if not LOCAL: # Redefine the print function to always flush
+    def print(*args, **kwargs): builtins.print(*args, **{**kwargs, 'flush': True})
 
 
 # def sample_random_subgrid(rrG, zzG, nr=64, nz=64): # old, working
