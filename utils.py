@@ -16,14 +16,15 @@ from numpy.random import uniform
 from scipy.io import loadmat, savemat
 
 from scipy.interpolate import RegularGridInterpolator
-# INTERP_METHOD = 'linear' # fast, but less accurate
-INTERP_METHOD = 'quintic' # slowest, but most accurate
+INTERP_METHOD = 'linear' # fast, but less accurate
+# INTERP_METHOD = 'quintic' # slowest, but most accurate
 if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which is fast but less accurate')
 
 # NGR = 28 # number of grid points in the x direction
 # NGZ = 65 # number of grid points in the y direction
 # NGR = NGZ = 64 # number of grid points 
-NGR = NGZ = 24 # number of grid points 
+# NGR = NGZ = 24 # number of grid points <-
+NGR = NGZ = 16 # number of grid points 
 
 USE_CURRENTS = True # usually True
 USE_PROFILES = True # false -> more realistic
