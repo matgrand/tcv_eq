@@ -33,6 +33,8 @@ if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which 
 
 # DS_DIR = 'dss/ds' # where the final dataset will be stored
 DS_DIR = 'dss' if LOCAL else '/nfsd/automatica/grandinmat' 
+TRAIN_DS_PATH = f'{DS_DIR}/train_ds.npz'
+EVAL_DS_PATH = f'{DS_DIR}/eval_ds.npz'
 
 # NGR = 28 # number of grid points in the x direction
 # NGZ = 65 # number of grid points in the y direction
