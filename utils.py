@@ -15,10 +15,24 @@ from numpy.random import uniform
 
 from scipy.io import loadmat, savemat
 
+import os
+import torch
+try: 
+    JOBID = os.environ["SLURM_JOB_ID"] # get job id from slurm, when training on cluster
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu") # nvidia
+    LOCAL = False # for plotting or saving images
+except:
+    device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu") # apple silicon / cpu
+    JOBID = "local"
+    LOCAL = True
+
 from scipy.interpolate import RegularGridInterpolator
 INTERP_METHOD = 'linear' # fast, but less accurate
 # INTERP_METHOD = 'quintic' # slowest, but most accurate
 if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which is fast but less accurate')
+
+# DS_DIR = 'dss/ds' # where the final dataset will be stored
+DS_DIR = 'dss' if LOCAL else '/nfsd/automatica/grandinmat' 
 
 # NGR = 28 # number of grid points in the x direction
 # NGZ = 65 # number of grid points in the y direction
