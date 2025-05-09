@@ -1,6 +1,6 @@
 clear all; close all; clc;
 
-% TODO consider adding velle currents: I_VESSEL
+% TODO consider adding vessel currents: I_VESSEL
 
 START_SHOT = 77662; % Dec 2022, https://spcwiki.epfl.ch/wiki/Alma_database
 END_SHOT = 85804; % April 2025
