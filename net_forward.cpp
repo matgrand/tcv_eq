@@ -74,13 +74,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     const mwSize H_out = output_dims[0]; // Number of rows = 16
 
     for (int r = 0; r < 4; ++r) { // Print first 4 rows
-        mexPrintf("  row %2d: [", r);
+        mexPrintf("  [ ");
         for (int c = 0; c < 4; ++c) { // Print first 4 columns
             // Calculate linear index for element (r,c) in the first 2D slice (channel 0, batch 0)
             int linear_index = r + c * H_out;
             mexPrintf("%6.4f ", output_data[linear_index]);
         }
-        mexPrintf("...]\n");
+        mexPrintf("]\n");
     }
 
     mexPrintf("\n--- End of Ultra-Simple MEX Version ---\n");
