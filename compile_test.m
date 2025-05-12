@@ -50,7 +50,26 @@ catch ME
     fprintf('Compilation failed: %s\n', ME.message);
 end
 
-input1 = rand(1, 95);
-input2 = rand(1, 16);
-input3 = rand(1, 16);
-output = net_forward(input1, input2, input3)
+% input1 = rand(1, 95);
+% input2 = rand(1, 16);
+% input3 = rand(1, 16);
+input1 = linspace(0, 10, 10);
+input2 = linspace(0, 1, 10);
+input3 = linspace(-1, 0, 10);
+output = net_forward(input1, input2, input3);
+
+% Display the inputs
+disp('Input 1:');
+disp(size(input1));
+disp(input1);
+disp('Input 2:');
+disp(size(input2));
+disp(input2);
+disp('Input 3:');
+disp(size(input3));
+disp(input3);
+
+% Display the output (first 4 rows and 4 columns)
+disp('Output:');
+disp(size(output));
+disp(output(1:4, 1:4));
