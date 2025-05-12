@@ -7,3 +7,4 @@ dss/*
 data/*
 jobs/*.txt
 tmp/*
+test/*
