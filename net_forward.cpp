@@ -1,239 +1,87 @@
 // net_forward.cpp
-// MEX function to load a PyTorch model and perform inference.
-// Inputs:
-//   prhs[0]: double array (1x95 or 95x1)
-//   prhs[1]: double array (1x16 or 16x1)
-//   prhs[2]: double array (1x16 or 16x1)
-// Output:
-//   plhs[0]: double array (16x16x1x1) - representing [1,1,16,16] B,C,H,W tensor
+// Ultra-simple MEX function: reads 3 inputs, prints parts, creates random output, prints parts.
+// ASSUMPTIONS:
+// 1. Exactly 3 input arguments are provided from MATLAB.
+// 2. All inputs are MATLAB double arrays.
+// 3. Input 1 has at least 10 elements (assumed total 95).
+// 4. Input 2 has at least 10 elements (assumed total 16).
+// 5. Input 3 has at least 10 elements (assumed total 16).
+// 6. One output argument is expected.
+// NO LibTorch, NO significant error checking.
 
-#include "mex.h"
-
-#include <torch/script.h> // LibTorch main header for TorchScript
-#include <torch/torch.h>  // LibTorch tensor operations and utilities
-
-#include <vector>
-#include <string>
-#include <stdexcept> // For standard exceptions
-#include <memory>    // For std::unique_ptr
-
-// Helper function to check dimensions and get data pointer
-// Returns a torch::Tensor converted to float, handling potential reshape
-torch::Tensor processInput(const mxArray* mxArr, const std::vector<int64_t>& expected_torch_shape, const char* input_name) {
-    if (!mxIsDouble(mxArr) || mxIsComplex(mxArr)) {
-        mexErrMsgIdAndTxt("NetForward:InputTypeError", "Input '%s' must be a real double array.", input_name);
-    }
-
-    mwSize ndims = mxGetNumberOfDimensions(mxArr);
-    const mwSize* dims_mw = mxGetDimensions(mxArr);
-    size_t numel = mxGetNumberOfElements(mxArr);
-
-    size_t expected_numel = 1;
-    for(int64_t dim : expected_torch_shape) {
-        expected_numel *= dim;
-    }
-
-    if (numel != expected_numel) {
-         char err_msg[200];
-         snprintf(err_msg, sizeof(err_msg), "Input '%s' has %zu elements, expected %zu.", input_name, numel, expected_numel);
-         mexErrMsgIdAndTxt("NetForward:InputSizeError", err_msg);
-    }
-
-    // Determine if MATLAB provided a row vector (1xN) or column vector (Nx1)
-    // LibTorch expects [Batch, Features], so usually [1, N]
-    std::vector<int64_t> current_shape;
-    bool needs_reshape = false;
-    if (ndims == 2 && dims_mw[0] == 1 && dims_mw[1] == expected_torch_shape[1]) {
-        // Input is 1xN (row vector), matches expected [1, N]
-        current_shape = {1, (int64_t)dims_mw[1]};
-    } else if (ndims == 2 && dims_mw[0] == expected_torch_shape[1] && dims_mw[1] == 1) {
-        // Input is Nx1 (column vector), needs reshape to [1, N]
-        current_shape = {(int64_t)dims_mw[0], 1};
-        needs_reshape = true;
-    } else {
-        // Construct string representation of dimensions for error message
-        std::string dims_str;
-        for(mwSize i=0; i<ndims; ++i) {
-            dims_str += std::to_string(dims_mw[i]) + (i == ndims - 1 ? "" : "x");
-        }
-        char err_msg[200];
-        snprintf(err_msg, sizeof(err_msg), "Input '%s' has dimensions [%s], expected 1x%lld or %lldx1.",
-                 input_name, dims_str.c_str(), expected_torch_shape[1], expected_torch_shape[1]);
-        mexErrMsgIdAndTxt("NetForward:InputShapeError", err_msg);
-    }
-
-    // Get pointer to MATLAB data (double)
-    double* data_ptr = mxGetPr(mxArr);
-
-    // Create a tensor wrapper around the MATLAB data (no copy yet)
-    // Specify the dimensions as they are in MATLAB
-    auto options = torch::TensorOptions().dtype(torch::kDouble);
-    torch::Tensor tensor_double = torch::from_blob(data_ptr, current_shape, options);
-
-    // Reshape if necessary (e.g., Nx1 -> 1xN)
-    if (needs_reshape) {
-        tensor_double = tensor_double.reshape(expected_torch_shape);
-    }
-
-    // Clone and convert to float for the network
-    // Cloning ensures we have our own copy if the original MATLAB array goes out of scope
-    // or if from_blob doesn't own the memory (which it doesn't).
-    return tensor_double.clone().to(torch::kFloat);
-}
-
+#include "mex.h"    // MATLAB MEX API
+#include <cstdio>   // For formatting strings for mexPrintf if needed (not directly used here)
+#include <cstdlib>  // For rand(), srand()
+#include <ctime>    // For time() to seed srand()
 
 // Main MEX function
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-    // --- Argument Validation ---
-    if (nrhs != 3) {
-        mexErrMsgIdAndTxt("NetForward:Usage", "Usage: output = net_forward(input1[1x95], input2[1x16], input3[1x16])");
-    }
-    if (nlhs > 1) {
-        mexErrMsgIdAndTxt("NetForward:Usage", "Too many output arguments requested.");
+
+    // Seed random number generator once when the MEX file is loaded/first run.
+    // This makes sequences somewhat different across MATLAB sessions or MEX reloads.
+    static bool random_seeded = false;
+    if (!random_seeded) {
+        srand((unsigned int)time(NULL));
+        random_seeded = true;
     }
 
-    // --- Load Model (TorchScript) ---
-    static std::unique_ptr<torch::jit::script::Module> module_ptr = nullptr;
-    if (!module_ptr) {
-        try {
-            // Load the traced model. Ensure 'net.pt' is accessible from where MATLAB runs.
-            // You might need an absolute path or ensure it's on MATLAB's path.
-            module_ptr = std::make_unique<torch::jit::script::Module>(torch::jit::load("net.pt"));
-            // Set the model to evaluation mode (disables dropout, batch norm updates, etc.)
-            module_ptr->eval();
-             // Optional: Force to CPU if your LibTorch is CPU-only and model might be GPU
-             // module_ptr->to(torch::kCPU);
-            mexPrintf("Loaded PyTorch model 'net.pt' successfully.\n");
-            // Lock the module in memory so it persists between calls
-            mexMakeMemoryPersistent(module_ptr.get()); // Requires C++11 smart pointer support or raw pointer mgmt
-        } catch (const c10::Error& e) {
-            module_ptr = nullptr; // Ensure reset on failure
-            std::string msg = "Error loading the model 'net.pt': ";
-            msg += e.what();
-            mexErrMsgIdAndTxt("NetForward:LoadError", msg.c_str());
-        } catch (const std::exception& e) {
-            module_ptr = nullptr;
-             std::string msg = "Standard exception loading the model 'net.pt': ";
-             msg += e.what();
-             mexErrMsgIdAndTxt("NetForward:LoadError", msg.c_str());
-        } catch (...) {
-            module_ptr = nullptr;
-            mexErrMsgIdAndTxt("NetForward:LoadError", "Unknown error loading the model 'net.pt'.");
+    mexPrintf("--- net_forward.cpp (Ultra-Simple MEX Version) ---\n");
+
+    // --- Access and Print Inputs (TRUSTING they exist and are valid doubles) ---
+
+    // Input 1 (assumed length 95, printing first 10)
+    mexPrintf("\nInput 1 (first 10 elements):\n");
+    double* input1_data = mxGetPr(prhs[0]); // Directly access, assuming prhs[0] is valid
+    for (int i = 0; i < 10; ++i) {
+        mexPrintf("  in1[%d] = %f\n", i, input1_data[i]);
+    }
+
+    // Input 2 (assumed length 16, printing first 10)
+    mexPrintf("\nInput 2 (first 10 elements):\n");
+    double* input2_data = mxGetPr(prhs[1]); // Directly access
+    for (int i = 0; i < 10; ++i) {
+        mexPrintf("  in2[%d] = %f\n", i, input2_data[i]);
+    }
+
+    // Input 3 (assumed length 16, printing first 10)
+    mexPrintf("\nInput 3 (first 10 elements):\n");
+    double* input3_data = mxGetPr(prhs[2]); // Directly access
+    for (int i = 0; i < 10; ++i) {
+        mexPrintf("  in3[%d] = %f\n", i, input3_data[i]);
+    }
+
+    // --- Create and Initialize Output ---
+    // Output target: MATLAB array representing a [1,1,16,16] tensor
+    // MATLAB dimensions: H, W, C, B  =>  16, 16, 1, 1
+    const mwSize output_dims[] = {16, 16, 1, 1};
+    const int num_output_dims = 4;
+
+    // Create a MATLAB numeric array (double, real) for the output
+    plhs[0] = mxCreateNumericArray(num_output_dims, output_dims, mxDOUBLE_CLASS, mxREAL);
+    double* output_data = mxGetPr(plhs[0]); // Get pointer to the output data buffer
+
+    // Fill output with random double values between 0.0 and 1.0
+    int total_output_elements = 16 * 16 * 1 * 1; // 256 elements
+    for (int i = 0; i < total_output_elements; ++i) {
+        output_data[i] = (double)rand() / RAND_MAX;
+    }
+
+    // --- Print Part of the Output ---
+    mexPrintf("\nOutput (randomly initialized, first 4x4 elements of the first slice):\n");
+    // MATLAB stores arrays in column-major order.
+    // For a 4D array A(h,w,c,b), element A(r,c,0,0) (0-indexed) is at
+    // linear index = r + c*H (where H is the number of rows, 16 here).
+    const mwSize H_out = output_dims[0]; // Number of rows = 16
+
+    for (int r = 0; r < 4; ++r) { // Print first 4 rows
+        mexPrintf("  row %2d: [", r);
+        for (int c = 0; c < 4; ++c) { // Print first 4 columns
+            // Calculate linear index for element (r,c) in the first 2D slice (channel 0, batch 0)
+            int linear_index = r + c * H_out;
+            mexPrintf("%6.4f ", output_data[linear_index]);
         }
+        mexPrintf("...]\n");
     }
 
-
-    // --- Prepare Input Tensors ---
-    std::vector<torch::jit::IValue> inputs;
-    try {
-        inputs.push_back(processInput(prhs[0], {1, 95}, "input1"));
-        inputs.push_back(processInput(prhs[1], {1, 16}, "input2"));
-        inputs.push_back(processInput(prhs[2], {1, 16}, "input3"));
-    } catch (const std::exception& e) { // Catch errors from processInput
-        // Error message already sent by processInput using mexErrMsgIdAndTxt
-        return; // Exit mexFunction
-    } catch (...) {
-         mexErrMsgIdAndTxt("NetForward:InputError", "Unknown error processing inputs.");
-    }
-
-
-    // --- Perform Inference ---
-    torch::Tensor output_tensor;
-    try {
-        // Disable gradient calculations during inference
-        torch::NoGradGuard no_grad;
-
-        // Run the forward pass
-        torch::jit::IValue output_ivalue = module_ptr->forward(inputs);
-
-        if (!output_ivalue.isTensor()) {
-            mexErrMsgIdAndTxt("NetForward:OutputError", "Model output is not a tensor.");
-        }
-        output_tensor = output_ivalue.toTensor();
-
-        // Optional: If model might be on GPU, move tensor to CPU
-        // output_tensor = output_tensor.cpu();
-
-    } catch (const c10::Error& e) {
-        std::string msg = "Error during model inference: ";
-        msg += e.what();
-        mexErrMsgIdAndTxt("NetForward:InferenceError", msg.c_str());
-    } catch (const std::exception& e) {
-         std::string msg = "Standard exception during model inference: ";
-         msg += e.what();
-         mexErrMsgIdAndTxt("NetForward:InferenceError", msg.c_str());
-    } catch (...) {
-        mexErrMsgIdAndTxt("NetForward:InferenceError", "Unknown error during model inference.");
-    }
-
-    // --- Process Output Tensor ---
-    try {
-        // Expected LibTorch output shape: [B, C, H, W] = [1, 1, 16, 16]
-        const std::vector<int64_t> expected_out_shape = {1, 1, 16, 16};
-        auto actual_out_sizes = output_tensor.sizes();
-
-        if (actual_out_sizes.vec() != expected_out_shape) {
-            std::string actual_shape_str;
-            for(size_t i=0; i<actual_out_sizes.size(); ++i) {
-                 actual_shape_str += std::to_string(actual_out_sizes[i]) + (i == actual_out_sizes.size() - 1 ? "" : "x");
-            }
-             char err_msg[200];
-             snprintf(err_msg, sizeof(err_msg), "Unexpected output tensor shape. Got [%s], expected [1x1x16x16].", actual_shape_str.c_str());
-            mexErrMsgIdAndTxt("NetForward:OutputShapeError", err_msg);
-        }
-
-        // Convert output tensor to double for MATLAB
-        output_tensor = output_tensor.to(torch::kDouble);
-
-        // Ensure the tensor is contiguous in memory (row-major) for reliable data access
-        // This might involve a copy if it's not already contiguous.
-        output_tensor = output_tensor.contiguous();
-
-        // Create the MATLAB output array
-        // MATLAB dimension order: H, W, C, B -> {16, 16, 1, 1}
-        const mwSize matlab_out_dims[] = {16, 16, 1, 1};
-        plhs[0] = mxCreateNumericArray(4, matlab_out_dims, mxDOUBLE_CLASS, mxREAL);
-        double* out_ptr = mxGetPr(plhs[0]); // Pointer to the output MATLAB array data
-
-        // Get a pointer to the contiguous LibTorch tensor data
-        const double* tensor_data_ptr = output_tensor.data_ptr<double>();
-
-        // --- Copy data element-by-element with index transposition ---
-        // LibTorch tensor access (row-major): B, C, H, W
-        // MATLAB array access (column-major): H, W, C, B
-        const int64_t B = expected_out_shape[0]; // 1
-        const int64_t C = expected_out_shape[1]; // 1
-        const int64_t H = expected_out_shape[2]; // 16
-        const int64_t W = expected_out_shape[3]; // 16
-
-        for (int64_t b = 0; b < B; ++b) {
-            for (int64_t c = 0; c < C; ++c) {
-                for (int64_t w = 0; w < W; ++w) { // Iterate width before height for better cache locality with LibTorch's row-major
-                    for (int64_t h = 0; h < H; ++h) {
-                        // Calculate linear index for source (LibTorch, row-major)
-                        int64_t torch_linear_idx = b * (C * H * W) + c * (H * W) + h * W + w;
-
-                        // Calculate linear index for destination (MATLAB, column-major)
-                        // H is fastest changing dim, B is slowest
-                        int64_t matlab_linear_idx = h + w * H + c * (H * W) + b * (H * W * C);
-
-                        // Copy the value
-                        out_ptr[matlab_linear_idx] = tensor_data_ptr[torch_linear_idx];
-                    }
-                }
-            }
-        }
-         // --- End data copy ---
-
-    } catch (const c10::Error& e) {
-        std::string msg = "Error processing output tensor: ";
-        msg += e.what();
-        mexErrMsgIdAndTxt("NetForward:OutputError", msg.c_str());
-    } catch (const std::exception& e) {
-         std::string msg = "Standard exception processing output tensor: ";
-         msg += e.what();
-         mexErrMsgIdAndTxt("NetForward:OutputError", msg.c_str());
-    } catch (...) {
-        mexErrMsgIdAndTxt("NetForward:OutputError", "Unknown error processing output tensor.");
-    }
+    mexPrintf("\n--- End of Ultra-Simple MEX Version ---\n");
 }
