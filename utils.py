@@ -44,6 +44,10 @@ os.makedirs(DS_DIR, exist_ok=True)
 TRAIN_DS_PATH = f'{DS_DIR}/train_ds.npz'
 EVAL_DS_PATH = f'{DS_DIR}/eval_ds.npz'
 
+CURR_EVAL_MODEL = 'data/2539240/best_mse.pth' # path to the 'best' model so far
+# CURR_EVAL_MODEL = 'data/local/best_mse.pth' # path to the 'best' model so far
+STRICT_LOAD = False # for loading the weights, should be true, but for testing varying architectures, set to false
+
 _TEST_DIR = 'test' if LOCAL else '/nfsd/automatica/grandinmat/test'
 os.makedirs(_TEST_DIR, exist_ok=True)
 
@@ -89,75 +93,77 @@ class View(torch.nn.Module):
     def __init__(self, *shape):
         super(View, self).__init__()
         self.shape = shape
+    # def forward(self, x): 
+    #     try:
+    #         xshape0 = x.shape[0]
+    #         nx = x.contiguous().view(self.shape)
+    #         if x.ndim > 1: assert nx.shape[0] == xshape0, f"nx.shape[0] = {nx.shape[0]}, xshape0 = {xshape0}, self.shape = {self.shape}"
+    #     except Exception as e:
+    #         print(f"Error in View: {e}")
+    #         print(f"x.shape = {x.shape}, self.shape = {self.shape}")
+    #         raise e
+    #     return nx
     def forward(self, x): 
-        try:
-            xshape0 = x.shape[0]
-            nx = x.contiguous().view(self.shape)
-            if x.ndim > 1: assert nx.shape[0] == xshape0, f"nx.shape[0] = {nx.shape[0]}, xshape0 = {xshape0}, self.shape = {self.shape}"
-        except Exception as e:
-            print(f"Error in View: {e}")
-            print(f"x.shape = {x.shape}, self.shape = {self.shape}")
-            raise e
+        xshape0 = x.shape[0]
+        nx = x.contiguous().view(self.shape)
+        if x.ndim > 1: assert nx.shape[0] == xshape0, f"nx.shape[0] = {nx.shape[0]}, xshape0 = {xshape0}, self.shape = {self.shape}"
         return nx
     
 # custom trainable swish activation function
-class Λ(Module): # swish
+class ActF(Module): # swish
     def __init__(self): 
-        super(Λ, self).__init__()
-        self.β = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
-    def forward(self, x): return x*torch.sigmoid(self.β*x)
+        super(ActF, self).__init__()
+        self.beta = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
+    def forward(self, x): return x*torch.sigmoid(self.beta*x)
 
 # network architecture
 class LiuqeNet(Module): # Paper net: branch + trunk conenction and everything
-    def __init__(self, input_size=NIN, latent_size=32, grid_size=(NGZ,NGR)):
+    def __init__(self, latent_size=32):
         super(LiuqeNet, self).__init__()
         assert latent_size % 2 == 0, "latent size should be even"
-        self.input_size, self.latent_size, self.grid_size = input_size, latent_size, grid_size
-        self.fgs = grid_size[0] * grid_size[1] # flat grid size
+        # self.input_size, self.latent_size, self.grid_size = input_size, latent_size, grid_size
+        # self.fgs = grid_size[0] * grid_size[1] # flat grid size
+        self.ngr, self.ngz = NGR, NGZ # grid size
         #branch
         self.branch = Sequential(
-            View(-1, input_size),
-            Linear(input_size, 64), Λ(),
-            Linear(64, 32), Λ(),
-            Linear(32, latent_size), Λ(),
+            # View(-1, input_size),
+            Linear(NIN, 64), ActF(),
+            Linear(64, 32), ActF(),
+            Linear(32, latent_size), ActF(),
         )
         #trunk
         def trunk_block(s): 
             return  Sequential(
-                View(-1, s),
-                Linear(s, 32), Λ(),
-                Linear(32, latent_size//2), Λ(),
+                # View(-1, s),
+                Linear(s, 32), ActF(),
+                Linear(32, latent_size//2), ActF(),
             )
-        self.trunk_r, self.trunk_z = trunk_block(grid_size[1]), trunk_block(grid_size[0])
+        self.trunk_r, self.trunk_z = trunk_block(self.ngr), trunk_block(self.ngz)
         # head
         self.head = Sequential(
-            Linear(latent_size, 64), Λ(),
-            Linear(64, grid_size[0] * grid_size[1]), Λ(),
-            View(-1, 1, *self.grid_size),
+            Linear(latent_size, 64), ActF(),
+            Linear(64, self.ngr*self.ngz), ActF(),
+            # View(-1, 1, *self.grid_size),
         )
     def forward(self, xb, r, z):
-        assert xb.shape[1] == self.input_size, f"branch input shape {xb.shape} != {self.input_size}"
-        #branch net
         xb = self.branch(xb)
-        assert xb.shape[1] == self.latent_size, f"branch output shape {xb.shape} != {self.latent_size}"
-        #trunk net
         r, z = self.trunk_r(r), self.trunk_z(z) 
         xt = torch.cat((r, z), 1) # concatenate
-        assert xt.shape[1] == self.latent_size, f"trunk output shape {xt.shape} != {self.latent_size}"
         x = xt * xb # multiply trunk and branch
         x = self.head(x) # head net
+        x = x.view(-1, 1, self.ngr, self.ngz) # reshape to grid
         return x
     
-def _test_network():
-    print('_test_network')
+def test_network_io(verbose=True):
+    if verbose: print('_test_network')
     x, r, z = (torch.rand(1, NIN), torch.rand(1, NGR), torch.rand(1, NGZ))
     net = LiuqeNet()
     y = net(x, r, z)
-    print(f"in: {x.shape}, {r.shape}, {z.shape}, \nout: {y.shape}")
+    if verbose: print(f"single  -> in: {x.shape}, {r.shape}, {z.shape}, \nout: {y.shape}")
     n_sampl = 7
     nx, r, z = torch.rand(n_sampl, NIN), torch.rand(n_sampl, NGR), torch.rand(n_sampl, NGZ)
     ny = net(nx, r, z)
-    print(f"in: {nx.shape}, {r.shape}, {z.shape}, \nout: {ny.shape}")
+    if verbose: print(f"batched -> in: {nx.shape}, {r.shape}, {z.shape}, \nout: {ny.shape}")
     assert ny.shape == (n_sampl, 1, NGZ, NGR), f"Wrong output shape: {ny.shape}"
 
 # function to load the dataset
@@ -487,7 +493,7 @@ def plot_network_outputs(save_dir, ds, model:Module, title="test"):
         plt.close()
 
 if __name__ == '__main__':
-    _test_network()
+    test_network_io()
     _test_dataset()
     _test_plot_vessel()
     if LOCAL: plt.show()
