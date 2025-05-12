@@ -108,9 +108,9 @@ class Λ(Module): # swish
     def forward(self, x): return x*torch.sigmoid(self.β*x)
 
 # network architecture
-class EasyPlaNet(Module): # Paper net: branch + trunk conenction and everything
+class LiuqeNet(Module): # Paper net: branch + trunk conenction and everything
     def __init__(self, input_size=NIN, latent_size=32, grid_size=(NGZ,NGR)):
-        super(EasyPlaNet, self).__init__()
+        super(LiuqeNet, self).__init__()
         assert latent_size % 2 == 0, "latent size should be even"
         self.input_size, self.latent_size, self.grid_size = input_size, latent_size, grid_size
         self.fgs = grid_size[0] * grid_size[1] # flat grid size
@@ -151,7 +151,7 @@ class EasyPlaNet(Module): # Paper net: branch + trunk conenction and everything
 def _test_network():
     print('_test_network')
     x, r, z = (torch.rand(1, NIN), torch.rand(1, NGR), torch.rand(1, NGZ))
-    net = EasyPlaNet()
+    net = LiuqeNet()
     y = net(x, r, z)
     print(f"in: {x.shape}, {r.shape}, {z.shape}, \nout: {y.shape}")
     n_sampl = 7
@@ -172,7 +172,7 @@ def load_ds(ds_path):
     return X, Y, r, z
 
 ####################################################################################################
-class PlaNetDataset(Dataset):
+class LiuqeDataset(Dataset):
     def __init__(self, ds_mat_path):
         self.X, self.Y, self.r, self.z = map(to_tensor, load_ds(ds_mat_path))
         self.Y = self.Y.view(-1,1,NGZ,NGR)
@@ -184,7 +184,7 @@ class PlaNetDataset(Dataset):
 
 def _test_dataset():
     print("_test_dataset")
-    ds = PlaNetDataset(EVAL_DS_PATH)
+    ds = LiuqeDataset(EVAL_DS_PATH)
     print(f"Dataset length: {len(ds)}")
     print(f"Input shape: {ds[0][0].shape}")
     print(f"Output shape: {ds[0][1].shape}")
@@ -400,95 +400,91 @@ def _test_plot_vessel():
     plt.savefig(f"{_TEST_DIR}/vessel.png")
     # plt.close()
 
-def plot_network_outputs(save_dir, ds, titles=["TOT","MSE", "GSO"], best_model_paths=["mg_planet_tot.pth", "mg_planet_mse.pth", "mg_planet_gso.pth"]):
-    for titl, best_model_path in zip(titles, best_model_paths):
-        model = EasyPlaNet()
-        model.load_state_dict(torch.load(f"{save_dir}/{best_model_path}"))
-        model.eval()
-        os.makedirs(f"{save_dir}/imgs", exist_ok=True)
-        for i in np.random.randint(0, len(ds), 2 if LOCAL else 50):  
-            fig, axs = plt.subplots(2, 5, figsize=(15, 9))
-            x, y, r, z = ds[i]
-            x, y, r, z = x.to('cpu'), y.to('cpu'), r.to('cpu'), z.to('cpu')
-            x, y, r, z = x.reshape(1,-1), y.reshape(1,1,NGZ,NGR), r.reshape(1,NGR), z.reshape(1,NGZ)
-            yp = model(x, r, z)
-            gso, gsop = calc_gso_batch(y, r, z), calc_gso_batch(yp, r, z)
-            gso, gsop = gso.detach().numpy().reshape(NGZ,NGR), gsop.detach().numpy().reshape(NGZ,NGR)
-            gso_min, gso_max = np.min([gso, gsop]), np.max([gso, gsop])
-            gso_levels = np.linspace(gso_min, gso_max, 13, endpoint=True)
-            # gsop = np.clip(gsop, gso_range[1], gso_range[0]) # clip to gso range
-            
-            yp = yp.detach().numpy().reshape(NGZ,NGR)
-            y = y.detach().numpy().reshape(NGZ,NGR)
-            rr, zz = np.meshgrid(r.detach().cpu().numpy(), z.detach().cpu().numpy())
-            ext = [ds.r.min(), ds.r.max(), ds.z.min(), ds.z.max()]
-            bmin, bmax = np.min([y, yp]), np.max([y, yp]) # min max Y
-            blevels = np.linspace(bmin, bmax, 13, endpoint=True)
-            # ψ_msex = (y - yp)**2
-            # gso_msex = (gso - gsop)**2
-            ψ_mae = np.abs(y - yp)
-            gso_mae = np.abs(gso - gsop)
-            lev0 = np.linspace(0, 10.0, 13, endpoint=True)
-            lev1 = np.linspace(0, 1.0, 13, endpoint=True) 
-            lev2 = np.linspace(0, 0.1, 13, endpoint=True)
-            lev3 = np.linspace(0, 0.01, 13, endpoint=True)
-            ε = 1e-12
+def plot_network_outputs(save_dir, ds, model:Module, title="test"):
+    model.eval()
+    os.makedirs(f"{save_dir}/imgs", exist_ok=True)
+    for i in np.random.randint(0, len(ds), 2 if LOCAL else 50):  
+        fig, axs = plt.subplots(2, 5, figsize=(15, 9))
+        x, y, r, z = ds[i]
+        x, y, r, z = x.to('cpu'), y.to('cpu'), r.to('cpu'), z.to('cpu')
+        x, y, r, z = x.reshape(1,-1), y.reshape(1,1,NGZ,NGR), r.reshape(1,NGR), z.reshape(1,NGZ)
+        yp = model(x, r, z)
+        gso, gsop = calc_gso_batch(y, r, z), calc_gso_batch(yp, r, z)
+        gso, gsop = gso.detach().numpy().reshape(NGZ,NGR), gsop.detach().numpy().reshape(NGZ,NGR)
+        gso_min, gso_max = np.min([gso, gsop]), np.max([gso, gsop])
+        gso_levels = np.linspace(gso_min, gso_max, 13, endpoint=True)
+        # gsop = np.clip(gsop, gso_range[1], gso_range[0]) # clip to gso range
+        
+        yp = yp.detach().numpy().reshape(NGZ,NGR)
+        y = y.detach().numpy().reshape(NGZ,NGR)
+        rr, zz = np.meshgrid(r.detach().cpu().numpy(), z.detach().cpu().numpy())
+        bmin, bmax = np.min([y, yp]), np.max([y, yp]) # min max Y
+        blevels = np.linspace(bmin, bmax, 13, endpoint=True)
+        # ψ_msex = (y - yp)**2
+        # gso_msex = (gso - gsop)**2
+        ψ_mae = np.abs(y - yp)
+        gso_mae = np.abs(gso - gsop)
+        lev0 = np.linspace(0, 10.0, 13, endpoint=True)
+        lev1 = np.linspace(0, 1.0, 13, endpoint=True) 
+        lev2 = np.linspace(0, 0.1, 13, endpoint=True)
+        lev3 = np.linspace(0, 0.01, 13, endpoint=True)
+        ε = 1e-12
 
-            # im00 = axs[0,0].contourf(rr, zz, y, blevels)
-            im00 = axs[0,0].scatter(rr, zz, c=y, s=4, vmin=bmin, vmax=bmax)
-            axs[0,0].set_title("Actual")
-            axs[0,0].set_aspect('equal')
-            axs[0,0].set_ylabel("ψ")
-            fig.colorbar(im00, ax=axs[0,0]) 
-            # im01 = axs[0,1].contourf(rr, zz, yp, blevels)
-            im01 = axs[0,1].scatter(rr, zz, c=yp, s=4, vmin=bmin, vmax=bmax)
-            axs[0,1].set_title("Predicted")
-            fig.colorbar(im01, ax=axs[0,1])
-            im02 = axs[0,2].contour(rr, zz, y, blevels, linestyles='dashed')
-            axs[0,2].contour(rr, zz, yp, blevels)
-            axs[0,2].set_title("Contours")
-            fig.colorbar(im02, ax=axs[0,2])
-            # im03 = axs[0,3].contourf(rr, zz, np.clip(ψ_mae, lev2[0]+ε, lev2[-1]-ε), lev2)
-            im03 = axs[0,3].scatter(rr, zz, c=ψ_mae, s=4, vmin=lev2[0], vmax=lev2[-1])
-            axs[0,3].set_title(f"MAE {lev2[-1]}")
-            fig.colorbar(im03, ax=axs[0,3])
-            # im04 = axs[0,4].contourf(rr, zz, np.clip(ψ_mae, lev3[0]+ε, lev3[-1]-ε), lev3)
-            im04 = axs[0,4].scatter(rr, zz, c=ψ_mae, s=4, vmin=lev3[0], vmax=lev3[-1])
-            axs[0,4].set_title(f"MAE {lev3[-1]}")
-            fig.colorbar(im04, ax=axs[0,4])
+        # im00 = axs[0,0].contourf(rr, zz, y, blevels)
+        im00 = axs[0,0].scatter(rr, zz, c=y, s=4, vmin=bmin, vmax=bmax)
+        axs[0,0].set_title("Actual")
+        axs[0,0].set_aspect('equal')
+        axs[0,0].set_ylabel("ψ")
+        fig.colorbar(im00, ax=axs[0,0]) 
+        # im01 = axs[0,1].contourf(rr, zz, yp, blevels)
+        im01 = axs[0,1].scatter(rr, zz, c=yp, s=4, vmin=bmin, vmax=bmax)
+        axs[0,1].set_title("Predicted")
+        fig.colorbar(im01, ax=axs[0,1])
+        im02 = axs[0,2].contour(rr, zz, y, blevels, linestyles='dashed')
+        axs[0,2].contour(rr, zz, yp, blevels)
+        axs[0,2].set_title("Contours")
+        fig.colorbar(im02, ax=axs[0,2])
+        # im03 = axs[0,3].contourf(rr, zz, np.clip(ψ_mae, lev2[0]+ε, lev2[-1]-ε), lev2)
+        im03 = axs[0,3].scatter(rr, zz, c=ψ_mae, s=4, vmin=lev2[0], vmax=lev2[-1])
+        axs[0,3].set_title(f"MAE {lev2[-1]}")
+        fig.colorbar(im03, ax=axs[0,3])
+        # im04 = axs[0,4].contourf(rr, zz, np.clip(ψ_mae, lev3[0]+ε, lev3[-1]-ε), lev3)
+        im04 = axs[0,4].scatter(rr, zz, c=ψ_mae, s=4, vmin=lev3[0], vmax=lev3[-1])
+        axs[0,4].set_title(f"MAE {lev3[-1]}")
+        fig.colorbar(im04, ax=axs[0,4])
 
-            # im10 = axs[1,0].contourf(rr, zz, gso, gso_levels)
-            im10 = axs[1,0].scatter(rr, zz, c=gso, s=4, vmin=gso_min, vmax=gso_max)
-            axs[1,0].set_ylabel("GSO")
-            fig.colorbar(im10, ax=axs[1,0])
-            # im11 = axs[1,1].contourf(rr, zz, gsop, gso_levels)
-            im11 = axs[1,1].scatter(rr, zz, c=gsop, s=4, vmin=gso_min, vmax=gso_max)
-            fig.colorbar(im11, ax=axs[1,1])
-            im12 = axs[1,2].contour(rr, zz, gso, gso_levels, linestyles='dashed')
-            axs[1,2].contour(rr, zz, gsop, gso_levels)
-            fig.colorbar(im12, ax=axs[1,2])
-            # im13 = axs[1,3].contourf(rr, zz, np.clip(gso_mae, lev0[0]+ε, lev0[-1]-ε), lev0)
-            im13 = axs[1,3].scatter(rr, zz, c=gso_mae, s=4, vmin=lev0[0], vmax=lev0[-1])
-            fig.colorbar(im13, ax=axs[1,3])
-            # im14 = axs[1,4].contourf(rr, zz, np.clip(gso_mae, lev1[0]+ε, lev1[-1]-ε), lev1)
-            im14 = axs[1,4].scatter(rr, zz, c=gso_mae, s=4, vmin=lev1[0], vmax=lev1[-1])
-            fig.colorbar(im14, ax=axs[1,4])
+        # im10 = axs[1,0].contourf(rr, zz, gso, gso_levels)
+        im10 = axs[1,0].scatter(rr, zz, c=gso, s=4, vmin=gso_min, vmax=gso_max)
+        axs[1,0].set_ylabel("GSO")
+        fig.colorbar(im10, ax=axs[1,0])
+        # im11 = axs[1,1].contourf(rr, zz, gsop, gso_levels)
+        im11 = axs[1,1].scatter(rr, zz, c=gsop, s=4, vmin=gso_min, vmax=gso_max)
+        fig.colorbar(im11, ax=axs[1,1])
+        im12 = axs[1,2].contour(rr, zz, gso, gso_levels, linestyles='dashed')
+        axs[1,2].contour(rr, zz, gsop, gso_levels)
+        fig.colorbar(im12, ax=axs[1,2])
+        # im13 = axs[1,3].contourf(rr, zz, np.clip(gso_mae, lev0[0]+ε, lev0[-1]-ε), lev0)
+        im13 = axs[1,3].scatter(rr, zz, c=gso_mae, s=4, vmin=lev0[0], vmax=lev0[-1])
+        fig.colorbar(im13, ax=axs[1,3])
+        # im14 = axs[1,4].contourf(rr, zz, np.clip(gso_mae, lev1[0]+ε, lev1[-1]-ε), lev1)
+        im14 = axs[1,4].scatter(rr, zz, c=gso_mae, s=4, vmin=lev1[0], vmax=lev1[-1])
+        fig.colorbar(im14, ax=axs[1,4])
 
-            for ax in axs.flatten(): 
-                ax.grid(False), ax.set_xticks([]), ax.set_yticks([]), ax.set_aspect("equal")
-                plot_vessel(ax)
-                ax.spines['top'].set_visible(False)
-                ax.spines['right'].set_visible(False)
-                ax.spines['left'].set_visible(False)
-                ax.spines['bottom'].set_visible(False)
+        for ax in axs.flatten(): 
+            ax.grid(False), ax.set_xticks([]), ax.set_yticks([]), ax.set_aspect("equal")
+            plot_vessel(ax)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
 
-            #suptitle
-            plt.suptitle(f"[{JOBID}] EasyPlaNet: {titl} {i}")
+        #suptitle
+        plt.suptitle(f"[{JOBID}] LiuqeNet: {title} {i}")
 
-            plt.tight_layout()
-            plt.show() if LOCAL else plt.savefig(f"{save_dir}/imgs/net_example_{titl}_{i}.png")
-            
-            plt.close()
+        plt.tight_layout()
+        plt.show() if LOCAL else plt.savefig(f"{save_dir}/imgs/net_example_{title}_{i}.png")
+        
+        plt.close()
 
 if __name__ == '__main__':
     _test_network()
