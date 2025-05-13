@@ -53,8 +53,8 @@ CURR_EVAL_MODEL = 'data/2539240/best_mse.pth' # path to the 'best' model so far
 # CURR_EVAL_MODEL = 'data/local/best_mse.pth' # path to the 'best' model so far
 STRICT_LOAD = False # for loading the weights, should be true, but for testing varying architectures, set to false
 
-_TEST_DIR = 'test' if LOCAL else '/nfsd/automatica/grandinmat/test'
-os.makedirs(_TEST_DIR, exist_ok=True)
+TEST_DIR = 'test' if LOCAL else '/nfsd/automatica/grandinmat/test'
+os.makedirs(TEST_DIR, exist_ok=True)
 
 # NGR = 28 # number of grid points in the x direction
 # NGZ = 65 # number of grid points in the y direction
@@ -93,27 +93,6 @@ if not LOCAL: # Redefine the print function to always flush
 ## torch stuff
 def to_tensor(x, device=torch.device("cpu")): return torch.tensor(x, dtype=torch.float32, device=device)
 
-# simple reshape block for convenience
-class View(torch.nn.Module):
-    def __init__(self, *shape):
-        super(View, self).__init__()
-        self.shape = shape
-    # def forward(self, x): 
-    #     try:
-    #         xshape0 = x.shape[0]
-    #         nx = x.contiguous().view(self.shape)
-    #         if x.ndim > 1: assert nx.shape[0] == xshape0, f"nx.shape[0] = {nx.shape[0]}, xshape0 = {xshape0}, self.shape = {self.shape}"
-    #     except Exception as e:
-    #         print(f"Error in View: {e}")
-    #         print(f"x.shape = {x.shape}, self.shape = {self.shape}")
-    #         raise e
-    #     return nx
-    def forward(self, x): 
-        xshape0 = x.shape[0]
-        nx = x.contiguous().view(self.shape)
-        if x.ndim > 1: assert nx.shape[0] == xshape0, f"nx.shape[0] = {nx.shape[0]}, xshape0 = {xshape0}, self.shape = {self.shape}"
-        return nx
-    
 # custom trainable swish activation function
 class ActF(Module): # swish
     def __init__(self): 
@@ -184,10 +163,10 @@ def load_ds(ds_path):
 
 ####################################################################################################
 class LiuqeDataset(Dataset):
-    def __init__(self, ds_mat_path):
+    def __init__(self, ds_mat_path, verbose=True):
         self.X, self.Y, self.r, self.z = map(to_tensor, load_ds(ds_mat_path))
         self.Y = self.Y.view(-1,1,NGZ,NGR)
-        print(f"Dataset: N:{len(self)}, memory:{sum([x.element_size()*x.nelement() for x in [self.Y, self.X, self.r, self.z]])/1024**3:.2f}GB")
+        if verbose: print(f"Dataset: N:{len(self)}, memory:{sum([x.element_size()*x.nelement() for x in [self.Y, self.X, self.r, self.z]])/1024**3:.2f}GB")
         # # move to DEV (doable bc the dataset is fairly small, check memory usage)
         # self.Y, self.X, self.r, self.z = self.Y.to(DEV), self.X.to(DEV), self.r.to(DEV), self.z.to(DEV)
     def __len__(self): return len(self.Y)
@@ -212,7 +191,7 @@ def _test_dataset():
         fig.colorbar(axs[i].collections[0], ax=axs[i])
         axs[i].axis("off")
         axs[i].set_aspect("equal")
-    plt.savefig(f"{_TEST_DIR}/dataset_outputs.png")
+    plt.savefig(f"{TEST_DIR}/dataset_outputs.png")
 
     # now do the same fot the input:
     fig, axs = plt.subplots(1, n_plot, figsize=(3*n_plot, 5))
@@ -224,7 +203,7 @@ def _test_dataset():
         axs[i].legend()
         axs[i].set_title(f"Sample {j}")
         axs[i].set_xlabel("Input index")
-    plt.savefig(f"{_TEST_DIR}/dataset_inputs.png")
+    plt.savefig(f"{TEST_DIR}/dataset_inputs.png")
 
 
 ####################################################################################################
@@ -408,7 +387,7 @@ def _test_plot_vessel():
     plt.axis('equal')
     plt.title('Vessel 2')
     # plt.show()
-    plt.savefig(f"{_TEST_DIR}/vessel.png")
+    plt.savefig(f"{TEST_DIR}/vessel.png")
     # plt.close()
 
 def plot_network_outputs(save_dir, ds, model:Module, title="test"):

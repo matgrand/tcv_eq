@@ -63,26 +63,27 @@ torch::Tensor forward_pass(
         }
     }
 
+    
     // This check ensures that if initialization was attempted but failed in a way
     // that didn't set module_initialized but also didn't throw (unlikely with current setup),
     // or if module_initialized was true but module_ptr is somehow null.
     if (!module_ptr) {
         throw std::runtime_error("Model is not loaded or not available. Initialization might have failed.");
     }
-
+    
     // Package inputs into a vector of IValue (LibTorch's generic value type)
     std::vector<torch::jit::IValue> inputs_ivalue;
     inputs_ivalue.push_back(input1);
     inputs_ivalue.push_back(input2);
     inputs_ivalue.push_back(input3);
-
+    
     torch::Tensor output_tensor;
     {
         // Disable gradient calculations during inference for speed and to save memory.
         torch::NoGradGuard no_grad;
         try {
             torch::jit::IValue output_ivalue = module_ptr->forward(inputs_ivalue);
-
+            
             if (!output_ivalue.isTensor()) {
                 throw std::runtime_error("Model output is not a tensor. Actual type: " + output_ivalue.tagKind());
             }
@@ -90,7 +91,7 @@ torch::Tensor forward_pass(
             
             // If the model could be on GPU and you need CPU output:
             // output_tensor = output_tensor.cpu();
-
+            
         } catch (const c10::Error& e) {
             std::cerr << "LibTorch Error during model inference:\n" << e.what() << std::endl;
             throw;
@@ -99,6 +100,8 @@ torch::Tensor forward_pass(
             throw;
         }
     }
+    std::cout << "Input sizes: " << input1.sizes() << ", " << input2.sizes() << ", " << input3.sizes() << std::endl;
+    std::cout << "Output size: " << output_tensor.sizes() << std::endl;
     return output_tensor;
 }
 
@@ -114,7 +117,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    const int num_warmup_runs = 10;    // Number of untimed runs to load model and let JIT (if any) settle
+    const int num_warmup_runs = 100;    // Number of untimed runs to load model and let JIT (if any) settle
     const int num_timed_runs = 100000;   // Number of timed inference runs for benchmarking
 
     std::cout << "Starting network inference benchmark..." << std::endl;
