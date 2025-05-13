@@ -44,6 +44,11 @@ os.makedirs(DS_DIR, exist_ok=True)
 TRAIN_DS_PATH = f'{DS_DIR}/train_ds.npz'
 EVAL_DS_PATH = f'{DS_DIR}/eval_ds.npz'
 
+# paths to the best models
+BEST_MODEL_TOT = 'best_tot.pth' 
+BEST_MODEL_MSE = 'best_mse.pth'
+BEST_MODEL_GSO = 'best_gso.pth'
+
 CURR_EVAL_MODEL = 'data/2539240/best_mse.pth' # path to the 'best' model so far
 # CURR_EVAL_MODEL = 'data/local/best_mse.pth' # path to the 'best' model so far
 STRICT_LOAD = False # for loading the weights, should be true, but for testing varying architectures, set to false
@@ -155,7 +160,7 @@ class LiuqeNet(Module): # Paper net: branch + trunk conenction and everything
         return x
     
 def test_network_io(verbose=True):
-    if verbose: print('_test_network')
+    if verbose: print('test_network_io')
     x, r, z = (torch.rand(1, NIN), torch.rand(1, NGR), torch.rand(1, NGZ))
     net = LiuqeNet()
     y = net(x, r, z)
