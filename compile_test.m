@@ -1,16 +1,21 @@
 clc; clear all; close all;
-for i = 1:1000 fprintf('\n'); end
+
+% NOTE: for now only way is do this before running matlab:
+% export LD_PRELOAD="/home/mg/libtorch/lib/libtorch_cpu.so:/home/mg/libtorch/lib/libtorch.so:/home/mg/libtorch/lib/libc10.so"
+% export LD_PRELOAD="$(pwd)/libtorch/lib/libtorch_cpu.so:$(pwd)/libtorch/lib/libtorch.so:$(pwd)/libtorch/lib/libc10.so"
 
 %% Compile the C++ MEX function
-delete('net_forward.mex*');
-try
-    libtorch_path = '/home/mg/libtorch';
+for i = 1:1000 fprintf('\n'); end
+    delete('net_forward.mex*');
+    try
+    current_dir = pwd;
+    libtorch_path = [current_dir '/libtorch'];
     mex('', ...
         'CXXFLAGS=$CXXFLAGS -std=c++17 -fPIC -O2', ...
         ['-I' libtorch_path '/include'], ...
         ['-I' libtorch_path '/include/torch/csrc/api/include'], ...
         ['-L' libtorch_path '/lib'], ...
-        'LDFLAGS=$LDFLAGS -Wl,-rpath,/home/mg/libtorch/lib', ...
+        ['LDFLAGS=$LDFLAGS -Wl,-rpath,' libtorch_path '/lib'], ...
         '-ltorch', ...
         '-ltorch_cpu', ...
         '-lc10', ...
@@ -20,13 +25,4 @@ catch ME
     fprintf('Compilation failed: %s\n', ME.message);
 end
 
-%% test with simplified inputsa
-x = [1.0, 2.0];
-y = net_forward(x);
-
-% print x and y
-fprintf('x -> [ %s ]\n', num2str(x, '%+.4f '));
-fprintf('y -> [ %s ]\n', num2str(y, '%+.4f '));
-
-% NOTE: do this before:
-% export LD_PRELOAD="/home/mg/libtorch/lib/libtorch_cpu.so:/home/mg/libtorch/lib/libtorch.so:/home/mg/libtorch/lib/libc10.so"
+run test_forward.m
