@@ -74,21 +74,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     double* input_data_ptr = mxGetPr(prhs[0]);
 
     // Create a tensor from the input data
-    // The model expects input of shape [1, 2]
-    // torch::Tensor input_from_matlab = torch::from_blob(input_data_ptr, {1, (long int)n_elements}, torch::kDouble);
-    // torch::Tensor input = input_from_matlab.clone(); // Crucial: Create a PyTorch-owned copy
-    torch::Tensor input = torch::tensor({{1.0, 2.0}}, torch::kDouble);
+    torch::Tensor input = torch::from_blob(input_data_ptr, {1, (long int)n_elements}, torch::kDouble);
 
     // Run inference
     torch::Tensor output_tensor;
-    try {
         output_tensor = run_inference(input);
-    } catch (const c10::Error& e) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:inferenceError", "Inference error: %s", e.what());
-    } catch (const std::exception& e) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:inferenceErrorStd", "Inference error (std): %s", e.what());
-    }
-
     // Create MATLAB output matrix
     // Output of Linear(2,3) for a single batch item is (1,3)
     plhs[0] = mxCreateDoubleMatrix(1, output_tensor.numel(), mxREAL);
