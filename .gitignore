@@ -10,3 +10,5 @@ tmp/*
 test/*
 *.mex*
 net.pt
+libtorch*
+build/*
