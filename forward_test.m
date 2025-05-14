@@ -1,5 +1,5 @@
 %% test with simplified inputsa
-x = [1.0, 2.0];
+x = [3.0, 5.0];
 
 tic
 y = net_forward(x);
