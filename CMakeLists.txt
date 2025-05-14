@@ -8,53 +8,60 @@ find_package(Matlab REQUIRED MX_LIBRARY)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 set(CMAKE_CXX_STANDARD 17)
 
-# Define separate source files for standalone app and MEX
-set(SHARED_SOURCE net_forward_core.cpp)
-set(STANDALONE_SOURCE net_forward.cpp)
-set(MEX_SOURCE net_forward_mex.cpp)
+# Create a standalone version and a MEX version
+option(BUILD_STANDALONE "Build standalone executable" ON)
+option(BUILD_MEX "Build MEX file" ON)
 
-# Add regular executable
-add_executable(net_forward ${STANDALONE_SOURCE} ${SHARED_SOURCE})
-target_link_libraries(net_forward "${TORCH_LIBRARIES}")
-set_property(TARGET net_forward PROPERTY CXX_STANDARD 17)
+# Add standalone executable if requested
+if(BUILD_STANDALONE)
+    add_executable(net_forward net_forward.cpp)
+    target_compile_definitions(net_forward PRIVATE STANDALONE_MODE)
+    target_include_directories(net_forward PRIVATE ${TORCH_INCLUDE_DIRS})
+    target_link_libraries(net_forward "${TORCH_LIBRARIES}")
+    set_property(TARGET net_forward PROPERTY CXX_STANDARD 17)
+endif()
 
 # Add MEX file target for MATLAB
-matlab_add_mex(
-    NAME net_forward_mex
-    SRC ${MEX_SOURCE} ${SHARED_SOURCE}
-    LINK_TO ${TORCH_LIBRARIES} ${Matlab_MX_LIBRARY} ${Matlab_MEX_LIBRARY}
-)
-
-# Set include directories for the MEX file
-target_include_directories(net_forward_mex PRIVATE 
-    ${Matlab_INCLUDE_DIRS}
-    ${TORCH_INCLUDE_DIRS}
-)
-
-# Define MATLAB_MEX_FILE preprocessor directive for the MEX source
-target_compile_definitions(net_forward_mex PRIVATE MATLAB_MEX_FILE)
-
-# Set RPATH for the MEX file to find libtorch libraries
-if(UNIX)
-    set_target_properties(net_forward_mex PROPERTIES
-        INSTALL_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/libtorch/lib"
-        BUILD_WITH_INSTALL_RPATH TRUE
+if(BUILD_MEX)
+    matlab_add_mex(
+        NAME net_forward_mex
+        SRC net_forward.cpp
+        LINK_TO ${TORCH_LIBRARIES} ${Matlab_MX_LIBRARY} ${Matlab_MEX_LIBRARY}
     )
+
+    # Set include directories for the MEX file
+    target_include_directories(net_forward_mex PRIVATE 
+        ${Matlab_INCLUDE_DIRS}
+        ${TORCH_INCLUDE_DIRS}
+    )
+
+    # Set RPATH for the MEX file to find libtorch libraries
+    if(UNIX)
+        set_target_properties(net_forward_mex PROPERTIES
+            INSTALL_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/libtorch/lib"
+            BUILD_WITH_INSTALL_RPATH TRUE
+        )
+    endif()
 endif()
 
 # The following code block is for Windows to copy DLLs
 if (MSVC)
   file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
-  add_custom_command(TARGET net_forward
-                     POST_BUILD
-                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                     ${TORCH_DLLS}
-                     $<TARGET_FILE_DIR:net_forward>)
+  
+  if(BUILD_STANDALONE)
+    add_custom_command(TARGET net_forward
+                       POST_BUILD
+                       COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                       ${TORCH_DLLS}
+                       $<TARGET_FILE_DIR:net_forward>)
+  endif()
   
   # Also copy DLLs for the MEX file
-  add_custom_command(TARGET net_forward_mex
-                     POST_BUILD
-                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                     ${TORCH_DLLS}
-                     $<TARGET_FILE_DIR:net_forward_mex>)
+  if(BUILD_MEX)
+    add_custom_command(TARGET net_forward_mex
+                       POST_BUILD
+                       COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                       ${TORCH_DLLS}
+                       $<TARGET_FILE_DIR:net_forward_mex>)
+  endif()
 endif (MSVC)

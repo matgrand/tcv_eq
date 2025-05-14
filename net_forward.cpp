@@ -1,4 +1,46 @@
-#include <torch/script.h>  // One-stop header.
+#include <torch/script.h>  // PyTorch header
+
+#ifdef STANDALONE_MODE
+// Standalone mode implementation
+
+#include <iostream>
+#include <vector>
+
+int main(int argc, char* argv[]) {
+    std::cout << "Running net_forward in standalone mode" << std::endl;
+    
+    try {
+        // Load the module
+        torch::jit::script::Module module = torch::jit::load("net.pt");
+        module.eval();
+        std::cout << "Module loaded successfully" << std::endl;
+        
+        // Create a sample input tensor
+        torch::Tensor input = torch::ones({1, 2}, torch::kDouble);
+        // input values shold be 3.0, 5.0
+        input[0][0] = 3.0;
+        input[0][1] = 5.0;
+        std::cout << "Input tensor: " << input << std::endl;
+        
+        // Forward pass
+        std::vector<torch::jit::IValue> inputs;
+        inputs.push_back(input);
+        torch::Tensor output = module.forward(inputs).toTensor();
+        
+        // Print output
+        std::cout << "Output: " << output << std::endl;
+        
+    } catch (const c10::Error& e) {
+        std::cerr << "Error loading/running the model: " << e.what() << std::endl;
+        return -1;
+    }
+    
+    return 0;
+}
+
+#else
+// MEX file implementation
+
 #include <iostream>
 #include <vector>
 #include <cstring> // For std::memcpy
@@ -78,7 +120,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
     // Run inference
     torch::Tensor output_tensor;
-        output_tensor = run_inference(input);
+    output_tensor = run_inference(input);
+    
     // Create MATLAB output matrix
     // Output of Linear(2,3) for a single batch item is (1,3)
     plhs[0] = mxCreateDoubleMatrix(1, output_tensor.numel(), mxREAL);
@@ -100,15 +143,4 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 //    // If it was raw ptr, delete it. For torch::jit::script::Module, it's RAII.
 // }
 
-// void mexFunction(...) {
-//    ...
-//    // At the start of mexFunction if you want module to persist across 'clear mex'
-//    // if (!module_loaded) {
-//    //    module = torch::jit::load("net.pt"); // Or however you load it
-//    //    mexMakeMemoryPersistent(&module); // Won't work directly on stack object like this
-//    //    mexMakeMemoryPersistent(&module_loaded);
-//    //    mexAtExit(cleanup);
-//    //    module_loaded = true;
-//    // }
-//    ...
-// }
+#endif // STANDALONE_MODE
