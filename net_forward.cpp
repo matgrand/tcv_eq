@@ -89,7 +89,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         mexErrMsgIdAndTxt("MATLAB:net_forward:inferenceErrorStd", "Inference error (std): %s", e.what());
     }
 
-
     // Create MATLAB output matrix
     // Output of Linear(2,3) for a single batch item is (1,3)
     plhs[0] = mxCreateDoubleMatrix(1, output_tensor.numel(), mxREAL);
