@@ -1,4 +1,12 @@
 #!/bin/bash
+if [ ! -d "$(pwd)/libtorch" ]; then
+    echo "libtorch directory not found. Downloading libtorch..."
+    wget https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip -O libtorch.zip
+    echo "Unzipping libtorch..."
+    unzip libtorch.zip
+    rm libtorch.zip
+    echo "libtorch downloaded and extracted."
+fi
 
 echo "Compiling net_forward_mex.cpp..."
 libtorch_path="$(pwd)/libtorch"
@@ -28,7 +36,12 @@ done
 # rm -rf build
 # echo "Cleanup completed."
 
-# start MATLAB and run teh script forward_test.m then exit
+# # for now this is forced:
+# export LD_PRELOAD="$(pwd)/libtorch/lib/libtorch_cpu.so:$(pwd)/libtorch/lib/libtorch.so"
+export LD_PRELOAD="$(pwd)/libtorch/lib/libtorch.so"
+
+
+# start MATLAB -> run the script forward_test.m -> exit
 matlab -nodisplay -nosplash -nodesktop -r "run('forward_test.m'); exit;"
 
 
