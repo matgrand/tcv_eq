@@ -43,25 +43,3 @@ if(BUILD_MEX)
         )
     endif()
 endif()
-
-# The following code block is for Windows to copy DLLs
-if (MSVC)
-  file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
-  
-  if(BUILD_STANDALONE)
-    add_custom_command(TARGET net_forward
-                       POST_BUILD
-                       COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                       ${TORCH_DLLS}
-                       $<TARGET_FILE_DIR:net_forward>)
-  endif()
-  
-  # Also copy DLLs for the MEX file
-  if(BUILD_MEX)
-    add_custom_command(TARGET net_forward_mex
-                       POST_BUILD
-                       COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                       ${TORCH_DLLS}
-                       $<TARGET_FILE_DIR:net_forward_mex>)
-  endif()
-endif (MSVC)

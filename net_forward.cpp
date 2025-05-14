@@ -17,10 +17,17 @@ int main(int argc, char* argv[]) {
         
         // Create a sample input tensor
         torch::Tensor input = torch::ones({1, 2}, torch::kDouble);
-        // input values shold be 3.0, 5.0
+        // input values should be 3.0, 5.0
         input[0][0] = 3.0;
         input[0][1] = 5.0;
-        std::cout << "Input tensor: " << input << std::endl;
+        std::cout << "x -> [ ";
+        for (int i = 0; i < input.size(1); ++i) {
+            std::cout << std::showpos << std::fixed << std::setprecision(4) << input[0][i].item<double>();
+            if (i < input.size(1) - 1) {
+            std::cout << ", ";
+            }
+        }
+        std::cout << " ]" << std::endl;
         
         // Forward pass
         std::vector<torch::jit::IValue> inputs;
@@ -28,7 +35,14 @@ int main(int argc, char* argv[]) {
         torch::Tensor output = module.forward(inputs).toTensor();
         
         // Print output
-        std::cout << "Output: " << output << std::endl;
+        std::cout << "y -> [ ";
+        for (int i = 0; i < output.size(1); ++i) {
+            std::cout << std::showpos << std::fixed << std::setprecision(4) << output[0][i].item<double>();
+            if (i < output.size(1) - 1) {
+                std::cout << ", ";
+            }
+        }
+        std::cout << " ]" << std::endl;
         
     } catch (const c10::Error& e) {
         std::cerr << "Error loading/running the model: " << e.what() << std::endl;

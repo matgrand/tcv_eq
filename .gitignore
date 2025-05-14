@@ -12,3 +12,4 @@ test/*
 net.pt
 libtorch*
 build/*
+net_forward_standalone*
