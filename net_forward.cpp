@@ -52,8 +52,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-#else
-// MEX file implementation
+#else // MEX file implementation
 
 #include <iostream>
 #include <vector>
