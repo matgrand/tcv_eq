@@ -37,8 +37,8 @@ if(BUILD_MEX)
 
     # Set RPATH for the MEX file to find libtorch libraries
     if(UNIX)
-        set_target_properties(net_forward_mex PROPERTIES
-            INSTALL_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/libtorch/lib"
+        SET_TARGET_PROPERTIES(net_forward_mex PROPERTIES
+            INSTALL_RPATH "$ORIGIN/../libtorch/lib"
             BUILD_WITH_INSTALL_RPATH TRUE
         )
     endif()

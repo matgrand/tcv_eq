@@ -31,14 +31,14 @@ for file in build/net_forward_mex.mex*; do
     cp "$file" "net_forward.${file##*.}"
 done
 
-# # Clean up
-# echo "Cleaning up..."
-# rm -rf build
-# echo "Cleanup completed."
+# copy libs to build directory
+cp -r libtorch/lib build/
 
 # # for now this is forced:
 # export LD_PRELOAD="$(pwd)/libtorch/lib/libtorch_cpu.so:$(pwd)/libtorch/lib/libtorch.so"
 export LD_PRELOAD="$(pwd)/libtorch/lib/libtorch.so"
+
+# export LD_LIBRARY_PATH="$(pwd)/libtorch/lib:${LD_LIBRARY_PATH}" # doesnt work
 
 
 # start MATLAB -> run the script forward_test.m -> exit
