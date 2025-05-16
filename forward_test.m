@@ -5,6 +5,7 @@ try
     %% test with simplified inputs
     x = [3.0, 5.0];
 
+    % y = net_forward_mex('/this/is/a/test/path');
     y = net_forward_mex(x);
 
     % print x and y
