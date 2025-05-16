@@ -1,20 +1,31 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 project(net_forward)
 
+
+set(ONNXRUNTIME_DIR "" CACHE PATH "Path to the ONNX Runtime installation")
+set(ONNXRUNTIME_INCLUDE_DIRS "" CACHE PATH "Path to the ONNX Runtime include directory")
+set(ONNX_NET_FORWARD_DIR "" CACHE PATH "Output directory for net_forward mex executable")
+
+# Make variables required
+if(NOT ONNXRUNTIME_DIR)
+    message(FATAL_ERROR "ONNXRUNTIME_DIR is required but not set.")
+endif()
+if(NOT ONNXRUNTIME_INCLUDE_DIRS)
+    message(FATAL_ERROR "ONNXRUNTIME_INCLUDE_DIRS is required but not set.")
+endif()
+if(NOT ONNX_NET_FORWARD_DIR)
+    message(FATAL_ERROR "ONNX_NET_FORWARD_DIR is required but not set.")
+endif()
+
+message(STATUS "ONNXRUNTIME_DIR: ${ONNXRUNTIME_DIR}")
+message(STATUS "ONNXRUNTIME_INCLUDE_DIRS: ${ONNXRUNTIME_INCLUDE_DIRS}")
+message(STATUS "ONNX_NET_FORWARD_DIR: ${ONNX_NET_FORWARD_DIR}")
+
 # Find required packages
 find_package(Matlab REQUIRED MX_LIBRARY)
-
-set(ONNXRUNTIME_PATH "${CMAKE_CURRENT_LIST_DIR}/onnxruntime-linux-x64-1.22.0")
-set(ONNXRUNTIME_INCLUDE_DIRS "${ONNXRUNTIME_PATH}/include")
-message(STATUS "ONNXRUNTIME_PATH: ${ONNXRUNTIME_PATH}")
-
-find_library(ONNXRUNTIME_LIB onnxruntime HINTS ${ONNXRUNTIME_PATH}/lib)
+find_library(ONNXRUNTIME_LIB onnxruntime HINTS ${ONNXRUNTIME_DIR}/lib)
 
 set(CMAKE_CXX_STANDARD 17)
-
-# Create a standalone version and a MEX version
-option(BUILD_STANDALONE "Build standalone executable" ON)
-option(BUILD_MEX "Build MEX file" ON)
 
 # Add MEX file target for MATLAB
 matlab_add_mex(
@@ -32,7 +43,19 @@ target_include_directories(net_forward_mex PRIVATE
 # Set RPATH for the MEX file to find ONNX Runtime libraries
 if(UNIX)
     SET_TARGET_PROPERTIES(net_forward_mex PROPERTIES
-        INSTALL_RPATH "$ORIGIN/../onnxruntime-linux-x64-1.22.0/lib"
+        INSTALL_RPATH "$ORIGIN/lib"
         BUILD_WITH_INSTALL_RPATH TRUE
     )
 endif()
+
+# copy the MEX file to the specified output directory
+add_custom_command(TARGET net_forward_mex POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy "net_forward_mex.*" ${ONNX_NET_FORWARD_DIR}
+    COMMENT "Copying net_forward_mex to ${ONNX_NET_FORWARD_DIR}"
+)
+
+# copy lib directory to the specified output directory
+add_custom_command(TARGET net_forward_mex POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${ONNXRUNTIME_DIR}/lib" "${ONNX_NET_FORWARD_DIR}/lib"
+    COMMENT "Copying ONNX Runtime libraries to ${ONNX_NET_FORWARD_DIR}/lib"
+)
