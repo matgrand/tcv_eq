@@ -1,5 +1,12 @@
 import torch
 import numpy as np
+import os
+
+# get the output directory path from the environment variable ONNX_NET_FORWARD_DIR
+output_dir = os.environ.get('ONNX_NET_FORWARD_DIR')
+assert output_dir is not None, 'Environment variable ONNX_NET_FORWARD_DIR not set. This python script should be run from "compile_net_forward.sh"'
+
+
 class TestNet(torch.nn.Module):
     def __init__(self):
         super(TestNet, self).__init__()
@@ -28,12 +35,9 @@ print(f'y -> {y}')
 
 # convert to onnx
 dummy_input = torch.randn(1, 2, dtype=torch.float64)
-torch.onnx.export(net, dummy_input, 'net.onnx', export_params=True,
+torch.onnx.export(net, dummy_input, f'{output_dir}/net.onnx', export_params=True,
                   opset_version=12, do_constant_folding=True,
                   input_names=['x'], output_names=['y'])
-
-
-
 
 ## Evaluate network inference time 
 from time import time

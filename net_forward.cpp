@@ -6,6 +6,11 @@
 #include <stdexcept>  // For std::runtime_error (though Ort::Exception is primary)
 #include <mex.h>      // For MATLAB MEX functions
 #include <matrix.h>   // For mxArray, mxGetPr, etc.
+#include <filesystem> // For std::filesystem::path
+// #include <fstream>   // For std::ifstream (if needed for file operations)
+#include <unistd.h> // For readlink (to get executable path)
+#include <limits.h> // For PATH_MAX (to define buffer size for readlink)
+
 
 // ONNX Runtime global objects, similar to how 'module' was global for LibTorch
 Ort::Env ort_env(ORT_LOGGING_LEVEL_WARNING, "net_forward_mex_env"); // Initialize once
@@ -20,6 +25,10 @@ std::string global_output_name_str;
 const char* global_input_node_names[1];  // Array for Run API, assuming 1 input
 const char* global_output_node_names[1]; // Array for Run API, assuming 1 output
 
+const char* onnx_env_dir = std::getenv("ONNX_NET_FORWARD_DIR");
+const std::string net_default_path = onnx_env_dir ? (std::string(onnx_env_dir) + "/net.onnx") : "net.onnx"; // Default model path
+
+
 // Cleanup function to be called by mexAtExit to release ONNX Runtime session
 static void cleanup_session() {
     if (ort_session) {
@@ -33,16 +42,17 @@ static void cleanup_session() {
     // global_input_name_str and global_output_name_str too.
 }
 
+
 // Loads the ONNX session once. Corresponds to 'load_module_once'
-void load_session_once() {
+void load_session_once(std::filesystem::path model_path) {
     if (!session_loaded) {
         try {
+            mexPrintf("Loading ONNX model from: %s ...", model_path.string().c_str());
+
             // Optional: configure session_options here (e.g., for execution providers)
             // session_options.SetIntraOpNumThreads(1);
-            // OrtCUDAProviderOptions cuda_options{}; // Example for CUDA
-            // session_options.AppendExecutionProvider_CUDA(cuda_options);
-
-            ort_session = new Ort::Session(ort_env, "net.onnx", session_options); // Model name changed
+            
+            ort_session = new Ort::Session(ort_env, model_path.string().c_str(), session_options);
             
             // Get input node name (assuming single input for this model)
             Ort::AllocatedStringPtr input_name_alloc = ort_session->GetInputNameAllocated(0, allocator);
@@ -55,7 +65,7 @@ void load_session_once() {
             global_output_node_names[0] = global_output_name_str.c_str(); // Use pointer
 
             session_loaded = true;
-            mexPrintf("ONNX Runtime session loaded successfully.\n");
+            mexPrintf(" Success.\n");
 
             // Register cleanup function with MATLAB to be called when MEX is cleared or MATLAB exits
             // This should only be done once.
@@ -82,8 +92,6 @@ void load_session_once() {
 // Corresponds to 'run_inference'. Takes an ONNX input tensor and returns ONNX output tensors.
 // The Ort::Value objects in the returned vector own their data.
 std::vector<Ort::Value> run_inference(Ort::Value& input_tensor) {
-    load_session_once(); // Ensure session is loaded (and input/output names are known)
-
     try {
         // Run inference
         auto output_values = ort_session->Run(Ort::RunOptions{nullptr},
@@ -101,11 +109,32 @@ std::vector<Ort::Value> run_inference(Ort::Value& input_tensor) {
     }
 }
 
+
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
+    
+    std::filesystem::path model_path = net_default_path;
     // Check number of input arguments
-    if (nrhs != 1) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumInputs", "One input required.");
+    if (nrhs < 1 && session_loaded) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumInputs", "Model already loaded: at least one input required.");
     }
+    if (nrhs > 2) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumInputs", "Too many input arguments");
+    }
+    if (nrhs == 1 && !session_loaded && mxIsChar(prhs[0])) {
+        // If only one input and it's a string, treat it as the model path
+        char model_path_buf[PATH_MAX];
+        if (mxGetString(prhs[0], model_path_buf, sizeof(model_path_buf)) != 0) {
+            mexErrMsgIdAndTxt("MATLAB:net_forward:modelPathTooLong", "Model path string is too long.");
+        }
+        model_path = model_path_buf;
+        mexPrintf("Using model path: %s\n", model_path_buf);
+    } else if (nrhs == 1) {
+        // If no model path is provided, use the default
+        model_path = net_default_path;
+    }
+    
+    // Ensure ONNX session is loaded (this also registers mexAtExit if it's the first successful load)
+    load_session_once(model_path); 
 
     // Check input type
     if (!mxIsDouble(prhs[0])) {
@@ -113,8 +142,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     }
 
     // Get input dimensions and data pointer
-    // mwSize num_dims = mxGetNumberOfDimensions(prhs[0]); // Original code had this but didn't use it extensively
-    // const mwSize *dims = mxGetDimensions(prhs[0]);    // Original code had this
     size_t n_elements = mxGetNumberOfElements(prhs[0]);
     
     // For the model nn.Linear(2,3), input must be (BatchSize, 2)
@@ -125,9 +152,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     }
 
     double* input_data_ptr_matlab = mxGetPr(prhs[0]);
-
-    // Ensure ONNX session is loaded (this also registers mexAtExit if it's the first successful load)
-    load_session_once(); 
 
     // Create ONNX Runtime input tensor from MATLAB data
     std::vector<int64_t> input_tensor_shape = {1, (long int)n_elements}; // Expected shape {1, 2}

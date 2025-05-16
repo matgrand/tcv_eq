@@ -12,6 +12,8 @@ echo "onnx full path: $ONNXRUNTIME_DIR"
 echo "---------------------------------------------------------------------------------"
 
 export ONNX_NET_FORWARD_DIR="$(pwd)/onnx_net_forward" # output directory 
+echo "onnx_net_forward directory: $ONNX_NET_FORWARD_DIR"
+rm -rf $ONNX_NET_FORWARD_DIR && mkdir $ONNX_NET_FORWARD_DIR
 
 # download onnxruntime 
 if [ ! -d "$(pwd)/onnxruntime-linux-x64-1.22.0" ]; then
@@ -40,7 +42,7 @@ echo "----- Python -------------------------------------------------------------
 python create_net.py
 echo "---------------------------------------------------------------------------------"
 
-# # test MATLAB version
+# test in MATLAB 
 echo "----- Matlab --------------------------------------------------------------------"
 matlab -nodisplay -nosplash -nodesktop -r "run('forward_test.m'); exit;"
 echo "---------------------------------------------------------------------------------"
