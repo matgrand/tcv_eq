@@ -16,3 +16,4 @@ net_forward_standalone*
 onnxruntime*
 net.onnx
 onnx_net_forward/*
+.vscode/
