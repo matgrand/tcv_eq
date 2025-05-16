@@ -1,117 +1,4 @@
 #include <onnxruntime_cxx_api.h> // ONNX Runtime Header
-
-#ifdef STANDALONE_MODE
-// Standalone mode implementation
-
-#include <iostream>
-#include <vector>
-#include <iomanip> // For std::fixed, std::setprecision, std::showpos
-#include <string>  // For std::string, std::to_string (used in Ort::Exception messages)
-#include <stdexcept> // For std::exception
-
-int main(int argc, char* argv[]) {
-    std::cout << "Running net_forward in standalone mode with ONNX Runtime" << std::endl;
-    
-    try {
-        // Initialize ONNX Runtime environment
-        Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "net_forward_standalone_env");
-        Ort::SessionOptions session_options;
-        // Optional: configure session_options, e.g., session_options.SetIntraOpNumThreads(1);
-        // Optional: Append execution providers like CUDA, TensorRT, etc.
-        // OrtCUDAProviderOptions cuda_options{};
-        // session_options.AppendExecutionProvider_CUDA(cuda_options);
-
-
-        // Load the ONNX model
-        const char* model_path = "net.onnx"; // Model name changed from .pt to .onnx
-        Ort::Session session(env, model_path, session_options);
-        std::cout << "ONNX Model loaded successfully from " << model_path << std::endl;
-        
-        // ONNX Runtime allocator
-        Ort::AllocatorWithDefaultOptions allocator;
-
-        // Create a sample input tensor data
-        // Original LibTorch code: torch::Tensor input = torch::ones({1, 2}, torch::kDouble);
-        // input[0][0] = 3.0; input[0][1] = 5.0;
-        std::vector<double> input_tensor_values = {3.0, 5.0};
-        std::vector<int64_t> input_shape = {1, 2}; // Shape {batch_size, num_features}
-
-        // Print input values (mimicking original format)
-        std::cout << "x -> [ ";
-        for (size_t i = 0; i < input_tensor_values.size(); ++i) {
-            std::cout << std::showpos << std::fixed << std::setprecision(4) << input_tensor_values[i];
-            if (i < input_tensor_values.size() - 1) {
-                std::cout << ", ";
-            }
-        }
-        std::cout << " ]" << std::endl;
-        
-        // Create ONNX Runtime input tensor object from data values
-        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-        Ort::Value input_tensor = Ort::Value::CreateTensor<double>(
-            memory_info, 
-            input_tensor_values.data(), 
-            input_tensor_values.size(), 
-            input_shape.data(), 
-            input_shape.size()
-        );
-        
-        // Get input and output node names from the model
-        // Assuming single input and single output, consistent with original example
-        Ort::AllocatedStringPtr input_name_allocated = session.GetInputNameAllocated(0, allocator);
-        const char* input_node_names[] = {input_name_allocated.get()}; // API expects array of char*
-
-        Ort::AllocatedStringPtr output_name_allocated = session.GetOutputNameAllocated(0, allocator);
-        const char* output_node_names[] = {output_name_allocated.get()}; // API expects array of char*
-
-        // Forward pass (run inference)
-        std::vector<Ort::Value> output_tensors = session.Run(
-            Ort::RunOptions{nullptr}, 
-            input_node_names, 
-            &input_tensor, 
-            1, // Number of input tensors
-            output_node_names, 
-            1  // Number of output tensors
-        );
-        
-        // Get output data
-        // Assuming the first output tensor from the vector is the desired one
-        if (output_tensors.empty() || !output_tensors[0].IsTensor()) {
-            std::cerr << "Inference did not return a valid tensor." << std::endl;
-            return -1;
-        }
-        Ort::Value& output_onnx_tensor = output_tensors[0]; // Use a reference
-        
-        // Extract data pointer and shape info from the output tensor
-        const double* output_data_ptr = output_onnx_tensor.GetTensorData<double>();
-        Ort::TensorTypeAndShapeInfo output_info = output_onnx_tensor.GetTensorTypeAndShapeInfo();
-        size_t output_element_count = output_info.GetElementCount(); // Total number of elements
-
-        // Print output (mimicking original format)
-        // Original code iterated output.size(1) for a [1, N] tensor.
-        // output_element_count will be N for a [1, N] tensor.
-        std::cout << "y -> [ ";
-        for (size_t i = 0; i < output_element_count; ++i) {
-            std::cout << std::showpos << std::fixed << std::setprecision(4) << output_data_ptr[i];
-            if (i < output_element_count - 1) {
-                std::cout << ", ";
-            }
-        }
-        std::cout << " ]" << std::endl;
-        
-    } catch (const Ort::Exception& e) { // Catch ONNX Runtime specific exceptions
-        std::cerr << "Error loading/running the ONNX model: " << e.what() << " (ErrorCode: " << e.GetOrtErrorCode() << ")" << std::endl;
-        return -1;
-    } catch (const std::exception& e) { // Catch other standard C++ exceptions
-        std::cerr << "A standard C++ error occurred: " << e.what() << std::endl;
-        return -1;
-    }
-    
-    return 0;
-}
-
-#else // MEX file implementation
-
 #include <iostream>   // For std::cout in debug, though mexPrintf is preferred
 #include <vector>
 #include <cstring>    // For std::memcpy
@@ -234,7 +121,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     // MATLAB's [1.0, 2.0] is 1x2 (row vector) or 2x1 (column vector), n_elements = 2.
     // The Python script used x.reshape(1,2). We maintain this expectation.
     if (n_elements != 2) {
-         mexErrMsgIdAndTxt("MATLAB:net_forward:invalidInputSize", "Input must have 2 elements for a Linear(2,3) model.");
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidInputSize", "Input must have 2 elements for a Linear(2,3) model.");
     }
 
     double* input_data_ptr_matlab = mxGetPr(prhs[0]);
@@ -307,5 +194,3 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 //    mexPrintf("MEX function unloaded, cleaning up module.\n");
 //    module_loaded = false; 
 // }
-
-#endif // STANDALONE_MODE

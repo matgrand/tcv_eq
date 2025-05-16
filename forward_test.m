@@ -1,6 +1,6 @@
 
 try
-    addpath([pwd '/build']);
+    addpath([pwd '/onnx_net_forward']);
 
     %% test with simplified inputs
     x = [3.0, 5.0];
