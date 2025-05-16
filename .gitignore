@@ -13,3 +13,5 @@ net.pt
 libtorch*
 build/*
 net_forward_standalone*
+onnxruntime*
+net.onnx
