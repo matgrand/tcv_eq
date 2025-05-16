@@ -5,7 +5,7 @@ try
     %% test with simplified inputs
     x = [3.0, 5.0];
 
-    % y = net_forward_mex('/this/is/a/test/path');
+    % net_forward_mex([pwd 'onnx_net_forward/net.onnx']); % to load the model
     y = net_forward_mex(x);
 
     % print x and y

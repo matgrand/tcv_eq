@@ -126,20 +126,20 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         if (mxGetString(prhs[0], model_path_buf, sizeof(model_path_buf)) != 0) {
             mexErrMsgIdAndTxt("MATLAB:net_forward:modelPathTooLong", "Model path string is too long.");
         }
-        model_path = model_path_buf;
+        std::filesystem::path model_path = model_path_buf;
         mexPrintf("Using model path: %s\n", model_path_buf);
-    } else if (nrhs == 1) {
-        // If no model path is provided, use the default
-        model_path = net_default_path;
+        load_session_once(model_path); // Load the session with the provided model path
+        return; // Exit after loading the session
+    } else {
+        // Check input type
+        if (!mxIsDouble(prhs[0])) {
+            mexErrMsgIdAndTxt("MATLAB:net_forward:inputNotDouble", "Input must be a double array.");
+        }
     }
     
     // Ensure ONNX session is loaded (this also registers mexAtExit if it's the first successful load)
-    load_session_once(model_path); 
+    load_session_once(net_default_path); 
 
-    // Check input type
-    if (!mxIsDouble(prhs[0])) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:inputNotDouble", "Input must be a double array.");
-    }
 
     // Get input dimensions and data pointer
     size_t n_elements = mxGetNumberOfElements(prhs[0]);
