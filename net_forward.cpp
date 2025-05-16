@@ -112,6 +112,7 @@ std::vector<Ort::Value> run_inference(Ort::Value& input_tensor) {
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     
+    // TODO: impleent this as -> if read "-model" interpret next argument as model path
     std::filesystem::path model_path = net_default_path;
     // Check number of input arguments
     if (nrhs < 1 && session_loaded) {
