@@ -1,49 +1,48 @@
 #!/bin/bash
-if [ ! -d "$(pwd)/libtorch" ]; then
-    echo "libtorch directory not found. Downloading libtorch..."
-    wget https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip -O libtorch.zip
-    echo "Unzipping libtorch..."
-    unzip libtorch.zip
-    rm libtorch.zip
-    echo "libtorch downloaded and extracted."
+
+clear
+
+# check https://github.com/microsoft/onnxruntime/releases
+onnxrt_version="1.22.0"
+onnxrt_dir_name="onnxruntime-linux-x64-$onnxrt_version"
+onnxrt_fullpath="$(pwd)/$onnxrt_dir_name"
+echo "onnx version: $onnxrt_version"
+echo "onnx dir name: $onnxrt_dir_name"
+echo "onnx full path: $onnxrt_fullpath"
+echo "---------------------------------------------------------------------------------"
+
+export ONNX_NET_FORWARD_DIR="$(pwd)/onnx_net_forward"
+
+# download onnxruntime 
+if [ ! -d "$(pwd)/onnxruntime-linux-x64-1.22.0" ]; then
+    wget "https://github.com/microsoft/onnxruntime/releases/download/v$onnxrt_version/$onnxrt_dir_name.tgz"
+    tar -xzf "$onnxrt_dir_name.tgz"
+    rm "$onnxrt_dir_name.tgz"
+    echo "onnxruntime downloaded and extracted."
+    echo "---------------------------------------------------------------------------------"
 fi
 
-echo "Compiling net_forward_mex.cpp..."
-libtorch_path="$(pwd)/libtorch"
+# compile the C++ code
+echo "Compiling..."
+rm -rf build  # remove the build directory if it exists
 mkdir build
 cd build
-cmake .. -DCMAKE_PREFIX_PATH="$libtorch_path"
+cmake .. 
+
 make
-
 cd ..
+echo "Compilation completed."
 
-# test standalone version
-cp build/net_forward net_forward_standalone
-echo "Testing standalone version..."
-echo "---------------------------------------------------------"
-./net_forward_standalone
-echo "---------------------------------------------------------"
-echo "Standalone version test completed."
+# create the .net file with python
+echo "Creating the .net file with python..."
+echo "----- Python --------------------------------------------------------------------"
+python create_net.py
+echo "---------------------------------------------------------------------------------"
 
-echo "Copying mex file to main directory for MATLAB..."
-# Copy the compiled mex files to the current directory
-for file in build/net_forward_mex.mex*; do
-    cp "$file" "net_forward.${file##*.}"
-done
-
-# copy libs to build directory
-cp -r libtorch/lib build/
-
-# # for now this is forced:
-# export LD_PRELOAD="$(pwd)/libtorch/lib/libtorch_cpu.so:$(pwd)/libtorch/lib/libtorch.so"
-export LD_PRELOAD="$(pwd)/libtorch/lib/libtorch.so"
-
-# export LD_LIBRARY_PATH="$(pwd)/libtorch/lib:${LD_LIBRARY_PATH}" # doesnt work
-
-
-# start MATLAB -> run the script forward_test.m -> exit
+# # test MATLAB version
+echo "----- Matlab --------------------------------------------------------------------"
 matlab -nodisplay -nosplash -nodesktop -r "run('forward_test.m'); exit;"
-
-
+echo "---------------------------------------------------------------------------------"
+echo "MATLAB version test completed."
 
 
