@@ -31,6 +31,7 @@ cmake .. \
     -DONNX_NET_FORWARD_DIR="$ONNX_NET_FORWARD_DIR" 
 make
 cd ..
+rm -rf build
 echo "Compilation completed."
 
 # create the .net file with python

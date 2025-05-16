@@ -71,10 +71,10 @@ void load_session_once() {
             std::string err_msg = "Failed to load ONNX model: " + std::string(e.what()) + " (ErrorCode: " + std::to_string(e.GetOrtErrorCode()) + ")";
             mexErrMsgIdAndTxt("MATLAB:net_forward:sessionLoadFailed", err_msg.c_str());
         } catch (const std::exception& e) { // Catch other potential errors during setup
-             delete ort_session; // If new succeeded but std::string op failed etc.
-             ort_session = nullptr;
-             std::string err_msg = "A standard error occurred during ONNX session loading: " + std::string(e.what());
-             mexErrMsgIdAndTxt("MATLAB:net_forward:sessionLoadFailedStdEx", err_msg.c_str());
+            delete ort_session; // If new succeeded but std::string op failed etc.
+            ort_session = nullptr;
+            std::string err_msg = "A standard error occurred during ONNX session loading: " + std::string(e.what());
+            mexErrMsgIdAndTxt("MATLAB:net_forward:sessionLoadFailedStdEx", err_msg.c_str());
         }
     }
 }
@@ -153,7 +153,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     ONNXTensorElementDataType output_type = output_shape_info.GetElementType();
 
     if (output_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE) {
-         mexErrMsgIdAndTxt("MATLAB:net_forward:unexpectedOutputType", "Output tensor is not double type as expected by this MEX function.");
+        mexErrMsgIdAndTxt("MATLAB:net_forward:unexpectedOutputType", "Output tensor is not double type as expected by this MEX function.");
     }
 
     std::vector<int64_t> output_dims = output_shape_info.GetShape();
@@ -166,7 +166,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     if (output_dims.size() == 2 && output_dims[0] == 1) { // Standard case: [1, N]
         plhs[0] = mxCreateDoubleMatrix(output_dims[0], output_dims[1], mxREAL);
     } else if (output_dims.size() == 1) { // If ONNX output is 1D vector [N], create as [1, N] MATLAB matrix
-         plhs[0] = mxCreateDoubleMatrix(1, output_dims[0], mxREAL);
+        plhs[0] = mxCreateDoubleMatrix(1, output_dims[0], mxREAL);
     } else {
         // For more complex N-D shapes, mxCreateNumericArray would be needed.
         // This simplified handling matches the original's apparent expectation.
@@ -186,11 +186,3 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     // Ort::Value objects in output_ort_tensors (and their underlying data buffers if owned by ONNX Runtime)
     // are managed. They will be destructed when output_ort_tensors goes out of scope.
 }
-
-// Optional: Add a cleanup function if you make `module` persistent across `clear mex`
-// (This was in the original LibTorch template, replaced by cleanup_session and mexAtExit)
-// static void cleanup() {
-//    // Code to release module if necessary
-//    mexPrintf("MEX function unloaded, cleaning up module.\n");
-//    module_loaded = false; 
-// }
