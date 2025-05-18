@@ -97,6 +97,11 @@ for i = 1:length(shots)
         Uf = mdsdata('tcv_eq("PSI_LOOP", "LIUQE.M", "NOEVAL")');    % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
         Ip = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');        % Plasma current | `(*,t)` | `[A]` |
         
+        % last closed flux surface (LCFS) 
+        z_lcfs = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
+        r_lcfs = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
+        theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
+
         % check the time dimensions are the same
         fprintf('\tsizes -> Fx:%s, Iy:%s, Ia:%s, Bm:%s, Uf:%s, t:%s, Ip:%s\n', mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), mat2str(size(t)),  mat2str(size(Ip)));
         assert(size(Fx, 3) == numel(t), 'Fx has wrong time dimension');
