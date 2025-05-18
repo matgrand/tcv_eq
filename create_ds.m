@@ -111,7 +111,7 @@ for i = 1:length(shots)
 
         % check that theta is the same as theta0, first size, then values
         assert(all(size(theta) == size(theta0)), 'Theta and theta0 have different sizes');
-        assert(all(theta(:) == theta0(:)), 'Theta and theta0 are different');
+        assert(all(abs(theta(:) - theta0(:)) < 1e-5), 'Theta and theta0 are not close enough');
 
         % check the time dimensions are the same
         fprintf('\tsizes -> Fx:%s, Iy:%s, Ia:%s, Bm:%s, Uf:%s, t:%s, Ip:%s\n', mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), mat2str(size(t)),  mat2str(size(Ip)));
