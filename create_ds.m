@@ -4,14 +4,15 @@ clear all; close all; clc;
 
 START_SHOT = 77662; % Dec 2022, https://spcwiki.epfl.ch/wiki/Alma_database
 END_SHOT = 85804; % April 2025
-% N_SHOTS = 30; % Number of shots to process
-N_SHOTS = END_SHOT-START_SHOT; % Number of shots to process
+N_SHOTS = 30; % Number of shots to process
+% N_SHOTS = END_SHOT-START_SHOT; % Number of shots to process
 
 % Directory to save the output .mat files
 % OUT_DIR = 'ds'; % testing
 OUT_DIR = '/NoTivoli/grandin/ds'; % more space available
 
-DECIMATION = 6; % Decimation factor for the time vector
+% DECIMATION = 6; % Decimation factor for the time vector
+DECIMATION = 60; % Decimation factor for the time vector
 
 MIN_TIME_SAMPLES = 10; % Minimum number of time samples to keep the shot
 MAX_IP_PERC_DIFF = 2.5; % Maximum percentage difference between IPLIUQE and IP
@@ -34,6 +35,12 @@ else delete(fullfile(OUT_DIR, '*')); fprintf('Output directory already exists. O
 end % Create output directory if it doesn't exist
 
 mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
+
+% get a reference for theta, to make sure they are all the same
+mdsopen('tcv_shot', END_SHOT);
+theta0 = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
+mdsclose; % Close the MDSplus connection
+
 
 shots = randi([START_SHOT, END_SHOT], 1, N_SHOTS);
 total_shots = 0;
@@ -98,9 +105,13 @@ for i = 1:length(shots)
         Ip = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');        % Plasma current | `(*,t)` | `[A]` |
         
         % last closed flux surface (LCFS) 
-        z_lcfs = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
-        r_lcfs = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
+        rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
+        zq = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
         theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
+
+        % check that theta is the same as theta0, first size, then values
+        assert(all(size(theta) == size(theta0)), 'Theta and theta0 have different sizes');
+        assert(all(theta(:) == theta0(:)), 'Theta and theta0 are different');
 
         % check the time dimensions are the same
         fprintf('\tsizes -> Fx:%s, Iy:%s, Ia:%s, Bm:%s, Uf:%s, t:%s, Ip:%s\n', mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), mat2str(size(t)),  mat2str(size(Ip)));

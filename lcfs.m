@@ -8,7 +8,7 @@ mdsopen('tcv_shot', shot);
 
 [t, ip] = tcvget('IPLIUQE'); % precalculated using liuqe
 
-t = t(1:13:end)
+t = t(1:30:end)
 
 [L,LX,LY] = liuqe(shot, t);
 
