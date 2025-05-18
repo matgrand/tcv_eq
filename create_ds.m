@@ -111,6 +111,7 @@ for i = 1:length(shots)
 
         % check that theta is the same as theta0, first size, then values
         assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
+        % NOTE: shape seems always the same, for old shot its [-pi, pi], new shot its [0, 2*pi]
         if ~all(abs(theta(:) - theta0(:)) < 1e-5)
             disp('theta:');
             disp(theta(:)');
