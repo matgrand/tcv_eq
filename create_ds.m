@@ -62,7 +62,8 @@ for i = 1:length(shots)
     shot = shots(i);
     fprintf('\x1b[33mProcessing shot %d (%d of %d)\x1b[0m\n', shot, i, length(shots));
 
-    try 
+    % try 
+    
         mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
         [t, ip1] = tcvget('IPLIUQE'); % precalculated using liuqe
@@ -243,10 +244,10 @@ for i = 1:length(shots)
         shot_processing_times(i) = toc(start_time);
         fprintf('\tProc time: %.2f s, ETA: %.0f min\n', shot_processing_times(i), sum(shot_processing_times) / i * (length(shots) - i) / 60);
         
-    catch ME
-        fprintf('\x1b[31m\tError processing shot %d: %s\x1b[0m\n', shot, ME.message);
-        continue; % Skip to the next shot on error
-    end % try-catch
+    % catch ME
+    %     fprintf('\x1b[31m\tError processing shot %d: %s\x1b[0m\n', shot, ME.message);
+    %     continue; % Skip to the next shot on error
+    % end % try-catch
 end % end shots loop
 
 mdsdisconnect; % Disconnect from MDSplus
