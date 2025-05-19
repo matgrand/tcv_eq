@@ -39,6 +39,8 @@ mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
 % get a reference for theta, to make sure they are all the same
 mdsopen('tcv_shot', END_SHOT);
 theta0 = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
+rq0 = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
+zq0 = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
 mdsclose; % Close the MDSplus connection
 
 
@@ -117,6 +119,27 @@ for i = 1:length(shots)
             disp(theta(:)');
             disp('theta0:');
             disp(theta0(:)');
+
+            figure;
+            cmap = viridis(numel(theta));
+            subplot(1,2,1);
+            scatter(rq(:), zq(:), 40, cmap, 'filled');
+            title('Current shot LCFS');
+            xlabel('R [m]'); ylabel('Z [m]');
+            axis equal; grid on;
+            colorbar('Ticks',linspace(0,1,5),'TickLabels',round(linspace(min(theta),max(theta),5),2));
+            colormap(gca, cmap);
+
+            subplot(1,2,2);
+            scatter(rq0(:), zq0(:), 40, cmap, 'filled');
+            title('Reference LCFS');
+            xlabel('R [m]'); ylabel('Z [m]');
+            axis equal; grid on;
+            colorbar('Ticks',linspace(0,1,5),'TickLabels',round(linspace(min(theta0),max(theta0),5),2));
+            colormap(gca, cmap);
+
+
+
             error('theta and theta0 are not close enough');
         end
 
