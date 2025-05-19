@@ -139,7 +139,7 @@ for i = 1:length(shots)
             colormap(gca, cmap0);  % Match left plot
 
             %save figure here
-            saveas(gcf, fullfile('figs', sprintf('ip_%d.png', shot)));
+            saveas(gcf, fullfile(sprintf('ip_%d.png', shot)));
             
 
             error('theta and theta0 are not close enough');
