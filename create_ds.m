@@ -127,12 +127,13 @@ for i = 1:length(shots)
             assert(all(abs(theta(:) - theta1(:)) < 1e-5), 'theta and theta1 are not close enough');
 
             % roll the rq and zq to match the theta 
-            shift_amt = floor(size(theta,2)/2);
+            shift_amt = floor(numel(theta) / 2); % shift amount is half the length of theta
+            assert(shift_amt == 64, 'Shift amount is not 64');
             size(theta)
-            thetac = circshift(theta, shift_amt, 2); % shift theta by half its length
+            thetac = circshift(theta, shift_amt, 1); % shift theta by half its length
             size(thetac)
-            rq = circshift(rq, shift_amt, 2); % shift rq by the same amount
-            zq = circshift(zq, shift_amt, 2); % shift zq by the same amount
+            rq = circshift(rq, shift_amt, 1); % shift rq by the same amount
+            zq = circshift(zq, shift_amt, 1); % shift zq by the same amount
 
 
 
