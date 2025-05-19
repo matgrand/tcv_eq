@@ -120,40 +120,24 @@ for i = 1:length(shots)
             %disp(theta(:)');
             %disp('theta0:');
             %disp(theta0(:)');
-	    r0 = rq0(:,1);
-	    z0 = zq0(:,1);
-	    r = rq(:,1);
-	    z = zq(:,1);			
+            r0 = rq0(:,1);
+            z0 = zq0(:,1);
+            r = rq(:,1);
+            z = zq(:,1);			
 
-            size(r0)
-            size(z0)
-            size(r)
-            size(z)
+            cmap = jet(numel(r)); % Create a colormap for the scatter plot
+            cmap0 = jet(numel(r0)); % Create a colormap for the scatter plot
+
+            % Left subplot
+            subplot(1,2,1);
+            scatter(r, z, 36, 1:numel(r), 'filled');
+            colormap(gca, cmap);  % Set per subplot
+
+            % Right subplot
+            subplot(1,2,2);
+            scatter(r0, z0, 36, 1:numel(r0), 'filled');
+            colormap(gca, cmap0);  % Match left plot
 	
-	
-% Create a figure with two subplots
-figure;
-
-% Left subplot: (r, z)
-subplot(1,2,1);
-scatter(r, z, 36, linspace(1, 100, 100), 'filled');
-xlabel('r'); ylabel('z');
-title('r vs z');
-colorbar;
-colormap jet;  % or turbo, parula, etc.
-axis equal;
-grid on;
-
-% Right subplot: (r0, z0)
-subplot(1,2,2);
-scatter(r0, z0, 36, linspace(1, 80, 80), 'filled');
-xlabel('r_0'); ylabel('z_0');
-title('r_0 vs z_0');
-colorbar;
-colormap jet;
-axis equal;
-grid on;
-
 
             error('theta and theta0 are not close enough');
         end
