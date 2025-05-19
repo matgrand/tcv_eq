@@ -37,22 +37,12 @@ end % Create output directory if it doesn't exist
 mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
 
 % get a reference for theta, to make sure they are all the same
-% actually there are only 2 versions of theta, one for old shots and one for new shots
-% the old shots have theta in [-pi, pi], the new ones in [0, 2*pi]
+% some old shots have theta in [-pi, pi], the new ones in [0, 2*pi], but more versions are possible
 mdsopen('tcv_shot', END_SHOT);
 theta0 = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
 rq0 = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
 zq0 = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
 mdsclose; % Close the MDSplus connection
-mdsopen('tcv_shot', START_SHOT);
-theta1 = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
-rq1 = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
-zq1 = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
-mdsclose; % Close the MDSplus connection
-size(theta0)
-size(theta1)
-assert(all(size(theta0) == size(theta1)), 'theta0 and theta1 have different sizes');
-
 
 %shots = randi([START_SHOT, END_SHOT], 1, N_SHOTS);
 shots = randi([START_SHOT, START_SHOT+1000], 1, N_SHOTS);
@@ -65,7 +55,7 @@ for i = 1:length(shots)
     shot = shots(i);
     fprintf('\x1b[33mProcessing shot %d (%d of %d)\x1b[0m\n', shot, i, length(shots));
 
-    % try 
+    try 
     
         mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
@@ -125,43 +115,7 @@ for i = 1:length(shots)
 
         % check that theta is the same as theta0, first size, then values
 	    assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
-        % NOTE: shape seems always the same, for old shot its [-pi, pi], new shot its [0, 2*pi]
-        
-        if ~all(abs(theta(:) - theta0(:)) < 1e-5) % old shot
-            assert(all(abs(theta(:) - theta1(:)) < 1e-5), 'theta and theta1 are not close enough');
-
-            % roll the rq and zq to match the theta 
-            shift_amt = floor(numel(theta) / 2); % shift amount is half the length of theta
-            assert(shift_amt == 64, 'Shift amount is not 64');
-            size(theta)
-            thetac = circshift(theta, shift_amt, 1); % shift theta by half its length
-            size(thetac)
-            rq = circshift(rq, shift_amt, 1); % shift rq by the same amount
-            zq = circshift(zq, shift_amt, 1); % shift zq by the same amount
-
-
-
-
-            r0 = rq0(:,1);
-            z0 = zq0(:,1);
-            r = rq(:,1);
-            z = zq(:,1);			
-
-            cmap = jet(numel(r)); % Create a colormap for the scatter plot
-            cmap0 = jet(numel(r0)); % Create a colormap for the scatter plot
-
-            % Left subplot
-            subplot(1,2,1);
-            scatter(r, z, 36, 1:numel(r), 'filled');
-            colormap(gca, cmap);  % Set per subplot
-
-            % Right subplot
-            subplot(1,2,2);
-            scatter(r0, z0, 36, 1:numel(r0), 'filled');
-            colormap(gca, cmap0);  % Match left plot            
-
-            error('theta and theta0 are not close enough');
-        end
+        assert(all(abs(theta0 - theta) < 1e-6), 'theta and theta0 are different');
 
         % check the time dimensions are the same
         fprintf('\tsizes -> Fx:%s, Iy:%s, Ia:%s, Bm:%s, Uf:%s, t:%s, Ip:%s\n', mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), mat2str(size(t)),  mat2str(size(Ip)));
@@ -171,6 +125,9 @@ for i = 1:length(shots)
         assert(size(Bm, 2) == numel(t), 'Bm has wrong time dimension');
         assert(size(Uf, 2) == numel(t), 'Uf has wrong time dimension');
         assert(size(Ip, 1) == numel(t), 'Ip has wrong time dimension');
+
+        assert(size(rq, 2) == numel(t), 'rq has wrong time dimension');
+        assert(size(zq, 2) == numel(t), 'zq has wrong time dimension');
         
         % filter out the NaN/Inf values [MILD]
         Fx_valid  = reshape(all(all(~isnan(Fx) & ~isinf(Fx),1),2), [],1);
@@ -178,10 +135,14 @@ for i = 1:length(shots)
         Ia_valid  = reshape(all(~isnan(Ia) & ~isinf(Ia), 1), [],1);
         Bm_valid  = reshape(all(~isnan(Bm) & ~isinf(Bm), 1), [],1);
         Uf_valid  = reshape(all(~isnan(Uf) & ~isinf(Uf), 1), [],1);
+        rq_valid  = reshape(all(~isnan(rq) & ~isinf(rq), 1), [],1);
+        zq_valid  = reshape(all(~isnan(zq) & ~isinf(zq), 1), [],1);
+
         t_valid   = ~isnan(t) & ~isinf(t);
         ip_valid2 = ~isnan(Ip) & ~isinf(Ip);
-        % fprintf('\t*_valid sizes -> Fx %s, Iy %s, Ia %s, Bm %s, Uf %s, t %s, ip2: %s, ip1 %s\n', mat2str(size(Fx_valid)), mat2str(size(Iy_valid)), mat2str(size(Ia_valid)), mat2str(size(Bm_valid)), mat2str(size(Uf_valid)), mat2str(size(t_valid)), mat2str(size(ip_valid2)), mat2str(size(ip_valid1)));
-        valid = Fx_valid & Iy_valid & Ia_valid & Bm_valid & Uf_valid & t_valid & ip_valid2 & ip_valid1;
+        
+        % valid = Fx_valid & Iy_valid & Ia_valid & Bm_valid & Uf_valid & t_valid & ip_valid2 & ip_valid1;
+        valid = Fx_valid & Iy_valid & Ia_valid & Bm_valid & Uf_valid & rq_valid & zq_valid & t_valid & ip_valid2 & ip_valid1;
         fprintf('\tvalid samples -> [TOT: %.1f%%, %d] Fx:%.1f%%, Iy:%.1f%%, Ia:%.1f%%, Bm:%.1f%%, Uf:%.1f%%, t:%.1f%%, ip2:%.1f%%, ip1:%.1f%%\n', ...
                 100*sum(valid)/numel(valid), sum(valid), 100*sum(Fx_valid)/numel(Fx_valid), 100*sum(Iy_valid)/numel(Iy_valid), 100*sum(Ia_valid)/numel(Ia_valid), ...
                 100*sum(Bm_valid)/numel(Bm_valid), 100*sum(Uf_valid)/numel(Uf_valid), 100*sum(t_valid)/numel(t_valid), 100*sum(ip_valid2)/numel(ip_valid2), 100*sum(ip_valid1)/numel(ip_valid1));
@@ -194,6 +155,8 @@ for i = 1:length(shots)
         Ia = Ia(:,valid);
         Bm = Bm(:,valid);
         Uf = Uf(:,valid);
+        rq = rq(:,valid);
+        zq = zq(:,valid);
         t = t(valid);
         Ip = Ip(valid);
 
@@ -203,6 +166,8 @@ for i = 1:length(shots)
         Ia = Ia(:,1:DECIMATION:end);
         Bm = Bm(:,1:DECIMATION:end);
         Uf = Uf(:,1:DECIMATION:end);
+        rq = rq(:,1:DECIMATION:end);
+        zq = zq(:,1:DECIMATION:end);
         t = t(1:DECIMATION:end);
         Ip = Ip(1:DECIMATION:end);
 
@@ -212,6 +177,8 @@ for i = 1:length(shots)
         assert(~any(isnan(Ia(:))), 'Ia contains NaN values');
         assert(~any(isnan(Bm(:))), 'Bm contains NaN values'); 
         assert(~any(isnan(Uf(:))), 'Uf contains NaN values');
+        assert(~any(isnan(rq(:))), 'rq contains NaN values');
+        assert(~any(isnan(zq(:))), 'zq contains NaN values');
         assert(~any(isnan(t(:))), 't contains NaN values');
         assert(~any(isnan(Ip(:))), 'Ip contains NaN values');
         
@@ -221,6 +188,8 @@ for i = 1:length(shots)
         assert(~any(isinf(Ia(:))), 'Ia contains Inf values');
         assert(~any(isinf(Bm(:))), 'Bm contains Inf values');
         assert(~any(isinf(Uf(:))), 'Uf contains Inf values');
+        assert(~any(isinf(rq(:))), 'rq contains Inf values');
+        assert(~any(isinf(zq(:))), 'zq contains Inf values');
         assert(~any(isinf(t(:))), 't contains Inf values');
         assert(~any(isinf(Ip(:))), 'Ip contains Inf values');
         
@@ -230,27 +199,31 @@ for i = 1:length(shots)
         Ia = single(Ia); % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
         Bm = single(Bm); % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
         Uf = single(Uf); % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
+        rq = single(rq); % LCFS r coordinate
+        zq = single(zq); % LCFS z coordinate
         t = single(t);
         Ip = single(Ip);
 
         % print final sizes
-        fprintf('\tFinal sizes -> Fx:%s, Iy:%s, Ia:%s, Bm:%s, Uf:%s, t:%s, Ip:%s\n', mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), mat2str(size(t)), mat2str(size(Ip)));
+        fprintf('\tFinal sizes -> Fx:%s, Iy:%s, Ia:%s, Bm:%s, Uf:%s, rq:%s, zq:%s, t:%s, Ip:%s\n', ...
+            mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), ...
+            mat2str(size(rq)), mat2str(size(zq)), mat2str(size(t)), mat2str(size(Ip)));
 
         mdsclose; % Close the MDSplus connection
         total_shots = total_shots + 1;
 
         % save data into a .mat file
         save_file = fullfile(OUT_DIR, sprintf('%d.mat', shot));
-        save(save_file, 't', 'Ip', 'Fx', 'Iy', 'Ia', 'Bm', 'Uf');
+        save(save_file, 't', 'Ip', 'Fx', 'Iy', 'Ia', 'Bm', 'Uf', 'rq', 'zq');
         fprintf('\x1b[32m\tData saved to: %s\x1b[0m\n', save_file);
         
         shot_processing_times(i) = toc(start_time);
         fprintf('\tProc time: %.2f s, ETA: %.0f min\n', shot_processing_times(i), sum(shot_processing_times) / i * (length(shots) - i) / 60);
         
-    % catch ME
-    %     fprintf('\x1b[31m\tError processing shot %d: %s\x1b[0m\n', shot, ME.message);
-    %     continue; % Skip to the next shot on error
-    % end % try-catch
+    catch ME
+        fprintf('\x1b[31m\tError processing shot %d: %s\x1b[0m\n', shot, ME.message);
+        continue; % Skip to the next shot on error
+    end % try-catch
 end % end shots loop
 
 mdsdisconnect; % Disconnect from MDSplus
