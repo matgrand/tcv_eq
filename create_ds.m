@@ -4,7 +4,7 @@ clear all; close all; clc;
 
 START_SHOT = 77662; % Dec 2022, https://spcwiki.epfl.ch/wiki/Alma_database
 END_SHOT = 85804; % April 2025
-N_SHOTS = 30; % Number of shots to process
+N_SHOTS = 100; % Number of shots to process
 % N_SHOTS = END_SHOT-START_SHOT; % Number of shots to process
 
 % Directory to save the output .mat files
@@ -40,12 +40,9 @@ mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
 % some old shots have theta in [-pi, pi], the new ones in [0, 2*pi], but more versions are possible
 mdsopen('tcv_shot', END_SHOT);
 theta0 = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
-rq0 = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
-zq0 = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
 mdsclose; % Close the MDSplus connection
 
-%shots = randi([START_SHOT, END_SHOT], 1, N_SHOTS);
-shots = randi([START_SHOT, START_SHOT+1000], 1, N_SHOTS);
+shots = randi([START_SHOT, END_SHOT], 1, N_SHOTS);
 total_shots = 0;
 fprintf('Shots: %s\n', mat2str(shots));
 fprintf('\nStarting data retrieval loop...\n');
