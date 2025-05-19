@@ -109,7 +109,7 @@ for i = 1:length(shots)
         % last closed flux surface (LCFS) 
         rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
         zq = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
-        theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
+        theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL"c)'); 
 
         % check that theta is the same as theta0, first size, then values
         assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
@@ -120,10 +120,15 @@ for i = 1:length(shots)
             disp('theta0:');
             disp(theta0(:)');
 
+            size(rq0)
+            size(zq0)
+            size(rq)
+            size(zq)
+
             figure;
             cmap = viridis(numel(theta));
             subplot(1,2,1);
-            scatter(rq(:), zq(:), 40, cmap, 'filled');
+            scatter(rq(:,1), zq(:,1), 40, cmap, 'filled');
             title('Current shot LCFS');
             xlabel('R [m]'); ylabel('Z [m]');
             axis equal; grid on;
@@ -131,7 +136,7 @@ for i = 1:length(shots)
             colormap(gca, cmap);
 
             subplot(1,2,2);
-            scatter(rq0(:), zq0(:), 40, cmap, 'filled');
+            scatter(rq0(:,1), zq0(:,1), 40, cmap, 'filled');
             title('Reference LCFS');
             xlabel('R [m]'); ylabel('Z [m]');
             axis equal; grid on;
