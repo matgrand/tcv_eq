@@ -67,6 +67,8 @@ USE_PROFILES = True # false -> more realistic
 USE_MAGNETIC = True # usually True
 NIN = int(USE_CURRENTS)*19 + int(USE_PROFILES)*38 + int(USE_MAGNETIC)*38 # input size
 
+NLCFS = 129 # number of LCFS points 
+
 # read the original grid coordinates
 d = loadmat('tcv_params/grid.mat')
 rd, zd = d['r'].flatten(), d['z'].flatten() # original grid coordinates (DATA)
