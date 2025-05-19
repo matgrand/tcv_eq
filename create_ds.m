@@ -44,7 +44,8 @@ zq0 = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
 mdsclose; % Close the MDSplus connection
 
 
-shots = randi([START_SHOT, END_SHOT], 1, N_SHOTS);
+%shots = randi([START_SHOT, END_SHOT], 1, N_SHOTS);
+shots = randi([START_SHOT, START_SHOT+1000], 1, N_SHOTS);
 total_shots = 0;
 fprintf('Shots: %s\n', mat2str(shots));
 fprintf('\nStarting data retrieval loop...\n');
@@ -109,40 +110,49 @@ for i = 1:length(shots)
         % last closed flux surface (LCFS) 
         rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
         zq = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
-        theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL"c)'); 
+        theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
 
         % check that theta is the same as theta0, first size, then values
-        assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
+	assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
         % NOTE: shape seems always the same, for old shot its [-pi, pi], new shot its [0, 2*pi]
         if ~all(abs(theta(:) - theta0(:)) < 1e-5)
-            disp('theta:');
-            disp(theta(:)');
-            disp('theta0:');
-            disp(theta0(:)');
+            %disp('theta:');
+            %disp(theta(:)');
+            %disp('theta0:');
+            %disp(theta0(:)');
+	    r0 = rq0(:,1);
+	    z0 = zq0(:,1);
+	    r = rq(:,1);
+	    z = zq(:,1);			
 
-            size(rq0)
-            size(zq0)
-            size(rq)
-            size(zq)
+            size(r0)
+            size(z0)
+            size(r)
+            size(z)
+	
+	
+% Create a figure with two subplots
+figure;
 
-            figure;
-            cmap = viridis(numel(theta));
-            subplot(1,2,1);
-            scatter(rq(:,1), zq(:,1), 40, cmap, 'filled');
-            title('Current shot LCFS');
-            xlabel('R [m]'); ylabel('Z [m]');
-            axis equal; grid on;
-            colorbar('Ticks',linspace(0,1,5),'TickLabels',round(linspace(min(theta),max(theta),5),2));
-            colormap(gca, cmap);
+% Left subplot: (r, z)
+subplot(1,2,1);
+scatter(r, z, 36, linspace(1, 100, 100), 'filled');
+xlabel('r'); ylabel('z');
+title('r vs z');
+colorbar;
+colormap jet;  % or turbo, parula, etc.
+axis equal;
+grid on;
 
-            subplot(1,2,2);
-            scatter(rq0(:,1), zq0(:,1), 40, cmap, 'filled');
-            title('Reference LCFS');
-            xlabel('R [m]'); ylabel('Z [m]');
-            axis equal; grid on;
-            colorbar('Ticks',linspace(0,1,5),'TickLabels',round(linspace(min(theta0),max(theta0),5),2));
-            colormap(gca, cmap);
-
+% Right subplot: (r0, z0)
+subplot(1,2,2);
+scatter(r0, z0, 36, linspace(1, 80, 80), 'filled');
+xlabel('r_0'); ylabel('z_0');
+title('r_0 vs z_0');
+colorbar;
+colormap jet;
+axis equal;
+grid on;
 
 
             error('theta and theta0 are not close enough');
