@@ -37,10 +37,17 @@ end % Create output directory if it doesn't exist
 mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
 
 % get a reference for theta, to make sure they are all the same
+% actually there are only 2 versions of theta, one for old shots and one for new shots
+% the old shots have theta in [-pi, pi], the new ones in [0, 2*pi]
 mdsopen('tcv_shot', END_SHOT);
 theta0 = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
 rq0 = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
 zq0 = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
+mdsclose; % Close the MDSplus connection
+mdsopen('tcv_shot', START_SHOT);
+theta1 = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
+rq1 = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
+zq1 = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
 mdsclose; % Close the MDSplus connection
 
 
@@ -113,13 +120,23 @@ for i = 1:length(shots)
         theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
 
         % check that theta is the same as theta0, first size, then values
-	assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
+	    assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
         % NOTE: shape seems always the same, for old shot its [-pi, pi], new shot its [0, 2*pi]
-        if ~all(abs(theta(:) - theta0(:)) < 1e-5)
-            %disp('theta:');
-            %disp(theta(:)');
-            %disp('theta0:');
-            %disp(theta0(:)');
+        
+        if ~all(abs(theta(:) - theta0(:)) < 1e-5) % old shot
+            assert(all(abs(theta(:) - theta1(:)) < 1e-5), 'theta and theta1 are not close enough');
+
+            % roll the rq and zq to match the theta 
+            shift_amt = floor(size(theta,2)/2);
+            size(theta)
+            thetac = circshift(theta, shift_amt, 2); % shift theta by half its length
+            size(thetac)
+            rq = circshift(rq, shift_amt, 2); % shift rq by the same amount
+            zq = circshift(zq, shift_amt, 2); % shift zq by the same amount
+
+
+
+
             r0 = rq0(:,1);
             z0 = zq0(:,1);
             r = rq(:,1);
@@ -136,11 +153,7 @@ for i = 1:length(shots)
             % Right subplot
             subplot(1,2,2);
             scatter(r0, z0, 36, 1:numel(r0), 'filled');
-            colormap(gca, cmap0);  % Match left plot
-
-            %save figure here
-            saveas(gcf, fullfile(sprintf('ip_%d.png', shot)));
-            
+            colormap(gca, cmap0);  % Match left plot            
 
             error('theta and theta0 are not close enough');
         end
