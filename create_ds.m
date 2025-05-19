@@ -49,6 +49,8 @@ theta1 = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")');
 rq1 = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
 zq1 = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
 mdsclose; % Close the MDSplus connection
+size(theta0)
+size(theta1)
 assert(all(size(theta0) == size(theta1)), 'theta0 and theta1 have different sizes');
 
 
