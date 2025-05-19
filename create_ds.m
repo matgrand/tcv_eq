@@ -137,7 +137,10 @@ for i = 1:length(shots)
             subplot(1,2,2);
             scatter(r0, z0, 36, 1:numel(r0), 'filled');
             colormap(gca, cmap0);  % Match left plot
-	
+
+            %save figure here
+            saveas(gcf, fullfile('figs', sprintf('ip_%d.png', shot)));
+            
 
             error('theta and theta0 are not close enough');
         end
