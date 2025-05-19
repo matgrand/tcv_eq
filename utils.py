@@ -102,55 +102,161 @@ class ActF(Module): # swish
         self.beta = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
     def forward(self, x): return x*torch.sigmoid(self.beta*x)
 
-# network architecture
-class LiuqeNet(Module): # Paper net: branch + trunk conenction and everything
-    def __init__(self, latent_size=32):
-        super(LiuqeNet, self).__init__()
-        assert latent_size % 2 == 0, "latent size should be even"
-        # self.input_size, self.latent_size, self.grid_size = input_size, latent_size, grid_size
-        # self.fgs = grid_size[0] * grid_size[1] # flat grid size
-        self.ngr, self.ngz = NGR, NGZ # grid size
-        #branch
-        self.branch = Sequential(
-            # View(-1, input_size),
+# # network architecture
+# class LiuqeNet(Module): # Paper net: branch + trunk conenction and everything
+#     def __init__(self, latent_size=32):
+#         super(LiuqeNet, self).__init__()
+#         assert latent_size % 2 == 0, "latent size should be even"
+#         # self.input_size, self.latent_size, self.grid_size = input_size, latent_size, grid_size
+#         # self.fgs = grid_size[0] * grid_size[1] # flat grid size
+#         self.ngr, self.ngz = NGR, NGZ # grid size
+#         #branch
+#         self.branch = Sequential(
+#             # View(-1, input_size),
+#             Linear(NIN, 64), ActF(),
+#             Linear(64, 32), ActF(),
+#             Linear(32, latent_size), ActF(),
+#         )
+#         #trunk
+#         def trunk_block(s): 
+#             return  Sequential(
+#                 # View(-1, s),
+#                 Linear(s, 32), ActF(),
+#                 Linear(32, latent_size//2), ActF(),
+#             )
+#         self.trunk_r, self.trunk_z = trunk_block(self.ngr), trunk_block(self.ngz)
+#         # head
+#         self.head = Sequential(
+#             Linear(latent_size, 64), ActF(),
+#             Linear(64, self.ngr*self.ngz), ActF(),
+#             # View(-1, 1, *self.grid_size),
+#         )
+#     def forward(self, xb, r, z):
+#         xb = self.branch(xb)
+#         r, z = self.trunk_r(r), self.trunk_z(z) 
+#         xt = torch.cat((r, z), 1) # concatenate
+#         x = xt * xb # multiply trunk and branch
+#         x = self.head(x) # head net
+#         x = x.view(-1, 1, self.ngr, self.ngz) # reshape to grid
+#         return x
+
+PHYSICS_LS = 48 # physics latent size [ph]
+GRID_LS = 32 # grid latent size [gr]
+assert GRID_LS % 2 == 0, "grid latent size should be even"
+
+class InputNet(Module): # input -> latent physics vector [x -> ph]
+    def __init__(self):
+        super(InputNet, self).__init__()
+        self.input_net = Sequential(
             Linear(NIN, 64), ActF(),
             Linear(64, 32), ActF(),
-            Linear(32, latent_size), ActF(),
+            Linear(32, PHYSICS_LS), ActF(),
         )
-        #trunk
-        def trunk_block(s): 
+    def forward(self, x): 
+        ph = self.input_net(x)
+        return ph
+
+class GridNet(Module): # grid -> latent grid vector [r,z,ph -> gr]
+    def __init__(self):
+        super(GridNet, self).__init__()
+        def grid_block(s): 
             return  Sequential(
-                # View(-1, s),
                 Linear(s, 32), ActF(),
-                Linear(32, latent_size//2), ActF(),
+                Linear(32, GRID_LS//2), ActF(),
             )
-        self.trunk_r, self.trunk_z = trunk_block(self.ngr), trunk_block(self.ngz)
-        # head
-        self.head = Sequential(
-            Linear(latent_size, 64), ActF(),
-            Linear(64, self.ngr*self.ngz), ActF(),
-            # View(-1, 1, *self.grid_size),
+        self.grid_r, self.grid_z = grid_block(NGR), grid_block(NGZ)
+        self.phys2grid = Sequential(
+            Linear(PHYSICS_LS, 16), ActF(),
+            Linear(16, GRID_LS), ActF(),
         )
-    def forward(self, xb, r, z):
-        xb = self.branch(xb)
-        r, z = self.trunk_r(r), self.trunk_z(z) 
-        xt = torch.cat((r, z), 1) # concatenate
-        x = xt * xb # multiply trunk and branch
-        x = self.head(x) # head net
-        x = x.view(-1, 1, self.ngr, self.ngz) # reshape to grid
-        return x
+    def forward(self, r, z, ph):
+        r, z = self.grid_r(r), self.grid_z(z) 
+        gr1 = torch.cat((r, z), 1)
+        gr2 = self.phys2grid(ph)
+        assert gr1.shape == gr2.shape, f"gr1.shape = {gr1.shape}, gr2.shape = {gr2.shape}"
+        gr = gr1 * gr2
+        return gr
+    
+class FluxHead(Module): # grid -> flux [gr -> flux/curr_density]
+    def __init__(self):
+        super(FluxHead, self).__init__()
+        self.head = Sequential(
+            Linear(GRID_LS, 64), ActF(),
+            Linear(64, NGR*NGZ), ActF(),
+        )
+    def forward(self, gr): 
+        y = self.head(gr)
+        y = y.view(-1, 1, NGR, NGZ) # reshape to grid
+        return y
+    
+class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
+    def __init__(self):
+        super(LCFSHead, self).__init__()
+        self.lcfs = Sequential(
+            Linear(PHYSICS_LS, 64), ActF(),
+            Linear(64, 32), ActF(),
+            Linear(32, NLCFS*2), ActF(),
+        )
+    def forward(self, ph): return self.lcfs(ph)
+
+class LiuqeNet(Module): # Liuqe net
+    def __init__(self, input_net:InputNet, grid_net:GridNet, flux_head1:FluxHead, flux_head2:FluxHead, lcfs_head:LCFSHead):
+        super(LiuqeNet, self).__init__()
+        self.input_net = input_net
+        self.grid_net = grid_net
+        self.flux_head1 = flux_head1
+        self.flux_head2 = flux_head2
+        self.lcfs_head = lcfs_head
+    def forward(self, x, r, z):
+        ph = self.input_net(x)
+        gr = self.grid_net(r, z, ph)
+        y1 = self.flux_head1(gr)
+        y2 = self.flux_head2(gr)
+        y3 = self.lcfs_head(ph)
+        return y1, y2, y3
+        
+class LCFSNet(Module): # LCFS net
+    def __init__(self, input_net:InputNet, lcfs_head:LCFSHead):
+        super(LCFSNet, self).__init__()
+        self.input_net = input_net
+        self.lcfs_head = lcfs_head
+    def forward(self, x):
+        ph = self.input_net(x)
+        lcfs = self.lcfs_head(ph)
+        return lcfs
+
     
 def test_network_io(verbose=True):
-    if verbose: print('test_network_io')
+    v = verbose
+    if v: print('test_network_io')
+    # single sample
     x, r, z = (torch.rand(1, NIN), torch.rand(1, NGR), torch.rand(1, NGZ))
-    net = LiuqeNet()
-    y = net(x, r, z)
-    if verbose: print(f"single  -> in: {x.shape}, {r.shape}, {z.shape}, \nout: {y.shape}")
+    input_net, grid_net, flux_head1, flux_head2, lcfs_head = InputNet(), GridNet(), FluxHead(), FluxHead(), LCFSHead()
+    input_net.test = 'lol'
+    liuqenet = LiuqeNet(input_net, grid_net, flux_head1, flux_head2, lcfs_head)
+    lcsfnet = LCFSNet(input_net, lcfs_head)
+    print(liuqenet.input_net.test)
+    print(lcsfnet.input_net.test)
+    y1, y2, y3 = liuqenet(x, r, z)
+    assert y1.shape == (1, 1, NGZ, NGR), f"Wrong output shape: {y1.shape}"
+    assert y2.shape == (1, 1, NGZ, NGR), f"Wrong output shape: {y2.shape}"
+    assert y3.shape == (1, NLCFS*2), f"Wrong output shape: {y3.shape}"
+    y = lcsfnet(x)
+    assert y.shape == (1, NLCFS*2), f"Wrong output shape: {y.shape}"
+    assert torch.allclose(y3, y), "y3 and y are not equal"
+    if v: print(f"LiuqeNet -> in: {x.shape}, {r.shape}, {z.shape}, \nout: {y1.shape}, {y2.shape}, {y3.shape}")
+    if v: print(f"LCFSNet -> in: {x.shape}, \nout: {y.shape}")
+    # batched
     n_sampl = 7
     nx, r, z = torch.rand(n_sampl, NIN), torch.rand(n_sampl, NGR), torch.rand(n_sampl, NGZ)
-    ny = net(nx, r, z)
-    if verbose: print(f"batched -> in: {nx.shape}, {r.shape}, {z.shape}, \nout: {ny.shape}")
-    assert ny.shape == (n_sampl, 1, NGZ, NGR), f"Wrong output shape: {ny.shape}"
+    ny1, ny2, ny3 = liuqenet(nx, r, z)
+    assert ny1.shape == (n_sampl, 1, NGZ, NGR), f"Wrong output shape: {ny1.shape}"
+    assert ny2.shape == (n_sampl, 1, NGZ, NGR), f"Wrong output shape: {ny2.shape}"
+    assert ny3.shape == (n_sampl, NLCFS*2), f"Wrong output shape: {ny3.shape}"
+    ny = lcsfnet(nx)
+    assert ny.shape == (n_sampl, NLCFS*2), f"Wrong output shape: {ny.shape}"
+    if v: print(f"LiuqeNet -> in: {nx.shape}, {r.shape}, {z.shape}, \nout: {ny1.shape}, {ny2.shape}, {ny3.shape}")
+    if v: print(f"LCFSNet -> in: {nx.shape}, \nout: {ny.shape}")
 
 # function to load the dataset
 def load_ds(ds_path):
@@ -158,41 +264,54 @@ def load_ds(ds_path):
     d = np.load(ds_path)
     # output: magnetic flux, transposed (matlab is column-major)
     X =  d["X"] # (n, NIN) # inputs: currents + measurements + profiles
-    Y =  d["Y"] # (n, NGZ, NGZ) # outputs: magnetic flux
     r = d["r"] # (n, NGR) radial position of pixels 
     z = d["z"] # (n, NGZ) vertical position of pixels 
-    return X, Y, r, z
+    Y1 =  d["Y1"] # (n, NGZ, NGZ) # outputs: magnetic flux
+    Y2 =  d["Y2"] # (n, NGZ, NGZ) # outputs: curr density
+    Y3 =  d["Y3"] # (n, NLCFS*2) # outputs: last closed flux surface (LCFS)
+    return X, r, z, Y1, Y2, Y3
 
 ####################################################################################################
 class LiuqeDataset(Dataset):
     def __init__(self, ds_mat_path, verbose=True):
-        self.X, self.Y, self.r, self.z = map(to_tensor, load_ds(ds_mat_path))
-        self.Y = self.Y.view(-1,1,NGZ,NGR)
-        if verbose: print(f"Dataset: N:{len(self)}, memory:{sum([x.element_size()*x.nelement() for x in [self.Y, self.X, self.r, self.z]])/1024**3:.2f}GB")
+        self.X, self.r, self.z, self.Y1, self.Y2, self.Y3 = map(to_tensor, load_ds(ds_mat_path))
+        self.Y1 = self.Y1.view(-1,1,NGZ,NGR)
+        self.Y2 = self.Y2.view(-1,1,NGZ,NGR)
+        if verbose: print(f"Dataset: N:{len(self)}, memory:{sum([x.element_size()*x.nelement() for x in [self.X, self.r, self.z, self.Y1, self.Y2, self.Y3]])/1e6}MB")
         # # move to DEV (doable bc the dataset is fairly small, check memory usage)
-        # self.Y, self.X, self.r, self.z = self.Y.to(DEV), self.X.to(DEV), self.r.to(DEV), self.z.to(DEV)
-    def __len__(self): return len(self.Y)
-    def __getitem__(self, idx): return self.X[idx], self.Y[idx], self.r[idx], self.z[idx]
+        # self.X, self.r, self.z, self.Y1, self.Y2, self.Y3 = map(lambda x: x.to(DEV), [self.X, self.r, self.z, self.Y1, self.Y2, self.Y3])
+    def __len__(self): return len(self.X)
+    def __getitem__(self, idx): return self.X[idx], self.r[idx], self.z[idx], self.Y1[idx], self.Y2[idx], self.Y3[idx]
 
-def _test_dataset():
-    print("_test_dataset")
+def test_dataset():
+    print("test_dataset")
     ds = LiuqeDataset(EVAL_DS_PATH)
     print(f"Dataset length: {len(ds)}")
-    print(f"Input shape: {ds[0][0].shape}")
-    print(f"Output shape: {ds[0][1].shape}")
+    print(f"Inputs: X -> {ds[0][0].shape}, r -> {ds[0][1].shape}, z -> {ds[0][2].shape}")
+    print(f"Outputs: Y1 -> {ds[0][3].shape}, Y2 -> {ds[0][4].shape}, Y3 -> {ds[0][5].shape}")
     n_plot = 10
     print(len(ds))
     idxs = np.random.randint(0, len(ds), n_plot)
-    fig, axs = plt.subplots(1, n_plot, figsize=(3*n_plot, 5))
+    fig, axs = plt.subplots(2, n_plot, figsize=(3*n_plot, 5))
     for i, j in enumerate(idxs):
-        Y, r, z = ds[j][1].cpu().numpy().squeeze(), ds[j][2].cpu().numpy().squeeze(), ds[j][3].cpu().numpy().squeeze()
+        X,r,z,Y1,Y2,Y3 = map(lambda x: x.cpu().numpy(), ds[j])
+        Y1, Y2 = Y1.reshape(NGZ, NGR), Y2.reshape(NGZ, NGR)
         rr, zz = np.meshgrid(r, z)
-        axs[i].contourf(rr, zz, Y, 100)
-        plot_vessel(axs[i])
-        # axs[i].contour(rr, zz, -Y, 20, colors="black", linestyles="dotted")
-        fig.colorbar(axs[i].collections[0], ax=axs[i])
-        axs[i].axis("off")
-        axs[i].set_aspect("equal")
+        # Y1
+        axs[0,i].contourf(rr, zz, Y1, 100)
+        plot_vessel(axs[0,i])
+        axs[0,i].plot(Y3[:NLCFS], Y3[NLCFS:], color='gray', lw=1.5)
+        fig.colorbar(axs[0,i].collections[0], ax=axs[0,i])
+        axs[0,i].axis("off")
+        axs[0,i].set_aspect("equal")
+        # Y2
+        axs[1,i].contourf(rr, zz, Y2, 100)
+        plot_vessel(axs[1,i])
+        axs[1,i].plot(Y3[:NLCFS], Y3[NLCFS:], color='gray', lw=1.5)
+        fig.colorbar(axs[1,i].collections[0], ax=axs[1,i])
+        axs[1,i].axis("off")
+        axs[1,i].set_aspect("equal")
+
     plt.savefig(f"{TEST_DIR}/dataset_outputs.png")
 
     # now do the same fot the input:
@@ -206,6 +325,7 @@ def _test_dataset():
         axs[i].set_title(f"Sample {j}")
         axs[i].set_xlabel("Input index")
     plt.savefig(f"{TEST_DIR}/dataset_inputs.png")
+    return
 
 
 ####################################################################################################
@@ -382,39 +502,39 @@ def plot_vessel(ax=None, lw=1.5, alpha=1.0):
     _fill_between_polygons(ax, VESS, VESSI, color='gray', alpha=alpha*0.3, lw=0)
     return ax
 
-def _test_plot_vessel():
-    print("_test_plot_vessel")
+def test_plot_vessel():
+    print("test_plot_vessel")
     plt.figure()
     plot_vessel()
     plt.axis('equal')
     plt.title('Vessel 2')
     # plt.show()
     plt.savefig(f"{TEST_DIR}/vessel.png")
-    # plt.close()
+    # plt.close()s
 
-def plot_network_outputs(save_dir, ds, model:Module, title="test"):
+def plot_network_outputs(save_dir, ds:LiuqeDataset, model:Module, title="test"):
     model.eval()
     os.makedirs(f"{save_dir}/imgs", exist_ok=True)
     for i in np.random.randint(0, len(ds), 2 if LOCAL else 50):  
         fig, axs = plt.subplots(2, 5, figsize=(15, 9))
-        x, y, r, z = ds[i]
-        x, y, r, z = x.to('cpu'), y.to('cpu'), r.to('cpu'), z.to('cpu')
-        x, y, r, z = x.reshape(1,-1), y.reshape(1,1,NGZ,NGR), r.reshape(1,NGR), z.reshape(1,NGZ)
-        yp = model(x, r, z)
-        gso, gsop = calc_gso_batch(y, r, z), calc_gso_batch(yp, r, z)
+        x, r, z, y1, y2, y3 = ds[i]
+        x, r, z, y1, y2, y3 = map(lambda x: x.to('cpu'), [x,r,z,y1,y2,y3])
+        x, r, z, y1, y2, y3 = x.reshape(1,-1), r.reshape(1,NGR), z.reshape(1,NGZ), y1.reshape(1,1,NGZ,NGR), y2.reshape(1,1,NGZ,NGR), y3.reshape(1,2*NLCFS)
+        yp1, yp2, yp3 = model(x, r, z)
+        gso, gsop = calc_gso_batch(y1, r, z), calc_gso_batch(yp1, r, z)
         gso, gsop = gso.detach().numpy().reshape(NGZ,NGR), gsop.detach().numpy().reshape(NGZ,NGR)
         gso_min, gso_max = np.min([gso, gsop]), np.max([gso, gsop])
         gso_levels = np.linspace(gso_min, gso_max, 13, endpoint=True)
         # gsop = np.clip(gsop, gso_range[1], gso_range[0]) # clip to gso range
         
-        yp = yp.detach().numpy().reshape(NGZ,NGR)
-        y = y.detach().numpy().reshape(NGZ,NGR)
+        yp1 = yp1.detach().numpy().reshape(NGZ,NGR)
+        y1 = y1.detach().numpy().reshape(NGZ,NGR)
         rr, zz = np.meshgrid(r.detach().cpu().numpy(), z.detach().cpu().numpy())
-        bmin, bmax = np.min([y, yp]), np.max([y, yp]) # min max Y
+        bmin, bmax = np.min([y1, yp1]), np.max([y1, yp1]) # min max Y1
         blevels = np.linspace(bmin, bmax, 13, endpoint=True)
-        # ψ_msex = (y - yp)**2
+        # ψ_msex = (y1 - yp1)**2
         # gso_msex = (gso - gsop)**2
-        ψ_mae = np.abs(y - yp)
+        ψ_mae = np.abs(y1 - yp1)
         gso_mae = np.abs(gso - gsop)
         lev0 = np.linspace(0, 10.0, 13, endpoint=True)
         lev1 = np.linspace(0, 1.0, 13, endpoint=True) 
@@ -422,18 +542,18 @@ def plot_network_outputs(save_dir, ds, model:Module, title="test"):
         lev3 = np.linspace(0, 0.01, 13, endpoint=True)
         ε = 1e-12
 
-        # im00 = axs[0,0].contourf(rr, zz, y, blevels)
-        im00 = axs[0,0].scatter(rr, zz, c=y, s=4, vmin=bmin, vmax=bmax)
+        # im00 = axs[0,0].contourf(rr, zz, y1, blevels)
+        im00 = axs[0,0].scatter(rr, zz, c=y1, s=4, vmin=bmin, vmax=bmax)
         axs[0,0].set_title("Actual")
         axs[0,0].set_aspect('equal')
         axs[0,0].set_ylabel("ψ")
         fig.colorbar(im00, ax=axs[0,0]) 
-        # im01 = axs[0,1].contourf(rr, zz, yp, blevels)
-        im01 = axs[0,1].scatter(rr, zz, c=yp, s=4, vmin=bmin, vmax=bmax)
+        # im01 = axs[0,1].contourf(rr, zz, yp1, blevels)
+        im01 = axs[0,1].scatter(rr, zz, c=yp1, s=4, vmin=bmin, vmax=bmax)
         axs[0,1].set_title("Predicted")
         fig.colorbar(im01, ax=axs[0,1])
-        im02 = axs[0,2].contour(rr, zz, y, blevels, linestyles='dashed')
-        axs[0,2].contour(rr, zz, yp, blevels)
+        im02 = axs[0,2].contour(rr, zz, y1, blevels, linestyles='dashed')
+        axs[0,2].contour(rr, zz, yp1, blevels)
         axs[0,2].set_title("Contours")
         fig.colorbar(im02, ax=axs[0,2])
         # im03 = axs[0,3].contourf(rr, zz, np.clip(ψ_mae, lev2[0]+ε, lev2[-1]-ε), lev2)
@@ -477,11 +597,12 @@ def plot_network_outputs(save_dir, ds, model:Module, title="test"):
         plt.show() if LOCAL else plt.savefig(f"{save_dir}/imgs/net_example_{title}_{i}.png")
         
         plt.close()
+        return
 
 if __name__ == '__main__':
     test_network_io()
-    _test_dataset()
-    _test_plot_vessel()
+    test_dataset()
+    test_plot_vessel()
     if LOCAL: plt.show()
 
     
