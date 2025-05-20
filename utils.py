@@ -23,14 +23,24 @@ from torch.utils.data import Dataset
 import builtins
 import os
 
+CUDA = torch.device('cuda')
+CPU = torch.device('cpu')
+MPS = torch.device('mps')
+
+DEV = CPU
 try: 
     JOBID = os.environ["SLURM_JOB_ID"] # get job id from slurm, when training on cluster
-    DEV = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu") # nvidia
+    if torch.cuda.is_available():
+        DEV = CUDA
+        GPU_MEM, _ = torch.cuda.mem_get_info()
     LOCAL = False # for plotting or saving images
 except:
-    DEV = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu") # apple silicon / cpu
+    if torch.backends.mps.is_available():
+        DEV = MPS
+        GPU_MEM = 16 * 1024**3  # 16 GB in bytes
     JOBID = "local"
     LOCAL = True
+print(f"Running JOBID: {JOBID}, on {DEV}, GPU_MEM: {GPU_MEM/1e9 if DEV != CPU else 0}GB")
 
 
 from scipy.interpolate import RegularGridInterpolator
@@ -274,14 +284,17 @@ def load_ds(ds_path):
 ####################################################################################################
 class LiuqeDataset(Dataset):
     def __init__(self, ds_mat_path, verbose=True):
-        self.X, self.r, self.z, self.Y1, self.Y2, self.Y3 = map(to_tensor, load_ds(ds_mat_path))
-        self.Y1 = self.Y1.view(-1,1,NGZ,NGR)
-        self.Y2 = self.Y2.view(-1,1,NGZ,NGR)
-        if verbose: print(f"Dataset: N:{len(self)}, memory:{sum([x.element_size()*x.nelement() for x in [self.X, self.r, self.z, self.Y1, self.Y2, self.Y3]])/1e6}MB")
-        # # move to DEV (doable bc the dataset is fairly small, check memory usage)
-        # self.X, self.r, self.z, self.Y1, self.Y2, self.Y3 = map(lambda x: x.to(DEV), [self.X, self.r, self.z, self.Y1, self.Y2, self.Y3])
-    def __len__(self): return len(self.X)
-    def __getitem__(self, idx): return self.X[idx], self.r[idx], self.z[idx], self.Y1[idx], self.Y2[idx], self.Y3[idx]
+        X, r, z, Y1, Y2, Y3 = map(to_tensor, load_ds(ds_mat_path))
+        Y1 = Y1.view(-1,1,NGZ,NGR)
+        Y2 = Y2.view(-1,1,NGZ,NGR)
+        self.data = [X, r, z, Y1, Y2, Y3]
+        tot_memory_ds = sum([x.element_size()*x.nelement() for x in self.data])
+        # move to DEV (doable bc the dataset is fairly small, check memory usage)
+        self.on_dev = DEV != CPU and tot_memory_ds < GPU_MEM
+        if self.on_dev: self.data = [x.to(DEV) for x in self.data]
+        if verbose: print(f"Dataset: N:{len(self)}, memory:{tot_memory_ds/1e6}MB, on_dev:{self.on_dev}")
+    def __len__(self): return len(self.data[0])
+    def __getitem__(self, idx): return [x[idx] for x in self.data]
 
 def test_dataset():
     print("test_dataset")
@@ -525,61 +538,69 @@ def plot_network_outputs(save_dir, ds:LiuqeDataset, model:Module, title="test"):
         gso, gsop = gso.detach().numpy().reshape(NGZ,NGR), gsop.detach().numpy().reshape(NGZ,NGR)
         gso_min, gso_max = np.min([gso, gsop]), np.max([gso, gsop])
         gso_levels = np.linspace(gso_min, gso_max, 13, endpoint=True)
-        # gsop = np.clip(gsop, gso_range[1], gso_range[0]) # clip to gso range
         
+        rr, zz = np.meshgrid(r.detach().cpu().numpy(), z.detach().cpu().numpy())
         yp1 = yp1.detach().numpy().reshape(NGZ,NGR)
         y1 = y1.detach().numpy().reshape(NGZ,NGR)
-        rr, zz = np.meshgrid(r.detach().cpu().numpy(), z.detach().cpu().numpy())
-        bmin, bmax = np.min([y1, yp1]), np.max([y1, yp1]) # min max Y1
-        blevels = np.linspace(bmin, bmax, 13, endpoint=True)
-        # ψ_msex = (y1 - yp1)**2
-        # gso_msex = (gso - gsop)**2
-        ψ_mae = np.abs(y1 - yp1)
+        yp2 = yp2.detach().numpy().reshape(NGZ,NGR)
+        y2 = y2.detach().numpy().reshape(NGZ,NGR)
+        yp3 = yp3.detach().numpy().reshape(2*NLCFS)
+        y3 = y3.detach().numpy().reshape(2*NLCFS)
+        min1, max1 = np.min([y1, yp1]), np.max([y1, yp1]) # min max Y1
+        min2, max2 = np.min([y2, yp2]), np.max([y2, yp2]) # min max Y2
+        levels1 = np.linspace(min1, max1, 13, endpoint=True)
+        levels2 = np.linspace(min2, max2, 13, endpoint=True)
+        y1_mae = np.abs(y1 - yp1)
+        y2_mae = np.abs(y2 - yp2)
         gso_mae = np.abs(gso - gsop)
-        lev0 = np.linspace(0, 10.0, 13, endpoint=True)
-        lev1 = np.linspace(0, 1.0, 13, endpoint=True) 
+        lev0 = np.linspace(0, 100.0, 13, endpoint=True)
+        lev1 = np.linspace(0, 10.0, 13, endpoint=True) 
         lev2 = np.linspace(0, 0.1, 13, endpoint=True)
         lev3 = np.linspace(0, 0.01, 13, endpoint=True)
-        ε = 1e-12
 
-        # im00 = axs[0,0].contourf(rr, zz, y1, blevels)
-        im00 = axs[0,0].scatter(rr, zz, c=y1, s=4, vmin=bmin, vmax=bmax)
+        lw3, col3 = 1.5, 'gray'
+        im00 = axs[0,0].scatter(rr, zz, c=y1, s=4, vmin=min1, vmax=max1)
+        axs[0,0].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3)
         axs[0,0].set_title("Actual")
         axs[0,0].set_aspect('equal')
-        axs[0,0].set_ylabel("ψ")
+        axs[0,0].set_ylabel("Y1")
         fig.colorbar(im00, ax=axs[0,0]) 
-        # im01 = axs[0,1].contourf(rr, zz, yp1, blevels)
-        im01 = axs[0,1].scatter(rr, zz, c=yp1, s=4, vmin=bmin, vmax=bmax)
+        im01 = axs[0,1].scatter(rr, zz, c=yp1, s=4, vmin=min1, vmax=max1)
+        axs[0,1].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
         axs[0,1].set_title("Predicted")
         fig.colorbar(im01, ax=axs[0,1])
-        im02 = axs[0,2].contour(rr, zz, y1, blevels, linestyles='dashed')
-        axs[0,2].contour(rr, zz, yp1, blevels)
+        im02 = axs[0,2].contour(rr, zz, y1, levels1, linestyles='dashed')
+        axs[0,2].contour(rr, zz, yp1, levels1)
         axs[0,2].set_title("Contours")
         fig.colorbar(im02, ax=axs[0,2])
-        # im03 = axs[0,3].contourf(rr, zz, np.clip(ψ_mae, lev2[0]+ε, lev2[-1]-ε), lev2)
-        im03 = axs[0,3].scatter(rr, zz, c=ψ_mae, s=4, vmin=lev2[0], vmax=lev2[-1])
+        im03 = axs[0,3].scatter(rr, zz, c=y1_mae, s=4, vmin=lev2[0], vmax=lev2[-1])
+        axs[0,3].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3, linestyle='dashed')
+        axs[0,3].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
         axs[0,3].set_title(f"MAE {lev2[-1]}")
         fig.colorbar(im03, ax=axs[0,3])
-        # im04 = axs[0,4].contourf(rr, zz, np.clip(ψ_mae, lev3[0]+ε, lev3[-1]-ε), lev3)
-        im04 = axs[0,4].scatter(rr, zz, c=ψ_mae, s=4, vmin=lev3[0], vmax=lev3[-1])
+        im04 = axs[0,4].scatter(rr, zz, c=y1_mae, s=4, vmin=lev3[0], vmax=lev3[-1])
+        axs[0,4].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3, linestyle='dashed')
+        axs[0,4].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
         axs[0,4].set_title(f"MAE {lev3[-1]}")
         fig.colorbar(im04, ax=axs[0,4])
 
-        # im10 = axs[1,0].contourf(rr, zz, gso, gso_levels)
-        im10 = axs[1,0].scatter(rr, zz, c=gso, s=4, vmin=gso_min, vmax=gso_max)
-        axs[1,0].set_ylabel("GSO")
+        im10 = axs[1,0].scatter(rr, zz, c=y2, s=4, vmin=gso_min, vmax=gso_max)
+        axs[1,0].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3)
+        axs[1,0].set_ylabel("Y2")
         fig.colorbar(im10, ax=axs[1,0])
-        # im11 = axs[1,1].contourf(rr, zz, gsop, gso_levels)
-        im11 = axs[1,1].scatter(rr, zz, c=gsop, s=4, vmin=gso_min, vmax=gso_max)
+        im11 = axs[1,1].scatter(rr, zz, c=yp2, s=4, vmin=gso_min, vmax=gso_max)
+        axs[1,1].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
         fig.colorbar(im11, ax=axs[1,1])
-        im12 = axs[1,2].contour(rr, zz, gso, gso_levels, linestyles='dashed')
-        axs[1,2].contour(rr, zz, gsop, gso_levels)
+        im12 = axs[1,2].contour(rr, zz, y2, levels2, linestyles='dashed')
+        axs[1,2].contour(rr, zz, yp2, levels2)
         fig.colorbar(im12, ax=axs[1,2])
-        # im13 = axs[1,3].contourf(rr, zz, np.clip(gso_mae, lev0[0]+ε, lev0[-1]-ε), lev0)
-        im13 = axs[1,3].scatter(rr, zz, c=gso_mae, s=4, vmin=lev0[0], vmax=lev0[-1])
+        im13 = axs[1,3].scatter(rr, zz, c=y2_mae, s=4, vmin=lev0[0], vmax=lev0[-1])
+        axs[1,3].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3, linestyle='dashed')
+        axs[1,3].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
         fig.colorbar(im13, ax=axs[1,3])
-        # im14 = axs[1,4].contourf(rr, zz, np.clip(gso_mae, lev1[0]+ε, lev1[-1]-ε), lev1)
-        im14 = axs[1,4].scatter(rr, zz, c=gso_mae, s=4, vmin=lev1[0], vmax=lev1[-1])
+        im14 = axs[1,4].scatter(rr, zz, c=y2_mae, s=4, vmin=lev1[0], vmax=lev1[-1])
+        axs[1,4].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3, linestyle='dashed')
+        axs[1,4].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
         fig.colorbar(im14, ax=axs[1,4])
 
         for ax in axs.flatten(): 
