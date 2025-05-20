@@ -243,11 +243,8 @@ def test_network_io(verbose=True):
     # single sample
     x, r, z = (torch.rand(1, NIN), torch.rand(1, NGR), torch.rand(1, NGZ))
     input_net, grid_net, flux_head1, flux_head2, lcfs_head = InputNet(), GridNet(), FluxHead(), FluxHead(), LCFSHead()
-    input_net.test = 'lol'
     liuqenet = LiuqeNet(input_net, grid_net, flux_head1, flux_head2, lcfs_head)
     lcsfnet = LCFSNet(input_net, lcfs_head)
-    print(liuqenet.input_net.test)
-    print(lcsfnet.input_net.test)
     y1, y2, y3 = liuqenet(x, r, z)
     assert y1.shape == (1, 1, NGZ, NGR), f"Wrong output shape: {y1.shape}"
     assert y2.shape == (1, 1, NGZ, NGR), f"Wrong output shape: {y2.shape}"
@@ -255,8 +252,8 @@ def test_network_io(verbose=True):
     y = lcsfnet(x)
     assert y.shape == (1, NLCFS*2), f"Wrong output shape: {y.shape}"
     assert torch.allclose(y3, y), "y3 and y are not equal"
-    if v: print(f"LiuqeNet -> in: {x.shape}, {r.shape}, {z.shape}, \nout: {y1.shape}, {y2.shape}, {y3.shape}")
-    if v: print(f"LCFSNet -> in: {x.shape}, \nout: {y.shape}")
+    if v: print(f"LiuqeNet -> in: {x.shape}, {r.shape}, {z.shape}, \n            out: {y1.shape}, {y2.shape}, {y3.shape}")
+    if v: print(f"LCFSNet  -> in: {x.shape}, \n            out: {y.shape}")
     # batched
     n_sampl = 7
     nx, r, z = torch.rand(n_sampl, NIN), torch.rand(n_sampl, NGR), torch.rand(n_sampl, NGZ)
@@ -266,8 +263,8 @@ def test_network_io(verbose=True):
     assert ny3.shape == (n_sampl, NLCFS*2), f"Wrong output shape: {ny3.shape}"
     ny = lcsfnet(nx)
     assert ny.shape == (n_sampl, NLCFS*2), f"Wrong output shape: {ny.shape}"
-    if v: print(f"LiuqeNet -> in: {nx.shape}, {r.shape}, {z.shape}, \nout: {ny1.shape}, {ny2.shape}, {ny3.shape}")
-    if v: print(f"LCFSNet -> in: {nx.shape}, \nout: {ny.shape}")
+    if v: print(f"LiuqeNet -> in: {nx.shape}, {r.shape}, {z.shape}, \n            out: {ny1.shape}, {ny2.shape}, {ny3.shape}")
+    if v: print(f"LCFSNet  -> in: {nx.shape}, \n            out: {ny.shape}")
 
 # function to load the dataset
 def load_ds(ds_path):
