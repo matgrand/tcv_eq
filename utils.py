@@ -41,7 +41,7 @@ except:
     JOBID = "local"
     LOCAL = True
 print(f"Running JOBID: {JOBID}, on {DEV}, GPU_MEM: {GPU_MEM/1e9 if DEV != CPU else 0}GB")
-
+SAVE_DIR = f"data/{JOBID}"
 
 from scipy.interpolate import RegularGridInterpolator
 # INTERP_METHOD = 'linear' # fast, but less accurate
@@ -55,9 +55,10 @@ TRAIN_DS_PATH = f'{DS_DIR}/train_ds.npz'
 EVAL_DS_PATH = f'{DS_DIR}/eval_ds.npz'
 
 # paths to the best models
-BEST_MODEL_TOT = 'best_tot.pth' 
-BEST_MODEL_MSE = 'best_mse.pth'
-BEST_MODEL_GSO = 'best_gso.pth'
+LOSS_NAMES = ['l1', 'l2', 'l3', 'gso'] # loss names
+def model_path(loss_name, save_dir=SAVE_DIR):
+    assert loss_name in LOSS_NAMES, f"loss_name should be one of {LOSS_NAMES}, got {loss_name}"
+    return f"{save_dir}/best_{loss_name}.pth"
 
 CURR_EVAL_MODEL = 'data/2539240/best_mse.pth' # path to the 'best' model so far
 # CURR_EVAL_MODEL = 'data/local/best_mse.pth' # path to the 'best' model so far
@@ -525,9 +526,9 @@ def test_plot_vessel():
     plt.savefig(f"{TEST_DIR}/vessel.png")
     # plt.close()s
 
-def plot_network_outputs(save_dir, ds:LiuqeDataset, model:Module, title="test"):
+def plot_network_outputs(ds:LiuqeDataset, model:Module, title="test"):
     model.eval()
-    os.makedirs(f"{save_dir}/imgs", exist_ok=True)
+    os.makedirs(f"{SAVE_DIR}/imgs", exist_ok=True)
     for i in np.random.randint(0, len(ds), 2 if LOCAL else 50):  
         fig, axs = plt.subplots(2, 5, figsize=(15, 9))
         x, r, z, y1, y2, y3 = ds[i]
