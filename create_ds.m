@@ -11,8 +11,7 @@ N_SHOTS = END_SHOT-START_SHOT; % Number of shots to process
 % OUT_DIR = 'ds'; % testing
 OUT_DIR = '/NoTivoli/grandin/ds'; % more space available
 
-DECIMATION = 6; % Decimation factor for the time vector
-% DECIMATION = 60; % Decimation factor for the time vector
+DECIMATION = 4; % 6 Decimation factor for the time vector
 
 MIN_TIME_SAMPLES = 10; % Minimum number of time samples to keep the shot
 MAX_IP_PERC_DIFF = 2.5; % Maximum percentage difference between IPLIUQE and IP
