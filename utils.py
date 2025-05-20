@@ -40,7 +40,7 @@ except:
         GPU_MEM = 16 * 1024**3  # 16 GB in bytes
     JOBID = "local"
     LOCAL = True
-print(f"Running JOBID: {JOBID}, on {DEV}, GPU_MEM: {GPU_MEM/1e9 if DEV != CPU else 0}GB")
+print(f"Running JOBID: {JOBID}, on {DEV}, GPU_MEM: {GPU_MEM/1e9:.2f} GB" if DEV != CPU else f"Running JOBID: {JOBID}, on cpu")
 SAVE_DIR = f"data/{JOBID}"
 
 from scipy.interpolate import RegularGridInterpolator
