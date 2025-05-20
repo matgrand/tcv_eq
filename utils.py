@@ -613,7 +613,7 @@ def plot_network_outputs(ds:LiuqeDataset, model:Module, title="test"):
         plt.suptitle(f"[{JOBID}] LiuqeNet: {title} {i}")
 
         plt.tight_layout()
-        plt.show() if LOCAL else plt.savefig(f"{save_dir}/imgs/net_example_{title}_{i}.png")
+        plt.show() if LOCAL else plt.savefig(f"{SAVE_DIR}/imgs/net_example_{title}_{i}.png")
         
         plt.close()
         return
