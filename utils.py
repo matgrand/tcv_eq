@@ -522,7 +522,7 @@ def test_plot_vessel():
     plt.savefig(f"{TEST_DIR}/vessel.png")
     # plt.close()s
 
-def plot_network_outputs(ds:LiuqeDataset, model:Module, title="test"):
+def plot_network_outputs(ds:LiuqeDataset, model:LiuqeNet, title="test"):
     model.eval()
     os.makedirs(f"{SAVE_DIR}/imgs", exist_ok=True)
     for i in np.random.randint(0, len(ds), 2 if LOCAL else 50):  
@@ -616,6 +616,39 @@ def plot_network_outputs(ds:LiuqeDataset, model:Module, title="test"):
         
         plt.close()
         return
+    
+def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
+    model.eval()
+    os.makedirs(f"{SAVE_DIR}/imgs", exist_ok=True)
+    lw3 = 1.5
+    for i in np.random.randint(0, len(ds), 5 if LOCAL else 50):  
+        plt.figure(figsize=(8, 5))
+        x,y3 = ds[i][0].to('cpu'), ds[i][5].to('cpu')
+        x = x.reshape(1,-1)
+        yp3 = model(x)
+        yp3 = yp3.detach().numpy().reshape(2*NLCFS)
+        y3 = y3.detach().numpy().reshape(2*NLCFS)
+        error = np.abs(y3 - yp3)
+        plt.subplot(1, 2, 1)
+        plt.plot(y3[:NLCFS], y3[NLCFS:], lw=lw3, label='actual')
+        plt.plot(yp3[:NLCFS], yp3[NLCFS:], lw=lw3, label='predicted')
+        plot_vessel()
+        plt.title("LCFS"); plt.axis('equal')
+        plt.xlabel("R"); plt.ylabel("Z"); plt.legend()
+        plt.subplot(1, 2, 2)
+        # plot_vessel()
+        # plt.plot(yp3[:NLCFS], yp3[NLCFS:], lw=lw3, label='predicted')
+        plt.scatter(y3[:NLCFS], y3[NLCFS:], c=error[:NLCFS], s=6, vmin=0, vmax=0.1)
+        plt.colorbar()
+        plt.title("LCFS MAE"); plt.axis('equal')
+        plt.xlabel("R"); plt.ylabel("Z"); plt.legend()
+        plt.suptitle(f"[{JOBID}] LCFSNet: {title} {i}")
+        plt.tight_layout()
+        plt.show() if LOCAL else plt.savefig(f"{SAVE_DIR}/imgs/lcfs_example_{title}_{i}.png")
+        plt.close()
+    return
+
+
 
 if __name__ == '__main__':
     test_network_io()
