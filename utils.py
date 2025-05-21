@@ -619,20 +619,23 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
     os.makedirs(f"{SAVE_DIR}/imgs", exist_ok=True)
     lw3 = 1.5
     for i in np.random.randint(0, len(ds), 5 if LOCAL else 50):  
-        plt.figure(figsize=(15, 9))
+        plt.figure(figsize=(15, 5))
         x, y3 = ds[i][0].to(CPU), ds[i][5].to(CPU)
         x = x.reshape(1, -1)
         yp3 = model(x)
         yp3 = yp3.detach().numpy().reshape(2 * NLCFS)
         y3 = y3.detach().numpy().reshape(2 * NLCFS)
         # convert to 2d points
-        y3 = np.array([y3[:NLCFS], y3[NLCFS:]])
-        yp3 = np.array([yp3[:NLCFS], yp3[NLCFS:]])
+        y3 = np.array([y3[:NLCFS], y3[NLCFS:]]).T
+        yp3 = np.array([yp3[:NLCFS], yp3[NLCFS:]]).T
         print(f"y3.shape = {y3.shape}, yp3.shape = {yp3.shape}")
-        err = np.linalg.norm(y3 - yp3, axis=0)
-        print(f"err.shape = {err.shape}")
+        err = np.linalg.norm(y3 - yp3, axis=-1)
+        norm_err = err / np.max(err)
+        # Map errors to colors using the viridis colormap
+        err_colors = np.array([plt.cm.viridis(norm_err[j]) for j in range(NLCFS)])
+        print(f"err_colors.shape = {err_colors.shape}")
 
-        plt.subplot(1, 2, 1)
+        plt.subplot(1, 3, 1)
         plt.plot(y3[:,0], y3[:,1], lw=lw3, label='actual')
         plt.plot(yp3[:,0], yp3[:,1], lw=lw3, label='predicted')
         plot_vessel()
@@ -640,15 +643,29 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
         plt.axis('equal')
         plt.xlabel("R")
         plt.ylabel("Z")
-        plt.legend()
-        plt.subplot(1, 2, 2)
-        plt.scatter(y3[:,0], y3[:,1], c=err, s=6, cmap='viridis')
-        plt.colorbar()
+        plt.legend(loc='upper right')
+
+        plt.subplot(1, 3, 2)
+        plt.plot(y3[:,0], y3[:,1], lw=1, color='white', alpha=0.6)
+        plt.plot(yp3[:,0], yp3[:,1], lw=1, color='white', alpha=0.6)
+        sc = plt.scatter(y3[:,0], y3[:,1], c=err, s=12, cmap='viridis')
+        plt.colorbar(sc)
+        plt.title("LCFS MAE")
+        plt.axis('equal')
+        plt.xlabel("R")
+        plt.ylabel("Z")
+
+        plt.subplot(1, 3, 3)
+        plt.plot(y3[:,0], y3[:,1], lw=1, color='white', alpha=0.6)
+        plt.plot(yp3[:,0], yp3[:,1], lw=1, color='white', alpha=0.6)
+        for j in range(NLCFS):
+            plt.plot([y3[j,0], yp3[j,0]], [y3[j,1], yp3[j,1]], color=err_colors[j], lw=2)
         plt.title("LCFS MAE")
         plt.axis('equal')
         plt.xlabel("R")
         plt.ylabel("Z")
         plt.legend()
+
         plt.suptitle(f"[{JOBID}] LCFSNet: {title} {i}")
         plt.tight_layout()
         plt.show() if LOCAL else plt.savefig(f"{SAVE_DIR}/imgs/lcfs_example_{title}_{i}.png")
