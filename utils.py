@@ -551,7 +551,10 @@ def plot_network_outputs(ds:LiuqeDataset, model:LiuqeNet, title="test"):
         y2_mae = np.abs(y2 - yp2)
         gso_mae = np.abs(gso - gsop)
         lev0 = np.linspace(0, 100.0, 13, endpoint=True)
-        lev1 = np.linspace(0, 10.0, 13, end2639434
+        lev1 = np.linspace(0, 10.0, 13, endpoint=True) 
+        lev2 = np.linspace(0, 0.1, 13, endpoint=True)
+        lev3 = np.linspace(0, 0.01, 13, endpoint=True)
+
         lw3, col3 = 1.5, 'gray'
         im00 = axs[0,0].scatter(rr, zz, c=y1, s=4, vmin=min1, vmax=max1)
         axs[0,0].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3)
