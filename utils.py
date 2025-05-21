@@ -150,8 +150,8 @@ class ActF(Module): # swish
 #         x = x.view(-1, 1, self.ngr, self.ngz) # reshape to grid
 #         return x
 
-PHYSICS_LS = 56 # physics latent size [ph]
-GRID_LS = 48 # grid latent size [gr]
+PHYSICS_LS = 32 # physics latent size [ph]
+GRID_LS = 32 # grid latent size [gr]
 assert GRID_LS % 2 == 0, "grid latent size should be even"
 
 class InputNet(Module): # input -> latent physics vector [x -> ph]
@@ -175,9 +175,12 @@ class GridNet(Module): # grid -> latent grid vector [r,z,ph -> gr]
                 Linear(32, GRID_LS//2), ActF(),
             )
         self.grid_r, self.grid_z = grid_block(NGR), grid_block(NGZ)
+        # self.phys2grid = Sequential(
+        #     Linear(PHYSICS_LS, 16), ActF(),
+        #     Linear(16, GRID_LS), ActF(),
+        # )
         self.phys2grid = Sequential(
-            Linear(PHYSICS_LS, 16), ActF(),
-            Linear(16, GRID_LS), ActF(),
+            Linear(PHYSICS_LS, GRID_LS), ActF(),
         )
     def forward(self, r, z, ph):
         r, z = self.grid_r(r), self.grid_z(z) 
@@ -203,9 +206,9 @@ class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
     def __init__(self):
         super(LCFSHead, self).__init__()
         self.lcfs = Sequential(
-            Linear(PHYSICS_LS, 64), ActF(),
-            Linear(64, 64), ActF(),
-            Linear(64, NLCFS*2), ActF(),
+            Linear(PHYSICS_LS, 32), ActF(),
+            Linear(32, 32), ActF(),
+            Linear(32, NLCFS*2), ActF(),
         )
     def forward(self, ph): return self.lcfs(ph)
 
