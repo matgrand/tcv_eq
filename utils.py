@@ -44,8 +44,8 @@ print(f"Running JOBID: {JOBID}, on {DEV}, GPU_MEM: {GPU_MEM/1e9:.2f} GB" if DEV 
 SAVE_DIR = f"data/{JOBID}"
 
 from scipy.interpolate import RegularGridInterpolator
-# INTERP_METHOD = 'linear' # fast, but less accurate
-INTERP_METHOD = 'quintic' # slowest, but most accurate
+INTERP_METHOD = 'linear' # fast, but less accurate
+# INTERP_METHOD = 'quintic' # slowest, but most accurate
 if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which is fast but less accurate')
 
 # DS_DIR = 'dss/ds' # where the final dataset will be stored
@@ -626,25 +626,33 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
     lw3 = 1.5
     for i in np.random.randint(0, len(ds), 5 if LOCAL else 50):  
         plt.figure(figsize=(8, 5))
-        x,y3 = ds[i][0].to('cpu'), ds[i][5].to('cpu')
-        x = x.reshape(1,-1)
+        x, y3 = ds[i][0].to('cpu'), ds[i][5].to('cpu')
+        x = x.reshape(1, -1)
         yp3 = model(x)
-        yp3 = yp3.detach().numpy().reshape(2*NLCFS)
-        y3 = y3.detach().numpy().reshape(2*NLCFS)
+        yp3 = yp3.detach().numpy().reshape(2 * NLCFS)
+        y3 = y3.detach().numpy().reshape(2 * NLCFS)
         error = np.abs(y3 - yp3)
         plt.subplot(1, 2, 1)
         plt.plot(y3[:NLCFS], y3[NLCFS:], lw=lw3, label='actual')
         plt.plot(yp3[:NLCFS], yp3[NLCFS:], lw=lw3, label='predicted')
         plot_vessel()
-        plt.title("LCFS"); plt.axis('equal')
-        plt.xlabel("R"); plt.ylabel("Z"); plt.legend()
+        plt.title("LCFS")
+        plt.axis('equal')
+        plt.xlabel("R")
+        plt.ylabel("Z")
+        plt.legend()
         plt.subplot(1, 2, 2)
         # plot_vessel()
         # plt.plot(yp3[:NLCFS], yp3[NLCFS:], lw=lw3, label='predicted')
-        plt.scatter(y3[:NLCFS], y3[NLCFS:], c=error[:NLCFS], s=6, vmin=0, vmax=0.1)
+        plt.scatter(
+            y3[:NLCFS], y3[NLCFS:], c=error[:NLCFS], s=6, vmin=0, vmax=0.1, cmap='viridis'
+        )
         plt.colorbar()
-        plt.title("LCFS MAE"); plt.axis('equal')
-        plt.xlabel("R"); plt.ylabel("Z"); plt.legend()
+        plt.title("LCFS MAE")
+        plt.axis('equal')
+        plt.xlabel("R")
+        plt.ylabel("Z")
+        plt.legend()
         plt.suptitle(f"[{JOBID}] LCFSNet: {title} {i}")
         plt.tight_layout()
         plt.show() if LOCAL else plt.savefig(f"{SAVE_DIR}/imgs/lcfs_example_{title}_{i}.png")
