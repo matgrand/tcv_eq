@@ -643,9 +643,10 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
         plt.legend(loc='upper right')
 
         plt.subplot(1, 3, 2)
-        plt.plot(y3[:,0], y3[:,1], lw=1, color='white', alpha=0.6)
-        plt.plot(yp3[:,0], yp3[:,1], lw=1, color='white', alpha=0.6)
-        sc = plt.scatter(y3[:,0], y3[:,1], c=err, s=20, cmap='viridis')
+        α = 0.8
+        plt.plot(y3[:,0], y3[:,1], lw=1, color='white', alpha=α)
+        plt.plot(yp3[:,0], yp3[:,1], lw=1, color='white', alpha=α)
+        sc = plt.scatter(yp3[:,0], yp3[:,1], c=err, s=20, cmap='viridis')
         plt.colorbar(sc)
         plt.title("LCFS MAE")
         plt.axis('equal')
@@ -653,8 +654,8 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
         plt.ylabel("Z")
 
         plt.subplot(1, 3, 3)
-        plt.plot(y3[:,0], y3[:,1], lw=1, color='white', alpha=0.6)
-        plt.plot(yp3[:,0], yp3[:,1], lw=1, color='white', alpha=0.6)
+        plt.plot(y3[:,0], y3[:,1], lw=1, color='white', alpha=α)
+        plt.plot(yp3[:,0], yp3[:,1], lw=1, color='white', alpha=α)
         for j in range(NLCFS):
             plt.plot([y3[j,0], yp3[j,0]], [y3[j,1], yp3[j,1]], color=err_colors[j], lw=2)
         plt.title("LCFS MAE")
