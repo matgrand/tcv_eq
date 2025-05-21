@@ -12,6 +12,9 @@
 #include <limits.h> // For PATH_MAX (to define buffer size for readlink)
 
 
+const int NET_INPUT_SIZE = 2; // Expected input size for the model
+const int NET_OUTPUT_SIZE = 3; // Expected output size for the model
+
 // ONNX Runtime global objects, similar to how 'module' was global for LibTorch
 Ort::Env ort_env(ORT_LOGGING_LEVEL_WARNING, "net_forward_mex_env"); // Initialize once
 Ort::SessionOptions session_options;
@@ -42,8 +45,7 @@ static void cleanup_session() {
     // global_input_name_str and global_output_name_str too.
 }
 
-
-// Loads the ONNX session once. Corresponds to 'load_module_once'
+// Loads the ONNX session once
 void load_session_once(std::filesystem::path model_path) {
     if (!session_loaded) {
         try {
@@ -145,11 +147,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     // Get input dimensions and data pointer
     size_t n_elements = mxGetNumberOfElements(prhs[0]);
     
-    // For the model nn.Linear(2,3), input must be (BatchSize, 2)
-    // MATLAB's [1.0, 2.0] is 1x2 (row vector) or 2x1 (column vector), n_elements = 2.
-    // The Python script used x.reshape(1,2). We maintain this expectation.
-    if (n_elements != 2) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidInputSize", "Input must have 2 elements for a Linear(2,3) model.");
+    if (n_elements != NET_INPUT_SIZE) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidInputSize", "Input size must be %d, but got %zu.", NET_INPUT_SIZE, n_elements);
     }
 
     double* input_data_ptr_matlab = mxGetPr(prhs[0]);
@@ -184,28 +183,27 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     std::vector<int64_t> output_dims = output_shape_info.GetShape();
     size_t output_total_elements = output_shape_info.GetElementCount();
 
+    if (output_total_elements != NET_OUTPUT_SIZE) {
+        std::string err_msg = "Output size mismatch: expected %d, but got %zu.";
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputSize", err_msg.c_str(), NET_OUTPUT_SIZE, output_total_elements);
+    }
+
     // Create MATLAB output matrix
     // Original code: plhs[0] = mxCreateDoubleMatrix(1, output_tensor.numel(), mxREAL);
     // This implies the output is expected to be a row vector in MATLAB.
     // For a Linear(2,3) model with input [1,2], output is [1,3].
     if (output_dims.size() == 2 && output_dims[0] == 1) { // Standard case: [1, N]
         plhs[0] = mxCreateDoubleMatrix(output_dims[0], output_dims[1], mxREAL);
-    } else if (output_dims.size() == 1) { // If ONNX output is 1D vector [N], create as [1, N] MATLAB matrix
-        plhs[0] = mxCreateDoubleMatrix(1, output_dims[0], mxREAL);
-    } else {
-        // For more complex N-D shapes, mxCreateNumericArray would be needed.
-        // This simplified handling matches the original's apparent expectation.
-        std::string shape_str;
-        for(size_t i=0; i<output_dims.size(); ++i) shape_str += std::to_string(output_dims[i]) + (i == output_dims.size()-1 ? "" : "x");
-        std::string err_msg = "Output tensor shape {" + shape_str + "} is not the expected [1,N] or [N] for simple MATLAB matrix creation.";
-        mexErrMsgIdAndTxt("MATLAB:net_forward:unsupportedOutputDim", err_msg.c_str());
+    } else { // generate error if the output is not [1, N]
+        // This is a simple check; you can add more sophisticated checks if needed.
+        std::string err_msg = "Output tensor shape is not compatible with MATLAB: expected [1, N], but got [%zu, %zu].";
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", err_msg.c_str(), output_dims[0], output_dims[1]);
     }
     
-    double* output_matlab_ptr = mxGetPr(plhs[0]);
-    const double* inferred_output_data_ptr = output_onnx_tensor_ref.GetTensorData<double>();
+    double* output_matlab_ptr = mxGetPr(plhs[0]); // Get pointer to MATLAB output matrix
+    const double* inferred_output_data_ptr = output_onnx_tensor_ref.GetTensorData<double>(); // Get pointer to ONNX output tensor data
 
     // Copy data from ONNX tensor to MATLAB matrix
-    // Original: std::memcpy(output_data_ptr, output_contiguous.data_ptr<double>(), output_contiguous.numel() * sizeof(double));
     std::memcpy(output_matlab_ptr, inferred_output_data_ptr, output_total_elements * sizeof(double));
     
     // Ort::Value objects in output_ort_tensors (and their underlying data buffers if owned by ONNX Runtime)
