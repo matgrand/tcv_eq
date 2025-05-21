@@ -535,10 +535,7 @@ def plot_network_outputs(ds:LiuqeDataset, model:LiuqeNet, title="test"):
         x, r, z, y1, y2, y3 = x.reshape(1,-1), r.reshape(1,NGR), z.reshape(1,NGZ), y1.reshape(1,1,NGZ,NGR), y2.reshape(1,1,NGZ,NGR), y3.reshape(1,2*NLCFS)
         yp1, yp2, yp3 = model(x, r, z)
         gso, gsop = calc_gso_batch(y1, r, z), calc_gso_batch(yp1, r, z)
-        gso, gsop = gso.detach().numpy().reshape(NGZ,NGR), gsop.detach().numpy().reshape(NGZ,NGR)
-        gso_min, gso_max = np.min([gso, gsop]), np.max([gso, gsop])
-        gso_levels = np.linspace(gso_min, gso_max, 13, endpoint=True)
-        
+        gso, gsop = gso.detach().numpy().reshape(NGZ,NGR), gsop.detach().numpy().reshape(NGZ,NGR)        
         rr, zz = np.meshgrid(r.detach().cpu().numpy(), z.detach().cpu().numpy())
         yp1 = yp1.detach().numpy().reshape(NGZ,NGR)
         y1 = y1.detach().numpy().reshape(NGZ,NGR)
@@ -613,12 +610,10 @@ def plot_network_outputs(ds:LiuqeDataset, model:LiuqeNet, title="test"):
 
         #suptitle
         plt.suptitle(f"[{JOBID}] LiuqeNet: {title} {i}")
-
         plt.tight_layout()
         plt.show() if LOCAL else plt.savefig(f"{SAVE_DIR}/imgs/net_example_{title}_{i}.png")
-        
         plt.close()
-        return
+    return
     
 def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
     model.eval()
