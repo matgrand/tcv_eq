@@ -648,7 +648,7 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
         plt.subplot(1, 3, 2)
         plt.plot(y3[:,0], y3[:,1], lw=1, color='white', alpha=0.6)
         plt.plot(yp3[:,0], yp3[:,1], lw=1, color='white', alpha=0.6)
-        sc = plt.scatter(y3[:,0], y3[:,1], c=err, s=12, cmap='viridis')
+        sc = plt.scatter(y3[:,0], y3[:,1], c=err, s=20, cmap='viridis')
         plt.colorbar(sc)
         plt.title("LCFS MAE")
         plt.axis('equal')
@@ -664,7 +664,6 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
         plt.axis('equal')
         plt.xlabel("R")
         plt.ylabel("Z")
-        plt.legend()
 
         plt.suptitle(f"[{JOBID}] LCFSNet: {title} {i}")
         plt.tight_layout()
