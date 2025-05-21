@@ -60,9 +60,8 @@ def model_path(loss_name, save_dir=SAVE_DIR):
     assert loss_name in LOSS_NAMES, f"loss_name should be one of {LOSS_NAMES}, got {loss_name}"
     return f"{save_dir}/best_{loss_name}.pth"
 
-CURR_EVAL_MODEL = 'data/2539240/best_mse.pth' # path to the 'best' model so far
-# CURR_EVAL_MODEL = 'data/local/best_mse.pth' # path to the 'best' model so far
-STRICT_LOAD = False # for loading the weights, should be true, but for testing varying architectures, set to false
+CURR_EVAL_MODEL = 'data/2637760/best_l3.pth' # path to the 'best' model so far
+STRICT_LOAD = True # for loading the weights, should be true, but for testing varying architectures, set to false
 
 TEST_DIR = 'test' if LOCAL else '/nfsd/automatica/grandinmat/test'
 os.makedirs(TEST_DIR, exist_ok=True)
@@ -151,8 +150,8 @@ class ActF(Module): # swish
 #         x = x.view(-1, 1, self.ngr, self.ngz) # reshape to grid
 #         return x
 
-PHYSICS_LS = 48 # physics latent size [ph]
-GRID_LS = 32 # grid latent size [gr]
+PHYSICS_LS = 56 # physics latent size [ph]
+GRID_LS = 48 # grid latent size [gr]
 assert GRID_LS % 2 == 0, "grid latent size should be even"
 
 class InputNet(Module): # input -> latent physics vector [x -> ph]
@@ -160,8 +159,8 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
         super(InputNet, self).__init__()
         self.input_net = Sequential(
             Linear(NIN, 64), ActF(),
-            Linear(64, 32), ActF(),
-            Linear(32, PHYSICS_LS), ActF(),
+            Linear(64, 64), ActF(),
+            Linear(64, PHYSICS_LS), ActF(),
         )
     def forward(self, x): 
         ph = self.input_net(x)
@@ -205,8 +204,8 @@ class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
         super(LCFSHead, self).__init__()
         self.lcfs = Sequential(
             Linear(PHYSICS_LS, 64), ActF(),
-            Linear(64, 32), ActF(),
-            Linear(32, NLCFS*2), ActF(),
+            Linear(64, 64), ActF(),
+            Linear(64, NLCFS*2), ActF(),
         )
     def forward(self, ph): return self.lcfs(ph)
 
@@ -582,11 +581,11 @@ def plot_network_outputs(ds:LiuqeDataset, model:Module, title="test"):
         axs[0,4].set_title(f"MAE {lev3[-1]}")
         fig.colorbar(im04, ax=axs[0,4])
 
-        im10 = axs[1,0].scatter(rr, zz, c=y2, s=4, vmin=gso_min, vmax=gso_max)
+        im10 = axs[1,0].scatter(rr, zz, c=y2, s=4, vmin=min2, vmax=max2)
         axs[1,0].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3)
         axs[1,0].set_ylabel("Y2")
         fig.colorbar(im10, ax=axs[1,0])
-        im11 = axs[1,1].scatter(rr, zz, c=yp2, s=4, vmin=gso_min, vmax=gso_max)
+        im11 = axs[1,1].scatter(rr, zz, c=yp2, s=4, vmin=min2, vmax=max2)
         axs[1,1].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
         fig.colorbar(im11, ax=axs[1,1])
         im12 = axs[1,2].contour(rr, zz, y2, levels2, linestyles='dashed')
