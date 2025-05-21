@@ -628,12 +628,9 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
         # convert to 2d points
         y3 = np.array([y3[:NLCFS], y3[NLCFS:]]).T
         yp3 = np.array([yp3[:NLCFS], yp3[NLCFS:]]).T
-        print(f"y3.shape = {y3.shape}, yp3.shape = {yp3.shape}")
         err = np.linalg.norm(y3 - yp3, axis=-1)
         norm_err = err / np.max(err)
-        # Map errors to colors using the viridis colormap
         err_colors = np.array([plt.cm.viridis(norm_err[j]) for j in range(NLCFS)])
-        print(f"err_colors.shape = {err_colors.shape}")
 
         plt.subplot(1, 3, 1)
         plt.plot(y3[:,0], y3[:,1], lw=lw3, label='actual')
