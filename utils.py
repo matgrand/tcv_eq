@@ -103,7 +103,7 @@ if not LOCAL: # Redefine the print function to always flush
 
 ####################################################################################################
 ## torch stuff
-def to_tensor(x, device=torch.device("cpu")): return torch.tensor(x, dtype=torch.float32, device=device)
+def to_tensor(x, device=torch.device(CPU)): return torch.tensor(x, dtype=torch.float32, device=device)
 
 # custom trainable swish activation function
 class ActF(Module): # swish
@@ -113,7 +113,7 @@ class ActF(Module): # swish
     def forward(self, x): return x*torch.sigmoid(self.beta*x)
 
 # # network architecture
-# class LiuqeNet(Module): # Paper net: branch + trunk conenction and everything
+# class LiuqeNet(Module): 
 #     def __init__(self, latent_size=32):
 #         super(LiuqeNet, self).__init__()
 #         assert latent_size % 2 == 0, "latent size should be even"
@@ -410,19 +410,19 @@ def calc_laplace_df_dr_ker(hr, hz):
     return laplace_ker, dr_ker
 
 #calculate the Grad-Shafranov operator pytorch
-def laplace_ker(Δr, Δz, α, dev=torch.device("cpu")): # [[0, Δr**2/α, 0], [Δz**2/α, 1, Δz**2/α], [0, Δr**2/α, 0]]
+def laplace_ker(Δr, Δz, α, dev=torch.device(CPU)): # [[0, Δr**2/α, 0], [Δz**2/α, 1, Δz**2/α], [0, Δr**2/α, 0]]
     kr, kz = Δr**2/α, Δz**2/α
     ker = torch.zeros(len(Δr),1, 3, 3, dtype=torch.float32, device=dev)
     ker[:,0,0,1], ker[:,0,1,0], ker[:,0,1,2], ker[:,0,2,1], ker[:,0,1,1] = kr, kz, kz, kr, 1
     return ker
    
-def dr_ker(Δr, Δz, α, dev=torch.device("cpu")): # [[0,0,0],[-1,0,+1],[0,0,0]] * (Δr**2 * Δz**2) / (2*Δr*α)
+def dr_ker(Δr, Δz, α, dev=torch.device(CPU)): # [[0,0,0],[-1,0,+1],[0,0,0]] * (Δr**2 * Δz**2) / (2*Δr*α)
     ker = torch.zeros(len(Δr),1, 3, 3, dtype=torch.float32, device=dev)
     k = (Δr**2 * Δz**2) / (2*Δr*α)
     ker[:,0,1,0], ker[:,0,1,2] = -k, k
     return ker
 
-def gauss_ker(dev=torch.device("cpu")):
+def gauss_ker(dev=torch.device(CPU)):
     # ker = torch.tensor([[1,2,1],[2,4,2],[1,2,1]], dtype=torch.float32, device=dev).view(1,1,3,3) / 16
     ker = torch.tensor([[1,4,6,4,1],[4,16,24,16,4],[6,24,36,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=torch.float32, device=dev).view(1,1,5,5) / 256
     return ker
@@ -445,7 +445,7 @@ def calc_gso(ψ, r, z):
     Ψ, r, z = torch.tensor(ψ).view(1,1,sΨ2,sΨ3), torch.tensor(r).view(1,sr), torch.tensor(z).view(1,sz)
     return calc_gso_batch(Ψ, r, z).numpy()[0,0]
 
-def calc_gso_batch(Ψ, r, z, dev=torch.device('cpu')):
+def calc_gso_batch(Ψ, r, z, dev=torch.device(CPU)):
     assert r.ndim == 2, f'r.ndim = {r.ndim}, r.shape = {r.shape}'
     assert z.ndim == 2, f'z.ndim = {z.ndim}, z.shape = {z.shape}'
     assert r.shape[1] == NGR, f'r.shape[1] = {r.shape[1]}, NGR = {NGR}'
@@ -531,7 +531,7 @@ def plot_network_outputs(ds:LiuqeDataset, model:LiuqeNet, title="test"):
     for i in np.random.randint(0, len(ds), 2 if LOCAL else 50):  
         fig, axs = plt.subplots(2, 5, figsize=(15, 9))
         x, r, z, y1, y2, y3 = ds[i]
-        x, r, z, y1, y2, y3 = map(lambda x: x.to('cpu'), [x,r,z,y1,y2,y3])
+        x, r, z, y1, y2, y3 = map(lambda x: x.to(CPU), [x,r,z,y1,y2,y3])
         x, r, z, y1, y2, y3 = x.reshape(1,-1), r.reshape(1,NGR), z.reshape(1,NGZ), y1.reshape(1,1,NGZ,NGR), y2.reshape(1,1,NGZ,NGR), y3.reshape(1,2*NLCFS)
         yp1, yp2, yp3 = model(x, r, z)
         gso, gsop = calc_gso_batch(y1, r, z), calc_gso_batch(yp1, r, z)
@@ -549,7 +549,6 @@ def plot_network_outputs(ds:LiuqeDataset, model:LiuqeNet, title="test"):
         levels2 = np.linspace(min2, max2, 13, endpoint=True)
         y1_mae = np.abs(y1 - yp1)
         y2_mae = np.abs(y2 - yp2)
-        gso_mae = np.abs(gso - gsop)
         lev0 = np.linspace(0, 100.0, 13, endpoint=True)
         lev1 = np.linspace(0, 10.0, 13, endpoint=True) 
         lev2 = np.linspace(0, 0.1, 13, endpoint=True)
@@ -621,7 +620,7 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
     lw3 = 1.5
     for i in np.random.randint(0, len(ds), 5 if LOCAL else 50):  
         plt.figure(figsize=(8, 5))
-        x, y3 = ds[i][0].to('cpu'), ds[i][5].to('cpu')
+        x, y3 = ds[i][0].to(CPU), ds[i][5].to(CPU)
         x = x.reshape(1, -1)
         yp3 = model(x)
         yp3 = yp3.detach().numpy().reshape(2 * NLCFS)
@@ -639,9 +638,7 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
         plt.subplot(1, 2, 2)
         # plot_vessel()
         # plt.plot(yp3[:NLCFS], yp3[NLCFS:], lw=lw3, label='predicted')
-        plt.scatter(
-            y3[:NLCFS], y3[NLCFS:], c=error[:NLCFS], s=6, vmin=0, vmax=0.1, cmap='viridis'
-        )
+        plt.scatter(y3[:NLCFS], y3[NLCFS:], c=error[:NLCFS], s=6, vmin=0, vmax=0.1, cmap='viridis')
         plt.colorbar()
         plt.title("LCFS MAE")
         plt.axis('equal')
