@@ -17,3 +17,4 @@ onnxruntime*
 net.onnx
 onnx_net_forward/*
 .vscode/
+*.DS_Store
