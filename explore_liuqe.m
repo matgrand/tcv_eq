@@ -74,7 +74,7 @@ for plot_idx = 1:numel(good_ip_idxs)
     % Subplot 3: Heatmap of Fx at plot_idx
     subplot(3, 2, 3)
     imagesc(Fx(:, :, plot_idx))
-    colorbar
+    colorbar8
     xlabel('R')
     ylabel('Z')
     title('Poloidal flux map (Fx)')
