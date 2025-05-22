@@ -549,10 +549,10 @@ def plot_network_outputs(ds:LiuqeDataset, model:LiuqeNet, title="test"):
         levels2 = np.linspace(min2, max2, 13, endpoint=True)
         y1_mae = np.abs(y1 - yp1)
         y2_mae = np.abs(y2 - yp2)
-        lev0 = np.linspace(0, 100.0, 13, endpoint=True)
-        lev1 = np.linspace(0, 10.0, 13, endpoint=True) 
-        lev2 = np.linspace(0, 0.1, 13, endpoint=True)
-        lev3 = np.linspace(0, 0.01, 13, endpoint=True)
+        lev0 = np.linspace(0, 1.0, 13, endpoint=True)
+        lev1 = np.linspace(0, 0.1, 13, endpoint=True) 
+        lev2 = np.linspace(0, 1.0, 13, endpoint=True)
+        lev3 = np.linspace(0, 0.1, 13, endpoint=True)
 
         lw3, col3 = 1.5, 'gray'
         im00 = axs[0,0].scatter(rr, zz, c=y1, s=4, vmin=min1, vmax=max1)
