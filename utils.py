@@ -529,7 +529,7 @@ def plot_network_outputs(ds:LiuqeDataset, model:LiuqeNet, title="test"):
     model.eval()
     os.makedirs(f"{SAVE_DIR}/imgs", exist_ok=True)
     for i in np.random.randint(0, len(ds), 2 if LOCAL else 50):  
-        fig, axs = plt.subplots(2, 5, figsize=(15, 9))
+        fig, axs = plt.subplots(2, 5, figsize=(16, 9))
         x, r, z, y1, y2, y3 = ds[i]
         x, r, z, y1, y2, y3 = map(lambda x: x.to(CPU), [x,r,z,y1,y2,y3])
         x, r, z, y1, y2, y3 = x.reshape(1,-1), r.reshape(1,NGR), z.reshape(1,NGZ), y1.reshape(1,1,NGZ,NGR), y2.reshape(1,1,NGZ,NGR), y3.reshape(1,2*NLCFS)
@@ -619,7 +619,7 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
     os.makedirs(f"{SAVE_DIR}/imgs", exist_ok=True)
     lw3 = 1.5
     for i in np.random.randint(0, len(ds), 5 if LOCAL else 50):  
-        plt.figure(figsize=(15, 5))
+        plt.figure(figsize=(16, 9))
         x, y3 = ds[i][0].to(CPU), ds[i][5].to(CPU)
         x = x.reshape(1, -1)
         yp3 = model(x)
