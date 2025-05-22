@@ -6,7 +6,7 @@ try
     x = [3.0, 5.0];
 
     % net_forward_mex([pwd 'onnx_net_forward/net.onnx']); % to load the model
-    y = net_forward_mex(x);
+    y = net_forward_mex(single(x));
 
     % print x and y
     fprintf('x -> [ %s ]\n', num2str(x, '%+.4f '));
@@ -18,17 +18,21 @@ try
     % warmup
     for i = 1:10
         x = rand(1, 2);
-        y = net_forward_mex(x);
+        y = net_forward_mex(single(x));
     end
     times = zeros(1, N);
+    ttot = tic;
     for i = 1:N
         x = rand(1, 2);
-        tic
-        y = net_forward_mex(x);
-        times(i) = toc;
+        t1 = tic;
+        y = net_forward_mex(single(x));
+        times(i) = toc(t1);
     end
+    ttot = toc(ttot);
     fprintf('Inference time -> %.1f ± %.1f [μs] | max %.1f [μs]\n', ...
         mean(times) * 1e6, std(times) * 1e6, max(times) * 1e6);
+    fprintf('Total time -> %.1f [s]\n', ttot);
+    fprintf('Frequency -> %.1f [μs] | %.1f [Hz]\n', 1e6*ttot/N, N/ttot);
 
     % plot histogram
     figure;
