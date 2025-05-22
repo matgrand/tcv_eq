@@ -135,8 +135,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         return; // Exit after loading the session
     } else {
         // Check input type
-        if (!mxIsDouble(prhs[0])) {
-            mexErrMsgIdAndTxt("MATLAB:net_forward:inputNotDouble", "Input must be a double array.");
+        if (!mxIsSingle(prhs[0])) {
+            mexErrMsgIdAndTxt("MATLAB:net_forward:inputNotSingle", "Input must be a single array.");
         }
     }
     
@@ -151,13 +151,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         mexErrMsgIdAndTxt("MATLAB:net_forward:invalidInputSize", "Input size must be %d, but got %zu.", NET_INPUT_SIZE, n_elements);
     }
 
-    double* input_data_ptr_matlab = mxGetPr(prhs[0]);
+    float* input_data_ptr_matlab = (float*)mxGetData(prhs[0]);
 
     // Create ONNX Runtime input tensor from MATLAB data
     std::vector<int64_t> input_tensor_shape = {1, (long int)n_elements}; // Expected shape {1, 2}
     Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
     
-    Ort::Value input_ort_tensor = Ort::Value::CreateTensor<double>(
+    Ort::Value input_ort_tensor = Ort::Value::CreateTensor<float>(
         memory_info, input_data_ptr_matlab, n_elements,
         input_tensor_shape.data(), input_tensor_shape.size()
     );
@@ -176,8 +176,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     Ort::TensorTypeAndShapeInfo output_shape_info = output_onnx_tensor_ref.GetTensorTypeAndShapeInfo();
     ONNXTensorElementDataType output_type = output_shape_info.GetElementType();
 
-    if (output_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:unexpectedOutputType", "Output tensor is not double type as expected by this MEX function.");
+    if (output_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:unexpectedOutputType", "Output tensor is not float type as expected by this MEX function.");
     }
 
     std::vector<int64_t> output_dims = output_shape_info.GetShape();
@@ -193,18 +193,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     // This implies the output is expected to be a row vector in MATLAB.
     // For a Linear(2,3) model with input [1,2], output is [1,3].
     if (output_dims.size() == 2 && output_dims[0] == 1) { // Standard case: [1, N]
-        plhs[0] = mxCreateDoubleMatrix(output_dims[0], output_dims[1], mxREAL);
+        plhs[0] = mxCreateNumericMatrix(output_dims[0], output_dims[1], mxSINGLE_CLASS, mxREAL);
     } else { // generate error if the output is not [1, N]
         // This is a simple check; you can add more sophisticated checks if needed.
         std::string err_msg = "Output tensor shape is not compatible with MATLAB: expected [1, N], but got [%zu, %zu].";
         mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", err_msg.c_str(), output_dims[0], output_dims[1]);
     }
     
-    double* output_matlab_ptr = mxGetPr(plhs[0]); // Get pointer to MATLAB output matrix
-    const double* inferred_output_data_ptr = output_onnx_tensor_ref.GetTensorData<double>(); // Get pointer to ONNX output tensor data
+    float* output_matlab_ptr = (float*)mxGetData(plhs[0]); // Get pointer to MATLAB output matrix
+    const float* inferred_output_data_ptr = output_onnx_tensor_ref.GetTensorData<float>(); // Get pointer to ONNX output tensor data
 
     // Copy data from ONNX tensor to MATLAB matrix
-    std::memcpy(output_matlab_ptr, inferred_output_data_ptr, output_total_elements * sizeof(double));
+    std::memcpy(output_matlab_ptr, inferred_output_data_ptr, output_total_elements * sizeof(float));
     
     // Ort::Value objects in output_ort_tensors (and their underlying data buffers if owned by ONNX Runtime)
     // are managed. They will be destructed when output_ort_tensors goes out of scope.
