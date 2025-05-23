@@ -169,11 +169,9 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
         x = (x - self.x_mean_std[0]) / self.x_mean_std[1] # normalize
         ph = self.input_net(x)
         return ph
-    # rewrite the to function to move also the mean and std to the device
     def to(self, device):
         super(InputNet, self).to(device)
         self.x_mean_std = self.x_mean_std.to(device)
-        print(f"InputNet moved to {device}")
         return self
 
 class GridNet(Module): # grid -> latent grid vector [r,z,ph -> gr]
