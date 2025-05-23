@@ -155,14 +155,18 @@ GRID_LS = 32 # grid latent size [gr]
 assert GRID_LS % 2 == 0, "grid latent size should be even"
 
 class InputNet(Module): # input -> latent physics vector [x -> ph]
-    def __init__(self):
+    def __init__(self, x_mean_std=torch.tensor([[0.0]*NIN, [1.0]*NIN], dtype=torch.float32)):
         super(InputNet, self).__init__()
+        assert x_mean_std.shape == (2, NIN), f"x_mean_std.shape = {x_mean_std.shape}, NIN = {NIN}"
+        self.x_mean_std = x_mean_std
         self.input_net = Sequential(
             Linear(NIN, 64), ActF(),
             Linear(64, 64), ActF(),
             Linear(64, PHYSICS_LS), ActF(),
         )
     def forward(self, x): 
+        assert x.shape[1] == NIN, f"x.shape[1] = {x.shape[1]}, NIN = {NIN}"
+        x = (x - self.x_mean_std[0]) / self.x_mean_std[1] # normalize
         ph = self.input_net(x)
         return ph
 
@@ -279,29 +283,32 @@ def load_ds(ds_path):
     Y1 =  d["Y1"] # (n, NGZ, NGZ) # outputs: magnetic flux
     Y2 =  d["Y2"] # (n, NGZ, NGZ) # outputs: curr density
     Y3 =  d["Y3"] # (n, NLCFS*2) # outputs: last closed flux surface (LCFS)
-    return X, r, z, Y1, Y2, Y3
+    x_mean_std = d["x_mean_std"] # (2, NIN) # mean and std of the inputs
+    return X, r, z, Y1, Y2, Y3, x_mean_std
 
 ####################################################################################################
 class LiuqeDataset(Dataset):
     def __init__(self, ds_mat_path, verbose=True):
-        X, r, z, Y1, Y2, Y3 = map(to_tensor, load_ds(ds_mat_path))
+        X, r, z, Y1, Y2, Y3, x_mean_std = map(to_tensor, load_ds(ds_mat_path))
         Y1 = Y1.view(-1,1,NGZ,NGR)
         Y2 = Y2.view(-1,1,NGZ,NGR)
         self.data = [X, r, z, Y1, Y2, Y3]
-        tot_memory_ds = sum([x.element_size()*x.nelement() for x in self.data])
         # move to DEV (doable bc the dataset is fairly small, check memory usage)
-        self.on_dev = DEV != CPU and tot_memory_ds < GPU_MEM
+        tot_memory_ds = sum([x.element_size()*x.nelement() for x in self.data])
+        gpu_free_mem = torch.cuda.mem_get_info()[0] if DEV == CUDA else np.inf
+        self.on_dev = DEV != CPU and tot_memory_ds < gpu_free_mem
         if self.on_dev: self.data = [x.to(DEV) for x in self.data]
+        self.x_mean_std = x_mean_std.to(DEV) if self.on_dev else x_mean_std
         if verbose: print(f"Dataset: N:{len(self)}, memory:{tot_memory_ds/1e6}MB, on_dev:{self.on_dev}")
     def __len__(self): return len(self.data[0])
     def __getitem__(self, idx): return [x[idx] for x in self.data]
 
-def test_dataset():
-    print("test_dataset")
-    ds = LiuqeDataset(EVAL_DS_PATH)
-    print(f"Dataset length: {len(ds)}")
-    print(f"Inputs: X -> {ds[0][0].shape}, r -> {ds[0][1].shape}, z -> {ds[0][2].shape}")
-    print(f"Outputs: Y1 -> {ds[0][3].shape}, Y2 -> {ds[0][4].shape}, Y3 -> {ds[0][5].shape}")
+def test_dataset(ds:LiuqeDataset, verbose=True):
+    if verbose:
+        print("test_dataset")
+        print(f"Dataset length: {len(ds)}")
+        print(f"Inputs: X -> {ds[0][0].shape}, r -> {ds[0][1].shape}, z -> {ds[0][2].shape}")
+        print(f"Outputs: Y1 -> {ds[0][3].shape}, Y2 -> {ds[0][4].shape}, Y3 -> {ds[0][5].shape}")
     n_plot = 10
     print(len(ds))
     idxs = np.random.randint(0, len(ds), n_plot)
@@ -330,7 +337,8 @@ def test_dataset():
     # now do the same fot the input:
     fig, axs = plt.subplots(1, n_plot, figsize=(3*n_plot, 5))
     for i, j in enumerate(idxs):
-        inputs = ds[j][0].cpu().numpy().squeeze()
+        inputs = ds[j][0].cpu()
+        inputs = ((ds[j][0] - ds.x_mean_std[0]) / ds.x_mean_std[1]).cpu().numpy().squeeze() # normalize
         if USE_CURRENTS: axs[i].plot(inputs[:19], label="currents")
         if USE_MAGNETIC: axs[i].plot(inputs[19:57], label="magnetic")
         if USE_PROFILES: axs[i].plot(inputs[57:], label="profiles")
@@ -673,7 +681,6 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
 
 if __name__ == '__main__':
     test_network_io()
-    test_dataset()
     test_plot_vessel()
     if LOCAL: plt.show()
 

@@ -2,18 +2,29 @@
 try
     addpath([pwd '/onnx_net_forward']);
 
+    d = load('dss/demo.mat'); % load demo data (should be in DS_DIR/demo.mat , DS_DIR defined in utils.py)
+
+    size(d.X)
+    size(d.Y)
+
+
     NIN = 95;
     NLCFS = 129;
 
     %% test with simplified inputs
     % x = [3.0, 5.0];
-    x = 1:NIN;
+    % x = 1:95;
+    x = d.X(1, :); % 1st row of demo data
 
     % net_forward_mex([pwd 'onnx_net_forward/net.onnx']); % to load the model
     y = net_forward_mex(single(x));
+
+    y_true = d.Y(1, :); % 1st row of demo data
+
     % print first 5 elements of x and y
-    fprintf('x  -> [ %s ]\n', num2str(x(1:min(5,end)), '%+.4f '));
-    fprintf('y  -> [ %s ]\n', num2str(y(1:min(5,end)), '%+.4f '));
+    fprintf('x      -> [ %s ]\n', num2str(x(1:min(5,end)), '%+.4f '));
+    fprintf('y      -> [ %s ]\n', num2str(y(1:min(5,end)), '%+.4f '));
+    fprintf('y_true -> [ %s ]\n', num2str(y_true(1:min(5,end)), '%+.4f '));
 
     N = 100000;
     fprintf('Testing inference time for %d iterations...\n', N);
