@@ -541,6 +541,7 @@ def test_plot_vessel():
 
 def plot_network_outputs(ds:LiuqeDataset, model:LiuqeNet, title="test"):
     model.eval()
+    model.to(CPU)
     os.makedirs(f"{SAVE_DIR}/imgs", exist_ok=True)
     for i in np.random.randint(0, len(ds), 2 if LOCAL else 50):  
         fig, axs = plt.subplots(2, 5, figsize=(16, 9))
