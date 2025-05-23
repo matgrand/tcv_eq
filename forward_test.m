@@ -4,22 +4,35 @@ try
 
     d = load('dss/demo.mat'); % load demo data (should be in DS_DIR/demo.mat , DS_DIR defined in utils.py)
 
-    size(d.X)
-    size(d.Y)
-
-
     NIN = 95;
     NLCFS = 129;
 
     %% test with simplified inputs
     % x = [3.0, 5.0];
     % x = 1:95;
-    x = d.X(1, :); % 1st row of demo data
+
+    rand_i = randi([1, size(d.X, 1)], 1, 1);
+
+    x = d.X(rand_i, :); % 1st row of demo data
 
     % net_forward_mex([pwd 'onnx_net_forward/net.onnx']); % to load the model
     y = net_forward_mex(single(x));
 
-    y_true = d.Y(1, :); % 1st row of demo data
+    y_true = d.Y(rand_i, :); % 1st row of demo data
+
+    % plot y and y_true on a 2d plot
+    figure;
+    plot(y(1:NLCFS), y(NLCFS+1:end), 'r', 'LineWidth', 2);
+    hold on;
+    plot(y_true(1:NLCFS), y_true(NLCFS+1:end), 'b', 'LineWidth', 2);
+    title('y and y_true');
+    xlabel('x');
+    ylabel('y');
+    legend('y', 'y\_true');
+    grid on;
+    axis equal;
+    % save figure
+    saveas(gcf, 'test/matlab_inference.png');
 
     % print first 5 elements of x and y
     fprintf('x      -> [ %s ]\n', num2str(x(1:min(5,end)), '%+.4f '));
@@ -38,7 +51,7 @@ try
     ys = zeros(N, 2*NLCFS);
     ttot = tic;
     for i = 1:N
-        x = rand(1, NIN);
+        x = d.X(randi([1, size(d.X, 1)], 1, 1), :); % randomize input
         t1 = tic;
         y = net_forward_mex(single(x));
         times(i) = toc(t1);
