@@ -44,8 +44,8 @@ print(f"Running JOBID: {JOBID}, on {DEV}, GPU_MEM: {GPU_MEM/1e9:.2f} GB" if DEV 
 SAVE_DIR = f"data/{JOBID}"
 
 from scipy.interpolate import RegularGridInterpolator
-# INTERP_METHOD = 'linear' # fast, but less accurate
-INTERP_METHOD = 'quintic' # slowest, but most accurate
+INTERP_METHOD = 'linear' # fast, but less accurate
+# INTERP_METHOD = 'quintic' # slowest, but most accurate
 if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which is fast but less accurate')
 
 # DS_DIR = 'dss/ds' # where the final dataset will be stored
