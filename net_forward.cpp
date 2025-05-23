@@ -12,8 +12,8 @@
 #include <limits.h> // For PATH_MAX (to define buffer size for readlink)
 
 
-const int NET_INPUT_SIZE = 2; // Expected input size for the model
-const int NET_OUTPUT_SIZE = 3; // Expected output size for the model
+const int NET_INPUT_SIZE = 95; // Expected input size for the model
+const int NET_OUTPUT_SIZE = 258; // Expected output size for the model
 
 // ONNX Runtime global objects, similar to how 'module' was global for LibTorch
 Ort::Env ort_env(ORT_LOGGING_LEVEL_WARNING, "net_forward_mex_env"); // Initialize once

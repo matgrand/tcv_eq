@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import os
+from utils import NIN, NLCFS
 
 # get the output directory path from the environment variable ONNX_NET_FORWARD_DIR
 output_dir = os.environ.get('ONNX_NET_FORWARD_DIR')
@@ -21,13 +22,13 @@ class TestNet(torch.nn.Module):
     def __init__(self):
         super(TestNet, self).__init__()
         self.lin = torch.nn.Sequential(
-            torch.nn.Linear(2, 95), ActF(),
+            torch.nn.Linear(NIN, 95), ActF(),
             torch.nn.Linear(95, 64), ActF(),
             torch.nn.Linear(64, 64), ActF(),
             torch.nn.Linear(64, 64), ActF(),
             torch.nn.Linear(64, 64), ActF(),
             torch.nn.Linear(64, 258), ActF(),
-            torch.nn.Linear(258, 3), ActF(),
+            torch.nn.Linear(258, 2*NLCFS), ActF(),
         )
         # with torch.no_grad(): # fill with 1 for reproducibility
         #     for m in self.modules():
@@ -41,15 +42,16 @@ class TestNet(torch.nn.Module):
 net = TestNet()
 # net = net.double()
 net.eval()
-x = torch.tensor([3.0,5.0], dtype=my_dtype).reshape(1,2)
+# x = torch.tensor([3.0,5.0], dtype=my_dtype).reshape(1,2)
+x = torch.arange(1, NIN+1, dtype=my_dtype).reshape(1, -1)
 y = net(x).detach()
 np.set_printoptions(precision=4, suppress=True, sign='+')
 x, y = x.numpy().reshape(-1), y.numpy().reshape(-1)
-print(f'x -> {x}')
-print(f'y -> {y}')
+print(f'x -> {x[:5]}')
+print(f'y -> {y[:5]}')
 
 # convert to onnx
-dummy_input = torch.randn(1, 2, dtype=my_dtype)
+dummy_input = torch.randn(1, NIN, dtype=my_dtype)
 torch.onnx.export(net, dummy_input, f'{output_dir}/net.onnx', export_params=True,
                   opset_version=12, do_constant_folding=True,
                   input_names=['x'], output_names=['y'])
@@ -59,9 +61,9 @@ from time import time
 from tqdm import tqdm
 N = 100_000
 ts = np.zeros(N)
-ys = np.zeros((N, 3))
+ys = np.zeros((N, 2*NLCFS))
 for i in tqdm(range(N), leave=False):
-    x = torch.randn(1, 2, dtype=my_dtype)
+    x = torch.randn(1, NIN, dtype=my_dtype)
     start = time()
     y = net(x).detach()
     ts[i] = time() - start

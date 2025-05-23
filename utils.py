@@ -60,7 +60,7 @@ def model_path(loss_name, save_dir=SAVE_DIR):
     assert loss_name in LOSS_NAMES, f"loss_name should be one of {LOSS_NAMES}, got {loss_name}"
     return f"{save_dir}/best_{loss_name}.pth"
 
-CURR_EVAL_MODEL = 'data/2637760/best_l3.pth' # path to the 'best' model so far
+BEST_MODEL_DIR = 'data/best/' # where the best models are saved
 STRICT_LOAD = True # for loading the weights, should be true, but for testing varying architectures, set to false
 
 TEST_DIR = 'test' if LOCAL else '/nfsd/automatica/grandinmat/test'
