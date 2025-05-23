@@ -237,6 +237,10 @@ class LiuqeNet(Module): # Liuqe net
         y2 = self.flux_head2(gr)
         y3 = self.lcfs_head(ph)
         return y1, y2, y3
+    def to(self, device):
+        super(LiuqeNet, self).to(device)
+        self.input_net.to(device)
+        return self
         
 class LCFSNet(Module): # LCFS net
     def __init__(self, input_net:InputNet, lcfs_head:LCFSHead):
@@ -247,6 +251,10 @@ class LCFSNet(Module): # LCFS net
         ph = self.input_net(x)
         lcfs = self.lcfs_head(ph)
         return lcfs
+    def to(self, device):
+        super(LCFSNet, self).to(device)
+        self.input_net.to(device)
+        return self
 
     
 def test_network_io(verbose=True):
