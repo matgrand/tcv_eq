@@ -637,6 +637,7 @@ def plot_network_outputs(ds:LiuqeDataset, model:LiuqeNet, title="test"):
     
 def plot_lcfs_net_out(ds:LiuqeDataset, model:LCFSNet, title='test'):
     model.eval()
+    model.to(CPU)
     os.makedirs(f"{SAVE_DIR}/imgs", exist_ok=True)
     lw3 = 1.5
     for i in np.random.randint(0, len(ds), 5 if LOCAL else 50):  
