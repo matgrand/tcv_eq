@@ -127,13 +127,13 @@ for i = 1:length(shots)
         assert(all(size(zq) == [129, nt]), 'zq has wrong size');
 
         fprintf('\tBm0 size: %s, Bm1 size: %s\n', mat2str(size(Bm0)), mat2str(size(Bm1)));
-        assert(all(size(Bm0) == size(Bm1) == [38, nt]), 'Bm has wrong size');
-        assert(all(size(Ff0) == size(Ff1) == [38, nt]), 'Ff has wrong size');
-        assert(all(size(Ft0) == size(Ft1) == [1, nt]), 'Ft has wrong size');
-        assert(all(size(Ia0) == size(Ia1) == [19, nt]), 'Ia has wrong size');
-        assert(all(size(Ip0) == size(Ip1) == [1, nt]), 'Ip has wrong size');
-        assert(all(size(Iu0) == size(Iu1) == [38, nt]), 'Iu has wrong size');
-        assert(all(size(rBt0) == size(rBt1) == [1, nt]), 'rBt has wrong size');
+        assert(all(size(Bm0) == size(Bm1) & size(Bm1) == [38, nt]), 'Bm has wrong size');
+        assert(all(size(Ff0) == size(Ff1) & size(Ff1) == [38, nt]), 'Ff has wrong size');
+        assert(all(size(Ft0) == size(Ft1) & size(Ft1) == [1, nt]), 'Ft has wrong size');
+        assert(all(size(Ia0) == size(Ia1) & size(Ia1) == [19, nt]), 'Ia has wrong size');
+        assert(all(size(Ip0) == size(Ip1) & size(Ip1) == [1, nt]), 'Ip has wrong size');
+        assert(all(size(Iu0) == size(Iu1) & size(Iu1) == [38, nt]), 'Iu has wrong size');
+        assert(all(size(rBt0) == size(rBt1) & size(rBt1) == [1, nt]), 'rBt has wrong size');
         
         % filter out the NaN/Inf values [MILD]
         % mFx  = reshape(all(all(~isnan(Fx) & ~isinf(Fx),1),2), [],1);
