@@ -42,10 +42,26 @@ try
     N = 100000;
     fprintf('Testing inference time for %d iterations...\n', N);
     % evaluate inference time in 10k iterations
-    % warmup
+    % warmup + plotting
     for i = 1:10
-        x = rand(1, NIN);
+        x = d.X(i, :); 
+        y_true = d.Y(i, :); 
         y = net_forward_mex(single(x));
+
+        % plot y and y_true on a 2d plot
+        figure;
+        plot(y(1:NLCFS), y(NLCFS+1:end), 'r', 'LineWidth', 2);
+        hold on;
+        plot(y_true(1:NLCFS), y_true(NLCFS+1:end), 'b', 'LineWidth', 2);
+        title('y and y_true');
+        xlabel('x');
+        ylabel('y');
+        legend('y', 'y\_true');
+        grid on;
+        axis equal;
+        % save figure
+        saveas(gcf, sprintf('test/matlab_inference_%d.png', i));
+
     end
     times = zeros(1, N);
     ys = zeros(N, 2*NLCFS);
