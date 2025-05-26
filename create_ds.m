@@ -137,25 +137,25 @@ for i = 1:length(shots)
         
         % filter out the NaN/Inf values [MILD]
         % mFx  = reshape(all(all(~isnan(Fx) & ~isinf(Fx),1),2), [],1);
-        mFx  = all(all(~isnan(Fx) & ~isinf(Fx),1),2);
-        mIy  = all(all(~isnan(Iy) & ~isinf(Iy),1),2);
-        mrq = all(~isnan(rq) & ~isinf(rq), 1);
-        mzq = all(~isnan(zq) & ~isinf(zq), 1);
+        mFx = reshape(all(all(~isnan(Fx) & ~isinf(Fx),1),2), [], 1);
+        mIy = reshape(all(all(~isnan(Iy) & ~isinf(Iy),1),2), [], 1);
+        mrq = reshape(all(~isnan(rq) & ~isinf(rq), 1), [], 1);
+        mzq = reshape(all(~isnan(zq) & ~isinf(zq), 1), [], 1);
 
-        mBm0 = all(~isnan(Bm0) & ~isinf(Bm0), 1);
-        mBm1 = all(~isnan(Bm1) & ~isinf(Bm1), 1);
-        mFf0 = all(~isnan(Ff0) & ~isinf(Ff0), 1);
-        mFf1 = all(~isnan(Ff1) & ~isinf(Ff1), 1);
-        mFt0 = ~isnan(Ft0) & ~isinf(Ft0);
-        mFt1 = ~isnan(Ft1) & ~isinf(Ft1);
-        mIa0 = all(~isnan(Ia0) & ~isinf(Ia0), 1);
-        mIa1 = all(~isnan(Ia1) & ~isinf(Ia1), 1);
-        mIp0 = ~isnan(Ip0) & ~isinf(Ip0);
-        mIp1 = ~isnan(Ip1) & ~isinf(Ip1);
-        mIu0 = all(~isnan(Iu0) & ~isinf(Iu0), 1);
-        mIu1 = all(~isnan(Iu1) & ~isinf(Iu1), 1);
-        mrBt0 = ~isnan(rBt0) & ~isinf(rBt0);
-        mrBt1 = ~isnan(rBt1) & ~isinf(rBt1);
+        mBm0 = reshape(all(~isnan(Bm0) & ~isinf(Bm0), 1), [], 1);
+        mBm1 = reshape(all(~isnan(Bm1) & ~isinf(Bm1), 1), [], 1);
+        mFf0 = reshape(all(~isnan(Ff0) & ~isinf(Ff0), 1), [], 1);
+        mFf1 = reshape(all(~isnan(Ff1) & ~isinf(Ff1), 1), [], 1);
+        mFt0 = reshape(~isnan(Ft0) & ~isinf(Ft0), [], 1);
+        mFt1 = reshape(~isnan(Ft1) & ~isinf(Ft1), [], 1);
+        mIa0 = reshape(all(~isnan(Ia0) & ~isinf(Ia0), 1), [], 1);
+        mIa1 = reshape(all(~isnan(Ia1) & ~isinf(Ia1), 1), [], 1);
+        mIp0 = reshape(~isnan(Ip0) & ~isinf(Ip0), [], 1);
+        mIp1 = reshape(~isnan(Ip1) & ~isinf(Ip1), [], 1);
+        mIu0 = reshape(all(~isnan(Iu0) & ~isinf(Iu0), 1), [], 1);
+        mIu1 = reshape(all(~isnan(Iu1) & ~isinf(Iu1), 1), [], 1);
+        mrBt0 = reshape(~isnan(rBt0) & ~isinf(rBt0), [], 1);
+        mrBt1 = reshape(~isnan(rBt1) & ~isinf(rBt1), [], 1);
 
         valid = mFx & mIy & mrq & mzq & ...
             mBm0 & mBm1 & mFf0 & mFf1 & mFt0 & mFt1 & ...
