@@ -17,7 +17,7 @@ from scipy.io import loadmat, savemat
 
 import torch
 import torch.nn.functional as F
-from torch.nn import Module, Linear, Conv2d, MaxPool2d, BatchNorm2d, ReLU, Sequential, ConvTranspose2d
+from torch.nn import Module, Linear, Conv2d, MaxPool2d, BatchNorm2d, ReLU, Sequential, ConvTranspose2d, Tanh
 from torch.utils.data import Dataset
 
 import builtins
@@ -162,7 +162,7 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
         self.input_net = Sequential(
             Linear(NIN, 64), ActF(),
             Linear(64, 64), ActF(),
-            Linear(64, PHYSICS_LS), ActF(),
+            Linear(64, PHYSICS_LS), Tanh(),
         )
     def forward(self, x): 
         assert x.shape[1] == NIN, f"x.shape[1] = {x.shape[1]}, NIN = {NIN}"
