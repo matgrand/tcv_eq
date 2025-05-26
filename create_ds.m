@@ -64,6 +64,7 @@ for i = 1:length(shots)
         
         t = LY.t; % time vector
         [t2, ip2] = tcvget('IP', t); % calculated using magnetics at liuqe times
+	t2 = t2';	
 
         % last closed flux surface (LCFS) (unfortunately it's not in mds2meq outputs (yet))
         rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
@@ -75,14 +76,15 @@ for i = 1:length(shots)
 
         % analyze the time vector
         assert(max(abs(t2 - t)) < 1e-8, 'Time vectors do not coincide');
-	    assert(numel(t) > 1, sprintf('Time vector has insufficient elements: t1:%s', mat2str(size(t1))));
+	assert(numel(t) > 1, sprintf('Time vector has insufficient elements: t:%s', mat2str(size(t))));
         nt = numel(t); % number of time samples
-        t_diff = abs(t1 - t2);
-        fprintf('\ttime steps -> n: %d, mean: %.2f [µs], std: %.2f [µs]\n', numel(t1), mean(diff(t1) * 1e6), std(diff(t1) * 1e6));
+        t_diff = abs(t - t2);
+        fprintf('\ttime steps -> n: %d, mean: %.2f [µs], std: %.2f [µs]\n', numel(t), mean(diff(t) * 1e6), std(diff(t) * 1e6));
         assert(max(t_diff) < 1e-8, 'Times do not coincide');
         
         % analyze the plasma current
-        ip1 = LY.Ip; % IPLIUQE
+        ip1 = LY.Ip'; % IPLIUQE
+	assert(all(size(ip1) == size(ip2)), 'Ip sizes wrong');
         avg_ip = mean(abs(ip2));
         ip_diff = abs(ip1 - ip2);
         avg_diff = mean(ip_diff);
