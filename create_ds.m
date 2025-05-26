@@ -4,8 +4,8 @@ clear all; close all; clc;
 
 START_SHOT = 77662; % Dec 2022, https://spcwiki.epfl.ch/wiki/Alma_database
 END_SHOT = 85804; % April 2025
-% N_SHOTS = 100; % Number of shots to process
-N_SHOTS = END_SHOT-START_SHOT; % Number of shots to process
+N_SHOTS = 100; % Number of shots to process
+% N_SHOTS = END_SHOT-START_SHOT; % Number of shots to process
 
 % Directory to save the output .mat files
 % OUT_DIR = 'ds'; % testing
@@ -52,165 +52,198 @@ for i = 1:length(shots)
     fprintf('\x1b[33mProcessing shot %d (%d of %d)\x1b[0m\n', shot, i, length(shots));
 
     try 
-    
         mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
-        [t, ip1] = tcvget('IPLIUQE'); % precalculated using liuqe
-        ip1_mds = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');
-
-        assert(~isempty(t), 'No time vector found');
-        assert(numel(t) > 1, sprintf('Time vector has insufficient elements: t:%s', mat2str(size(t))));
-        
-        % fprintf('\tIPLIUQE size: %s, IPLIUQE (MDS) size: %s\n', mat2str(size(ip1)), mat2str(size(ip1_mds)));
-        assert(all(size(ip1) == size(ip1_mds)), 'IPLIUQE and IPLIUQE (MDS) have different sizes');
-        assert(max(abs(ip1 - ip1_mds)) < 1e-8, 'IPLIUQE and IPLIUQE (MDS) are different');
-
-        [t2, ip2] = tcvget('IP', t); % calculated using magnetics at liuqe times
+        [t1, ip1] = tcvget('IPLIUQE'); % precalculated using liuqe
+        assert(nt > 1, sprintf('Time vector has insufficient elements: t1:%s', mat2str(size(t1))));
+        [t2, ip2] = tcvget('IP', t1); % calculated using magnetics at liuqe times
         
         % analyze the time vector
-        t_diff = abs(t - t2);
-        fprintf('\ttime steps -> n: %d, mean: %.2f [µs], std: %.2f [µs]\n', numel(t), mean(diff(t) * 1e6), std(diff(t) * 1e6));
-        % fprintf('\t# of time samples: %d\n', numel(t));
-        % fprintf('\tTime difference: mean: %.2e [s], max: %.2e [s]\n', mean(t_diff), max(t_diff));
+        t_diff = abs(t1 - t2);
+        fprintf('\ttime steps -> n: %d, mean: %.2f [µs], std: %.2f [µs]\n', nt, mean(diff(t1) * 1e6), std(diff(t1) * 1e6));
         assert(max(t_diff) < 1e-8, 'Times do not coincide');
         
+        % analyze the plasma current
         avg_ip = mean(abs(ip2));
         ip_diff = abs(ip1 - ip2);
         avg_diff = mean(ip_diff);
         perc_diff = ip_diff ./ abs(ip2) * 100;
         fprintf('\tip average difference -> %.2f [A] (%.1f%%)\n', avg_diff, mean(perc_diff));
-        
         % keep only the samples where IP and IPLIUQE are similar
         % assert(mean(perc_diff) < MAX_IP_PcERC_DIFF, 'Difference between IPLIUQE and IP is too high'); % very strict
         ip_valid1 = perc_diff < MAX_IP_PERC_DIFF;
-        fprintf('\tip filtered -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(ip_valid1)/numel(t)), sum(ip_valid1), numel(t));
-        assert(sum(ip_valid1) > 0.8 * numel(t), 'IP MEAS and IPLIUQE are different in too many samples');
+        fprintf('\tip filtered -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(ip_valid1)/nt), sum(ip_valid1), nt);
+        assert(sum(ip_valid1) > 0.8 * nt, 'IP MEAS and IPLIUQE are different in too many samples');
 
-        % %% [RECALCULATE] liuqe equilibrium at the good plasma current times 
-        % % NOTE: change the x_valid section (the times are not matched here)
-        % [L,LX,LY] = liuqe(shot, t(ip_valid1));
-        % Fx = LY.Fx; % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
-        % Iy = LY.Iy; % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
-        % Ia = LY.Ia; % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
-        % Bm = LY.Bm; % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
-        % Uf = LY.Uf; % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
-        % Ip = ip1; % Plasma current | `(*,t)` | `[A]` |
-
-        %% [LOAD PRECALC] liuqe equilibrium at the plasma current times
-        Fx = mdsdata('tcv_eq("PSI", "LIUQE.M", "NOEVAL")');         % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
-        Iy = mdsdata('tcv_eq("J_TOR", "LIUQE.M", "NOEVAL")');       % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
-        Ia = mdsdata('tcv_eq("I_POL", "LIUQE.M", "NOEVAL")');       % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
-        Bm = mdsdata('tcv_eq("B_PROBE", "LIUQE.M", "NOEVAL")');     % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
-        Uf = mdsdata('tcv_eq("PSI_LOOP", "LIUQE.M", "NOEVAL")');    % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
-        Ip = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');        % Plasma current | `(*,t)` | `[A]` |
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %% Load liuqe data
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        [L, LY] = mds2meq(shot, 'LIUQE.M'); % get liuqe outputs from mdsplus
+        [L, LX] = liuqe(shot, LY.t); % get liuqe inputs 
         
-        % last closed flux surface (LCFS) 
+        t = LY.t; % time vector
+        assert(max(abs(t1 - t)) < 1e-8, 'Time vectors do not coincide');
+        nt = numel(t); % number of time samples
+
+        % last closed flux surface (LCFS) (unfortunately it's not in mds2meq outputs (yet))
         rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
         zq = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
         theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
-
         % check that theta is the same as theta0, first size, then values
 	    assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
         assert(all(abs(theta0 - theta) < 1e-6), 'theta and theta0 are different');
 
-        % check the time dimensions are the same
-        fprintf('\tsizes -> Fx:%s, Iy:%s, Ia:%s, Bm:%s, Uf:%s, t:%s, Ip:%s\n', mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), mat2str(size(t)),  mat2str(size(Ip)));
-        assert(size(Fx, 3) == numel(t), 'Fx has wrong time dimension');
-        assert(size(Iy, 3) == numel(t), 'Iy has wrong time dimension');
-        assert(size(Ia, 2) == numel(t), 'Ia has wrong time dimension');
-        assert(size(Bm, 2) == numel(t), 'Bm has wrong time dimension');
-        assert(size(Uf, 2) == numel(t), 'Uf has wrong time dimension');
-        assert(size(Ip, 1) == numel(t), 'Ip has wrong time dimension');
+        %% extract quantities
+        % Ouputs
+        Fx = LY.Fx; % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
+        Iy = LY.Iy; % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
+        rq = rq; % LCFS r coordinate
+        zq = zq; % LCFS z coordinate
+        % Inputs ("real")
+        Bm0 = LX.Bm; 
+        Ff0 = LX.Ff;
+        Ft0 = LX.Ft;
+        Ia0 = LX.Ia; 
+        Ip0 = LX.Ip;
+        Iu0 = LX.Iu;
+        rBt0 = LX.rBt; 
+        % Outputs (fitted)
+        Bm1 = LY.Bm;
+        Ff1 = LY.Ff;
+        Ft1 = LY.Ft;
+        Ia1 = LY.Ia;
+        Ip1 = LY.Ip;
+        Iu1 = LY.Iu; 
+        rBt1 = LY.rBt;
 
-        assert(size(rq, 2) == numel(t), 'rq has wrong time dimension');
-        assert(size(zq, 2) == numel(t), 'zq has wrong time dimension');
+
+        % check the dimensions
+        assert(size(Fx) == [65, 28, nt], 'Fx has wrong size');
+        assert(size(Iy) == [63, 26, nt], 'Iy has wrong size');
+        assert(size(rq) == [129, nt], 'rq has wrong size');
+        assert(size(zq) == [129, nt], 'zq has wrong size');
+
+        assert(size(Bm0) == size(Bm1) == [38, nt], 'Bm has wrong size');
+        assert(size(Ff0) == size(Ff1) == [38, nt], 'Ff has wrong size');
+        assert(size(Ft0) == size(Ft1) == [1, nt], 'Ft has wrong size');
+        assert(size(Ia0) == size(Ia1) == [19, nt], 'Ia has wrong size');
+        assert(size(Ip0) == size(Ip1) == [1, nt], 'Ip has wrong size');
+        assert(size(Iu0) == size(Iu1) == [38, nt], 'Iu has wrong size');
+        assert(size(rBt0) == size(rBt1) == [1, nt], 'rBt has wrong size');
         
         % filter out the NaN/Inf values [MILD]
-        Fx_valid  = reshape(all(all(~isnan(Fx) & ~isinf(Fx),1),2), [],1);
-        Iy_valid  = reshape(all(all(~isnan(Iy) & ~isinf(Iy),1),2), [],1);
-        Ia_valid  = reshape(all(~isnan(Ia) & ~isinf(Ia), 1), [],1);
-        Bm_valid  = reshape(all(~isnan(Bm) & ~isinf(Bm), 1), [],1);
-        Uf_valid  = reshape(all(~isnan(Uf) & ~isinf(Uf), 1), [],1);
-        rq_valid  = reshape(all(~isnan(rq) & ~isinf(rq), 1), [],1);
-        zq_valid  = reshape(all(~isnan(zq) & ~isinf(zq), 1), [],1);
+        % mFx  = reshape(all(all(~isnan(Fx) & ~isinf(Fx),1),2), [],1);
+        mFx  = all(all(~isnan(Fx) & ~isinf(Fx),1),2);
+        mIy  = all(all(~isnan(Iy) & ~isinf(Iy),1),2);
+        mrq = all(~isnan(rq) & ~isinf(rq), 1);
+        mzq = all(~isnan(zq) & ~isinf(zq), 1);
 
-        t_valid   = ~isnan(t) & ~isinf(t);
-        ip_valid2 = ~isnan(Ip) & ~isinf(Ip);
+        mBm0 = all(~isnan(Bm0) & ~isinf(Bm0), 1);
+        mBm1 = all(~isnan(Bm1) & ~isinf(Bm1), 1);
+        mFf0 = all(~isnan(Ff0) & ~isinf(Ff0), 1);
+        mFf1 = all(~isnan(Ff1) & ~isinf(Ff1), 1);
+        mFt0 = ~isnan(Ft0) & ~isinf(Ft0);
+        mFt1 = ~isnan(Ft1) & ~isinf(Ft1);
+        mIa0 = all(~isnan(Ia0) & ~isinf(Ia0), 1);
+        mIa1 = all(~isnan(Ia1) & ~isinf(Ia1), 1);
+        mIp0 = ~isnan(Ip0) & ~isinf(Ip0);
+        mIp1 = ~isnan(Ip1) & ~isinf(Ip1);
+        mIu0 = all(~isnan(Iu0) & ~isinf(Iu0), 1);
+        mIu1 = all(~isnan(Iu1) & ~isinf(Iu1), 1);
+        mrBt0 = ~isnan(rBt0) & ~isinf(rBt0);
+        mrBt1 = ~isnan(rBt1) & ~isinf(rBt1);
+
+        valid = mFx & mIy & mrq & mzq & ...
+            mBm0 & mBm1 & mFf0 & mFf1 & mFt0 & mFt1 & ...
+            mIa0 & mIa1 & mIp0 & mIp1 & mIu0 & mIu1 & ...
+            mrBt0 & mrBt1;
+        fprintf('\tvalid samples -> [TOT: %.1f%%, %d] Fx:%.1f%%, Iy: %.1f%%, rq: %.1f%%, zq: %.1f%%, Bm0: %.1f%%, Bm1: %.1f%%, Ff0: %.1f%%, Ff1: %.1f%%, Ft0: %.1f%%, Ft1: %.1f%%, Ia0: %.1f%%, Ia1: %.1f%%, Ip0: %.1f%%, Ip1: %.1f%%, Iu0: %.1f%%, Iu1: %.1f%%, rBt0: %.1f%%, rBt1: %.1f%%\n', ...
+            100*sum(valid)/nt, sum(valid), ...
+            100*sum(mFx)/nt, 100*sum(mIy)/nt, 100*sum(mrq)/nt, 100*sum(mzq)/nt, ...
+            100*sum(mBm0)/nt, 100*sum(mBm1)/nt, 100*sum(mFf0)/nt, 100*sum(mFf1)/nt, ...
+            100*sum(mFt0)/nt, 100*sum(mFt1)/nt, 100*sum(mIa0)/nt, 100*sum(mIa1)/nt, ...
+            100*sum(mIp0)/nt, 100*sum(mIp1)/nt, 100*sum(mIu0)/nt, 100*sum(mIu1)/nt, ...
+            100*sum(mrBt0)/nt, 100*sum(mrBt1)/nt);
+        assert(sum(valid) > 0.5 * nt, 'Nan/Inf filter -> not enough valid samples');
         
-        % valid = Fx_valid & Iy_valid & Ia_valid & Bm_valid & Uf_valid & t_valid & ip_valid2 & ip_valid1;
-        valid = Fx_valid & Iy_valid & Ia_valid & Bm_valid & Uf_valid & rq_valid & zq_valid & t_valid & ip_valid2 & ip_valid1;
-        fprintf('\tvalid samples -> [TOT: %.1f%%, %d] Fx:%.1f%%, Iy:%.1f%%, Ia:%.1f%%, Bm:%.1f%%, Uf:%.1f%%, t:%.1f%%, ip2:%.1f%%, ip1:%.1f%%\n', ...
-                100*sum(valid)/numel(valid), sum(valid), 100*sum(Fx_valid)/numel(Fx_valid), 100*sum(Iy_valid)/numel(Iy_valid), 100*sum(Ia_valid)/numel(Ia_valid), ...
-                100*sum(Bm_valid)/numel(Bm_valid), 100*sum(Uf_valid)/numel(Uf_valid), 100*sum(t_valid)/numel(t_valid), 100*sum(ip_valid2)/numel(ip_valid2), 100*sum(ip_valid1)/numel(ip_valid1));
-
-        % fprintf('\tvalid samples -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(valid)/numel(t)), sum(valid), numel(t));
-        assert(sum(valid) > 0.5 * numel(t), 'Nan/Inf filter -> not enough valid samples');
-                
+        % keep only the valid samples
+        t = t(valid);
         Fx = Fx(:,:,valid);
         Iy = Iy(:,:,valid);
-        Ia = Ia(:,valid);
-        Bm = Bm(:,valid);
-        Uf = Uf(:,valid);
         rq = rq(:,valid);
         zq = zq(:,valid);
-        t = t(valid);
-        Ip = Ip(valid);
+        Bm0 = Bm0(:,valid);
+        Bm1 = Bm1(:,valid);
+        Ff0 = Ff0(:,valid);
+        Ff1 = Ff1(:,valid);
+        Ft0 = Ft0(valid);
+        Ft1 = Ft1(valid);
+        Ia0 = Ia0(:,valid);
+        Ia1 = Ia1(:,valid);
+        Ip0 = Ip0(valid);
+        Ip1 = Ip1(valid);
+        Iu0 = Iu0(:,valid);
+        Iu1 = Iu1(:,valid);
+        rBt0 = rBt0(valid);
+        rBt1 = rBt1(valid);
 
         % decimate
+        t = t(1:DECIMATION:end);
         Fx = Fx(:,:,1:DECIMATION:end);
         Iy = Iy(:,:,1:DECIMATION:end);
-        Ia = Ia(:,1:DECIMATION:end);
-        Bm = Bm(:,1:DECIMATION:end);
-        Uf = Uf(:,1:DECIMATION:end);
         rq = rq(:,1:DECIMATION:end);
         zq = zq(:,1:DECIMATION:end);
-        t = t(1:DECIMATION:end);
-        Ip = Ip(1:DECIMATION:end);
+        Bm0 = Bm0(:,1:DECIMATION:end);
+        Bm1 = Bm1(:,1:DECIMATION:end);
+        Ff0 = Ff0(:,1:DECIMATION:end);
+        Ff1 = Ff1(:,1:DECIMATION:end);
+        Ft0 = Ft0(1:DECIMATION:end);
+        Ft1 = Ft1(1:DECIMATION:end);
+        Ia0 = Ia0(:,1:DECIMATION:end);
+        Ia1 = Ia1(:,1:DECIMATION:end);
+        Ip0 = Ip0(1:DECIMATION:end);
+        Ip1 = Ip1(1:DECIMATION:end);
+        Iu0 = Iu0(:,1:DECIMATION:end);
+        Iu1 = Iu1(:,1:DECIMATION:end);
+        rBt0 = rBt0(1:DECIMATION:end);
+        rBt1 = rBt1(1:DECIMATION:end);
 
-        % check none of the variables contains NaN 
-        assert(~any(isnan(Fx(:))), 'Fx contains NaN values');
-        assert(~any(isnan(Iy(:))), 'Iy contains NaN values');
-        assert(~any(isnan(Ia(:))), 'Ia contains NaN values');
-        assert(~any(isnan(Bm(:))), 'Bm contains NaN values'); 
-        assert(~any(isnan(Uf(:))), 'Uf contains NaN values');
-        assert(~any(isnan(rq(:))), 'rq contains NaN values');
-        assert(~any(isnan(zq(:))), 'zq contains NaN values');
-        assert(~any(isnan(t(:))), 't contains NaN values');
-        assert(~any(isnan(Ip(:))), 'Ip contains NaN values');
-        
-        % check none of the variables contains Inf
-        assert(~any(isinf(Fx(:))), 'Fx contains Inf values');
-        assert(~any(isinf(Iy(:))), 'Iy contains Inf values');
-        assert(~any(isinf(Ia(:))), 'Ia contains Inf values');
-        assert(~any(isinf(Bm(:))), 'Bm contains Inf values');
-        assert(~any(isinf(Uf(:))), 'Uf contains Inf values');
-        assert(~any(isinf(rq(:))), 'rq contains Inf values');
-        assert(~any(isinf(zq(:))), 'zq contains Inf values');
-        assert(~any(isinf(t(:))), 't contains Inf values');
-        assert(~any(isinf(Ip(:))), 'Ip contains Inf values');
-        
         % convert to single precision to save space
-        Fx = single(Fx); % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
-        Iy = single(Iy); % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
-        Ia = single(Ia); % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
-        Bm = single(Bm); % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
-        Uf = single(Uf); % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
-        rq = single(rq); % LCFS r coordinate
-        zq = single(zq); % LCFS z coordinate
-        t = single(t);
-        Ip = single(Ip);
+        Fx = single(Fx); 
+        Iy = single(Iy);
+        rq = single(rq);
+        zq = single(zq);
+        Bm1 = single(Bm1);
+        Bm0 = single(Bm0);
+        Ff1 = single(Ff1);
+        Ff0 = single(Ff0);
+        Ft1 = single(Ft1);
+        Ft0 = single(Ft0);
+        Ia1 = single(Ia1);
+        Ia0 = single(Ia0);
+        Ip1 = single(Ip1);
+        Ip0 = single(Ip0);
+        Iu1 = single(Iu1);
+        Iu0 = single(Iu0);
+        rBt1 = single(rBt1);
+        rBt0 = single(rBt0);
 
         % print final sizes
-        fprintf('\tFinal sizes -> Fx:%s, Iy:%s, Ia:%s, Bm:%s, Uf:%s, rq:%s, zq:%s, t:%s, Ip:%s\n', ...
-            mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), ...
-            mat2str(size(rq)), mat2str(size(zq)), mat2str(size(t)), mat2str(size(Ip)));
-
+        fprintf('\tFinal sizes -> Fx:%s, Iy:%s, rq:%s, zq:%s, Bm0:%s, Bm1:%s, Ff0:%s, Ff1:%s, Ft0:%s, Ft1:%s, Ia0:%s, Ia1:%s, Ip0:%s, Ip1:%s, Iu0:%s, Iu1:%s, rBt0:%s, rBt1:%s\n', ...
+            mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(rq)), mat2str(size(zq)), ...
+            mat2str(size(Bm0)), mat2str(size(Bm1)), mat2str(size(Ff0)), mat2str(size(Ff1)), ...
+            mat2str(size(Ft0)), mat2str(size(Ft1)), mat2str(size(Ia0)), mat2str(size(Ia1)), ...
+            mat2str(size(Ip0)), mat2str(size(Ip1)), mat2str(size(Iu0)), mat2str(size(Iu1)), ...
+            mat2str(size(rBt0)), mat2str(size(rBt1)));
         mdsclose; % Close the MDSplus connection
         total_shots = total_shots + 1;
 
         % save data into a .mat file
         save_file = fullfile(OUT_DIR, sprintf('%d.mat', shot));
-        save(save_file, 't', 'Ip', 'Fx', 'Iy', 'Ia', 'Bm', 'Uf', 'rq', 'zq');
+        save(save_file, 't', 'Fx', 'Iy', 'rq', 'zq', ...
+            'Bm0', 'Bm1', 'Ff0', 'Ff1', 'Ft0', 'Ft1', ...
+            'Ia0', 'Ia1', 'Ip0', 'Ip1', 'Iu0', 'Iu1', ...
+            'rBt0', 'rBt1');
         fprintf('\x1b[32m\tData saved to: %s\x1b[0m\n', save_file);
         
         shot_processing_times(i) = toc(start_time);
@@ -218,6 +251,9 @@ for i = 1:length(shots)
         
     catch ME
         fprintf('\x1b[31m\tError processing shot %d: %s\x1b[0m\n', shot, ME.message);
+        for k = 1:length(ME.stack)
+            fprintf('\t\tIn %s at line %d\n', ME.stack(k).name, ME.stack(k).line);
+        end
         continue; % Skip to the next shot on error
     end % try-catch
 end % end shots loop

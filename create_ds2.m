@@ -4,8 +4,8 @@ clear all; close all; clc;
 
 START_SHOT = 77662; % Dec 2022, https://spcwiki.epfl.ch/wiki/Alma_database
 END_SHOT = 85804; % April 2025
-N_SHOTS = 100; % Number of shots to process
-% N_SHOTS = END_SHOT-START_SHOT; % Number of shots to process
+% N_SHOTS = 100; % Number of shots to process
+N_SHOTS = END_SHOT-START_SHOT; % Number of shots to process
 
 % Directory to save the output .mat files
 % OUT_DIR = 'ds'; % testing
@@ -56,29 +56,35 @@ for i = 1:length(shots)
         mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
         [t, ip1] = tcvget('IPLIUQE'); % precalculated using liuqe
+        ip1_mds = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');
+
+        assert(~isempty(t), 'No time vector found');
         assert(numel(t) > 1, sprintf('Time vector has insufficient elements: t:%s', mat2str(size(t))));
+        
+        % fprintf('\tIPLIUQE size: %s, IPLIUQE (MDS) size: %s\n', mat2str(size(ip1)), mat2str(size(ip1_mds)));
+        assert(all(size(ip1) == size(ip1_mds)), 'IPLIUQE and IPLIUQE (MDS) have different sizes');
+        assert(max(abs(ip1 - ip1_mds)) < 1e-8, 'IPLIUQE and IPLIUQE (MDS) are different');
+
         [t2, ip2] = tcvget('IP', t); % calculated using magnetics at liuqe times
         
         % analyze the time vector
         t_diff = abs(t - t2);
         fprintf('\ttime steps -> n: %d, mean: %.2f [µs], std: %.2f [µs]\n', numel(t), mean(diff(t) * 1e6), std(diff(t) * 1e6));
+        % fprintf('\t# of time samples: %d\n', numel(t));
+        % fprintf('\tTime difference: mean: %.2e [s], max: %.2e [s]\n', mean(t_diff), max(t_diff));
         assert(max(t_diff) < 1e-8, 'Times do not coincide');
         
-        % analyze the plasma current
         avg_ip = mean(abs(ip2));
         ip_diff = abs(ip1 - ip2);
         avg_diff = mean(ip_diff);
         perc_diff = ip_diff ./ abs(ip2) * 100;
         fprintf('\tip average difference -> %.2f [A] (%.1f%%)\n', avg_diff, mean(perc_diff));
+        
         % keep only the samples where IP and IPLIUQE are similar
         % assert(mean(perc_diff) < MAX_IP_PcERC_DIFF, 'Difference between IPLIUQE and IP is too high'); % very strict
         ip_valid1 = perc_diff < MAX_IP_PERC_DIFF;
         fprintf('\tip filtered -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(ip_valid1)/numel(t)), sum(ip_valid1), numel(t));
         assert(sum(ip_valid1) > 0.8 * numel(t), 'IP MEAS and IPLIUQE are different in too many samples');
-
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% Load liuqe data
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         % %% [RECALCULATE] liuqe equilibrium at the good plasma current times 
         % % NOTE: change the x_valid section (the times are not matched here)
@@ -90,53 +96,22 @@ for i = 1:length(shots)
         % Uf = LY.Uf; % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
         % Ip = ip1; % Plasma current | `(*,t)` | `[A]` |
 
-        % %% [LOAD PRECALC] liuqe equilibrium at the plasma current times
-        % Fx = mdsdata('tcv_eq("PSI", "LIUQE.M", "NOEVAL")');         % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
-        % Iy = mdsdata('tcv_eq("J_TOR", "LIUQE.M", "NOEVAL")');       % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
-        % Ia = mdsdata('tcv_eq("I_POL", "LIUQE.M", "NOEVAL")');       % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
-        % Bm = mdsdata('tcv_eq("B_PROBE", "LIUQE.M", "NOEVAL")');     % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
-        % Uf = mdsdata('tcv_eq("PSI_LOOP", "LIUQE.M", "NOEVAL")');    % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
-        % Ip = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');        % Plasma current | `(*,t)` | `[A]` |
+        %% [LOAD PRECALC] liuqe equilibrium at the plasma current times
+        Fx = mdsdata('tcv_eq("PSI", "LIUQE.M", "NOEVAL")');         % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
+        Iy = mdsdata('tcv_eq("J_TOR", "LIUQE.M", "NOEVAL")');       % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
+        Ia = mdsdata('tcv_eq("I_POL", "LIUQE.M", "NOEVAL")');       % Fitted poloidal field coil currents | `(*,t)` | `[A]` |
+        Bm = mdsdata('tcv_eq("B_PROBE", "LIUQE.M", "NOEVAL")');     % Simulated magnetic probe measurements | `(*,t)` | `[T]` |
+        Uf = mdsdata('tcv_eq("PSI_LOOP", "LIUQE.M", "NOEVAL")');    % Simulated flux loop poloidal flux | `(*,t)` | `[Wb]` |
+        Ip = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');        % Plasma current | `(*,t)` | `[A]` |
         
-        
-        [L, LY] = mds2meq(shot, 'LIUQE.M'); % get liuqe outputs
-        [L, LX] = liuqe(shot, LY.t); % get liuqe inputs 
-        
-        % last closed flux surface (LCFS) (unfortunately it's not in mds2meq outputs (yet))
+        % last closed flux surface (LCFS) 
         rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
         zq = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
         theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
+
         % check that theta is the same as theta0, first size, then values
 	    assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
         assert(all(abs(theta0 - theta) < 1e-6), 'theta and theta0 are different');
-
-        %% extract quantities
-        %% Inputs ("real")
-        Bm0 = LX.Bm; 
-        Ff0 = LX.Ff;
-        Ft0 = LX.Ft;
-        Ia0 = LX.Ia; 
-        Ip0 = LX.Ip;
-        Iu0 = LX.Iu;
-        % Uf0 = LX.Uf; % not in outputs
-        Xt0 = LX.Xt;
-        rBt0 = LX.rBt; 
-        %% Outputs (fitted)
-        Bm1 = LY.Bm;
-        Ff1 = LY.Ff;
-        Ft1 = LY.Ft;
-        Ia1 = LY.Ia;
-        Ip1 = LY.Ip;
-        Iu1 = LY.Iu; 
-        % Uf1 = LY.Uf; % does not exists
-
-
-
-        %% Ouputs
-        Fx = LY.Fx; % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
-        Iy = LY.Iy; % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
-        rq = rq; % LCFS r coordinate
-        zq = zq; % LCFS z coordinate
 
         % check the time dimensions are the same
         fprintf('\tsizes -> Fx:%s, Iy:%s, Ia:%s, Bm:%s, Uf:%s, t:%s, Ip:%s\n', mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Ia)), mat2str(size(Bm)), mat2str(size(Uf)), mat2str(size(t)),  mat2str(size(Ip)));
@@ -158,6 +133,7 @@ for i = 1:length(shots)
         Uf_valid  = reshape(all(~isnan(Uf) & ~isinf(Uf), 1), [],1);
         rq_valid  = reshape(all(~isnan(rq) & ~isinf(rq), 1), [],1);
         zq_valid  = reshape(all(~isnan(zq) & ~isinf(zq), 1), [],1);
+
         t_valid   = ~isnan(t) & ~isinf(t);
         ip_valid2 = ~isnan(Ip) & ~isinf(Ip);
         
