@@ -54,15 +54,35 @@ for i = 1:length(shots)
     try 
         mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
-        [t1, ip1] = tcvget('IPLIUQE'); % precalculated using liuqe        
-        [t2, ip2] = tcvget('IP', t1); % calculated using magnetics at liuqe times
         
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %% Load liuqe data
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        [L, LY] = mds2meq(shot, 'LIUQE.M'); % get liuqe outputs from mdsplus
+        [L, LX] = liuqe(shot, LY.t); % get liuqe inputs 
+        
+        t = LY.t; % time vector
+        [t2, ip2] = tcvget('IP', t); % calculated using magnetics at liuqe times
+
+        % last closed flux surface (LCFS) (unfortunately it's not in mds2meq outputs (yet))
+        rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
+        zq = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
+        theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
+        % check that theta is the same as theta0, first size, then values
+	    assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
+        assert(all(abs(theta0 - theta) < 1e-6), 'theta and theta0 are different');
+
         % analyze the time vector
+        assert(max(abs(t2 - t)) < 1e-8, 'Time vectors do not coincide');
+	    assert(numel(t) > 1, sprintf('Time vector has insufficient elements: t1:%s', mat2str(size(t1))));
+        nt = numel(t); % number of time samples
         t_diff = abs(t1 - t2);
         fprintf('\ttime steps -> n: %d, mean: %.2f [µs], std: %.2f [µs]\n', numel(t1), mean(diff(t1) * 1e6), std(diff(t1) * 1e6));
         assert(max(t_diff) < 1e-8, 'Times do not coincide');
         
         % analyze the plasma current
+        ip1 = LY.Ip; % IPLIUQE
         avg_ip = mean(abs(ip2));
         ip_diff = abs(ip1 - ip2);
         avg_diff = mean(ip_diff);
@@ -74,24 +94,6 @@ for i = 1:length(shots)
         fprintf('\tip filtered -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(ip_valid1)/numel(ip_valid1)), sum(ip_valid1), numel(ip_valid1));
         assert(sum(ip_valid1) > 0.8 * numel(ip_valid1), 'IP MEAS and IPLIUQE are different in too many samples');
 
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% Load liuqe data
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        [L, LY] = mds2meq(shot, 'LIUQE.M'); % get liuqe outputs from mdsplus
-        [L, LX] = liuqe(shot, LY.t); % get liuqe inputs 
-        
-        t = LY.t; % time vector
-        assert(max(abs(t1 - t)) < 1e-8, 'Time vectors do not coincide');
-	assert(numel(t) > 1, sprintf('Time vector has insufficient elements: t1:%s', mat2str(size(t1))));
-        nt = numel(t); % number of time samples
-
-        % last closed flux surface (LCFS) (unfortunately it's not in mds2meq outputs (yet))
-        rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
-        zq = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
-        theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
-        % check that theta is the same as theta0, first size, then values
-	    assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
-        assert(all(abs(theta0 - theta) < 1e-6), 'theta and theta0 are different');
 
         %% extract quantities
         % Ouputs
@@ -156,7 +158,7 @@ for i = 1:length(shots)
         valid = mFx & mIy & mrq & mzq & ...
             mBm0 & mBm1 & mFf0 & mFf1 & mFt0 & mFt1 & ...
             mIa0 & mIa1 & mIp0 & mIp1 & mIu0 & mIu1 & ...
-            mrBt0 & mrBt1;
+            mrBt0 & mrBt1 & ip_valid1; % keep only the samples where all quantities are valid and IP is valid
         fprintf('\tvalid samples -> [TOT: %.1f%%, %d] Fx:%.1f%%, Iy: %.1f%%, rq: %.1f%%, zq: %.1f%%, Bm0: %.1f%%, Bm1: %.1f%%, Ff0: %.1f%%, Ff1: %.1f%%, Ft0: %.1f%%, Ft1: %.1f%%, Ia0: %.1f%%, Ia1: %.1f%%, Ip0: %.1f%%, Ip1: %.1f%%, Iu0: %.1f%%, Iu1: %.1f%%, rBt0: %.1f%%, rBt1: %.1f%%\n', ...
             100*sum(valid)/nt, sum(valid), ...
             100*sum(mFx)/nt, 100*sum(mIy)/nt, 100*sum(mrq)/nt, 100*sum(mzq)/nt, ...
