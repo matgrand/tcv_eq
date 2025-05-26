@@ -43,16 +43,16 @@ try
     fprintf('Testing inference time for %d iterations...\n', N);
     % evaluate inference time in 10k iterations
     % warmup + plotting
-    for i = 1:10
+    for i = 1:50
         x = d.X(i, :); 
         y_true = d.Y(i, :); 
         y = net_forward_mex(single(x));
 
         % plot y and y_true on a 2d plot
         figure;
-        plot(y(1:NLCFS), y(NLCFS+1:end), 'r', 'LineWidth', 2);
-        hold on;
         plot(y_true(1:NLCFS), y_true(NLCFS+1:end), 'b', 'LineWidth', 2);
+        hold on;
+        plot(y(1:NLCFS), y(NLCFS+1:end), 'r', 'LineWidth', 2);
         title('y and y_true');
         xlabel('x');
         ylabel('y');
