@@ -54,13 +54,12 @@ for i = 1:length(shots)
     try 
         mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
-        [t1, ip1] = tcvget('IPLIUQE'); % precalculated using liuqe
-        assert(nt > 1, sprintf('Time vector has insufficient elements: t1:%s', mat2str(size(t1))));
+        [t1, ip1] = tcvget('IPLIUQE'); % precalculated using liuqe        
         [t2, ip2] = tcvget('IP', t1); % calculated using magnetics at liuqe times
         
         % analyze the time vector
         t_diff = abs(t1 - t2);
-        fprintf('\ttime steps -> n: %d, mean: %.2f [µs], std: %.2f [µs]\n', nt, mean(diff(t1) * 1e6), std(diff(t1) * 1e6));
+        fprintf('\ttime steps -> n: %d, mean: %.2f [µs], std: %.2f [µs]\n', numel(t1), mean(diff(t1) * 1e6), std(diff(t1) * 1e6));
         assert(max(t_diff) < 1e-8, 'Times do not coincide');
         
         % analyze the plasma current
@@ -72,8 +71,8 @@ for i = 1:length(shots)
         % keep only the samples where IP and IPLIUQE are similar
         % assert(mean(perc_diff) < MAX_IP_PcERC_DIFF, 'Difference between IPLIUQE and IP is too high'); % very strict
         ip_valid1 = perc_diff < MAX_IP_PERC_DIFF;
-        fprintf('\tip filtered -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(ip_valid1)/nt), sum(ip_valid1), nt);
-        assert(sum(ip_valid1) > 0.8 * nt, 'IP MEAS and IPLIUQE are different in too many samples');
+        fprintf('\tip filtered -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(ip_valid1)/numel(ip_valid1)), sum(ip_valid1), numel(ip_valid1));
+        assert(sum(ip_valid1) > 0.8 * numel(ip_valid1), 'IP MEAS and IPLIUQE are different in too many samples');
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% Load liuqe data
@@ -83,6 +82,7 @@ for i = 1:length(shots)
         
         t = LY.t; % time vector
         assert(max(abs(t1 - t)) < 1e-8, 'Time vectors do not coincide');
+	assert(numel(t) > 1, sprintf('Time vector has insufficient elements: t1:%s', mat2str(size(t1))));
         nt = numel(t); % number of time samples
 
         % last closed flux surface (LCFS) (unfortunately it's not in mds2meq outputs (yet))
