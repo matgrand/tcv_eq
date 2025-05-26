@@ -4,8 +4,8 @@ clear all; close all; clc;
 
 START_SHOT = 77662; % Dec 2022, https://spcwiki.epfl.ch/wiki/Alma_database
 END_SHOT = 85804; % April 2025
-N_SHOTS = 100; % Number of shots to process
-% N_SHOTS = END_SHOT-START_SHOT; % Number of shots to process
+% N_SHOTS = 100; % Number of shots to process
+N_SHOTS = END_SHOT-START_SHOT; % Number of shots to process
 
 % Directory to save the output .mat files
 % OUT_DIR = 'ds'; % testing
@@ -54,8 +54,6 @@ for i = 1:length(shots)
     try 
         mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
-        
-        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% Load liuqe data
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -118,7 +116,6 @@ for i = 1:length(shots)
         Ip1 = LY.Ip;
         Iu1 = LY.Iu; 
         rBt1 = LY.rBt;
-
 
         % check the dimensions
         assert(all(size(Fx) == [65, 28, nt]), 'Fx has wrong size');
@@ -258,8 +255,7 @@ for i = 1:length(shots)
         for k = 1:length(ME.stack)
             fprintf('\t\tIn %s at line %d\n', ME.stack(k).name, ME.stack(k).line);
         end
-        % continue; % Skip to the next shot on error
-        assert(false, '');
+        continue; % Skip to the next shot on error
     end % try-catch
 end % end shots loop
 
