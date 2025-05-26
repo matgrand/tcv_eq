@@ -258,7 +258,8 @@ for i = 1:length(shots)
         for k = 1:length(ME.stack)
             fprintf('\t\tIn %s at line %d\n', ME.stack(k).name, ME.stack(k).line);
         end
-        continue; % Skip to the next shot on error
+        % continue; % Skip to the next shot on error
+        assert(false, '');
     end % try-catch
 end % end shots loop
 
