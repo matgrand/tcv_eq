@@ -62,9 +62,8 @@ for i = 1:length(shots)
         [L, LY] = mds2meq(shot, 'LIUQE.M'); % get liuqe outputs from mdsplus
         [L, LX] = liuqe(shot, LY.t); % get liuqe inputs 
         
-        t = LY.t; % time vector
+        t = LY.t'; % time vector
         [t2, ip2] = tcvget('IP', t); % calculated using magnetics at liuqe times
-	t2 = t2';	
 
         % last closed flux surface (LCFS) (unfortunately it's not in mds2meq outputs (yet))
         rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
@@ -76,7 +75,7 @@ for i = 1:length(shots)
 
         % analyze the time vector
         assert(max(abs(t2 - t)) < 1e-8, 'Time vectors do not coincide');
-	assert(numel(t) > 1, sprintf('Time vector has insufficient elements: t:%s', mat2str(size(t))));
+	    assert(numel(t) > 1, sprintf('Time vector has insufficient elements: t:%s', mat2str(size(t))));
         nt = numel(t); % number of time samples
         t_diff = abs(t - t2);
         fprintf('\ttime steps -> n: %d, mean: %.2f [µs], std: %.2f [µs]\n', numel(t), mean(diff(t) * 1e6), std(diff(t) * 1e6));
@@ -84,7 +83,7 @@ for i = 1:length(shots)
         
         % analyze the plasma current
         ip1 = LY.Ip'; % IPLIUQE
-	assert(all(size(ip1) == size(ip2)), 'Ip sizes wrong');
+	    assert(all(size(ip1) == size(ip2)), 'Ip sizes wrong');
         avg_ip = mean(abs(ip2));
         ip_diff = abs(ip1 - ip2);
         avg_diff = mean(ip_diff);
@@ -122,18 +121,18 @@ for i = 1:length(shots)
 
 
         % check the dimensions
-        assert(size(Fx) == [65, 28, nt], 'Fx has wrong size');
-        assert(size(Iy) == [63, 26, nt], 'Iy has wrong size');
-        assert(size(rq) == [129, nt], 'rq has wrong size');
-        assert(size(zq) == [129, nt], 'zq has wrong size');
+        assert(all(size(Fx) == [65, 28, nt]), 'Fx has wrong size');
+        assert(all(size(Iy) == [63, 26, nt]), 'Iy has wrong size');
+        assert(all(size(rq) == [129, nt]), 'rq has wrong size');
+        assert(all(size(zq) == [129, nt]), 'zq has wrong size');
 
-        assert(size(Bm0) == size(Bm1) == [38, nt], 'Bm has wrong size');
-        assert(size(Ff0) == size(Ff1) == [38, nt], 'Ff has wrong size');
-        assert(size(Ft0) == size(Ft1) == [1, nt], 'Ft has wrong size');
-        assert(size(Ia0) == size(Ia1) == [19, nt], 'Ia has wrong size');
-        assert(size(Ip0) == size(Ip1) == [1, nt], 'Ip has wrong size');
-        assert(size(Iu0) == size(Iu1) == [38, nt], 'Iu has wrong size');
-        assert(size(rBt0) == size(rBt1) == [1, nt], 'rBt has wrong size');
+        assert(all(size(Bm0) == size(Bm1) == [38, nt]), 'Bm has wrong size');
+        assert(all(size(Ff0) == size(Ff1) == [38, nt]), 'Ff has wrong size');
+        assert(all(size(Ft0) == size(Ft1) == [1, nt]), 'Ft has wrong size');
+        assert(all(size(Ia0) == size(Ia1) == [19, nt]), 'Ia has wrong size');
+        assert(all(size(Ip0) == size(Ip1) == [1, nt]), 'Ip has wrong size');
+        assert(all(size(Iu0) == size(Iu1) == [38, nt]), 'Iu has wrong size');
+        assert(all(size(rBt0) == size(rBt1) == [1, nt]), 'rBt has wrong size');
         
         % filter out the NaN/Inf values [MILD]
         % mFx  = reshape(all(all(~isnan(Fx) & ~isinf(Fx),1),2), [],1);
