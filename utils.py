@@ -48,13 +48,13 @@ SAVE_DIR = f"data/{JOBID}"
 USE_REAL_INPUTS = True # if True, use real inputs, otherwise use random inputs
 if not USE_REAL_INPUTS: print('Warning: using fitted inputs')
 # input names
-BM = 'Bm0' if USE_REAL_INPUTS else 'Bm1'  
-FF = 'Ff0' if USE_REAL_INPUTS else 'Ff1'  
-FT = 'Ft0' if USE_REAL_INPUTS else 'Ft1'  
-IA = 'Ia0' if USE_REAL_INPUTS else 'Ia1'  
-IP = 'Ip0' if USE_REAL_INPUTS else 'Ip1'  
-IU = 'Iu0' if USE_REAL_INPUTS else 'Iu1'  
-RB = 'rBt0' if USE_REAL_INPUTS else 'rBt1' 
+BM = f'Bm{"0" if USE_REAL_INPUTS else "1"}'  
+FF = f'Ff{"0" if USE_REAL_INPUTS else "1"}'  
+FT = f'Ft{"0" if USE_REAL_INPUTS else "1"}'  
+IA = f'Ia{"0" if USE_REAL_INPUTS else "1"}'  
+IP = f'Ip{"0" if USE_REAL_INPUTS else "1"}'  
+IU = f'Iu{"0" if USE_REAL_INPUTS else "1"}'  
+RB = f'rBt{"0" if USE_REAL_INPUTS else "1"}' 
 # output names
 FX = 'Fx' 
 IY = 'Iy'
