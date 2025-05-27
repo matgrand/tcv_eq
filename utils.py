@@ -43,6 +43,29 @@ except:
 print(f"Running JOBID: {JOBID}, on {DEV}, GPU_MEM: {GPU_MEM/1e9:.2f} GB" if DEV != CPU else f"Running JOBID: {JOBID}, on cpu")
 SAVE_DIR = f"data/{JOBID}"
 
+##################################################################################################################################
+## Dataset inputs/outputs (see create_ds.m)
+USE_REAL_INPUTS = True # if True, use real inputs, otherwise use random inputs
+if not USE_REAL_INPUTS: print('Warning: using fitted inputs')
+# input names
+BM = 'Bm0' if USE_REAL_INPUTS else 'Bm1'  
+FF = 'Ff0' if USE_REAL_INPUTS else 'Ff1'  
+FT = 'Ft0' if USE_REAL_INPUTS else 'Ft1'  
+IA = 'Ia0' if USE_REAL_INPUTS else 'Ia1'  
+IP = 'Ip0' if USE_REAL_INPUTS else 'Ip1'  
+IU = 'Iu0' if USE_REAL_INPUTS else 'Iu1'  
+RB = 'rBt0' if USE_REAL_INPUTS else 'rBt1' 
+# output names
+FX = 'Fx' 
+IY = 'Iy'
+RQ = 'rq'
+ZQ = 'zq'
+INPUT_NAMES = [BM, FF, FT, IA, IP, IU, RB] # input names
+OUTPUT_NAMES = [FX, IY, RQ, ZQ] # output names
+DS_NAMES = INPUT_NAMES + OUTPUT_NAMES # dataset names
+DS_SIZES = { BM:(38,), FF:(38,), FT:(1,), IA:(19,), IP:(1,), IU:(38,), RB:(1,),  # input sizes
+             FX:(65,28), IY:(63,26), RQ:(129,), ZQ:(129,) } # output sizes
+
 from scipy.interpolate import RegularGridInterpolator
 INTERP_METHOD = 'linear' # fast, but less accurate
 # INTERP_METHOD = 'quintic' # slowest, but most accurate
@@ -50,7 +73,7 @@ if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which 
 
 # DS_DIR = 'dss/ds' # where the final dataset will be stored
 DS_DIR = 'dss' if LOCAL else '/nfsd/automatica/grandinmat/dss' 
-os.makedirs(DS_DIR, exist_ok=True)
+os.makedirs(f'{DS_DIR}/imgs', exist_ok=True)
 TRAIN_DS_PATH = f'{DS_DIR}/train_ds.npz'
 EVAL_DS_PATH = f'{DS_DIR}/eval_ds.npz'
 
@@ -66,24 +89,24 @@ STRICT_LOAD = True # for loading the weights, should be true, but for testing va
 TEST_DIR = 'test' if LOCAL else '/nfsd/automatica/grandinmat/test'
 os.makedirs(TEST_DIR, exist_ok=True)
 
-# NGR = 28 # number of grid points in the x direction
-# NGZ = 65 # number of grid points in the y direction
-# NGR = NGZ = 64 # number of grid points 
-# NGR = NGZ = 24 # number of grid points <-
-NGR = NGZ = 16 # number of grid points 
+# NGR = NGZ = 24 # number of grid points 
+NGR = NGZ = 16 # number of grid points <-
 
-USE_CURRENTS = True # usually True
-USE_PROFILES = True # false -> more realistic
-USE_MAGNETIC = True # usually True
-NIN = int(USE_CURRENTS)*19 + int(USE_PROFILES)*38 + int(USE_MAGNETIC)*38 # input size
+NIN = sum(DS_SIZES[name][0] for name in INPUT_NAMES) # 136
 
 NLCFS = 129 # number of LCFS points 
+
+assert NLCFS == DS_SIZES[RQ][0] == DS_SIZES[ZQ][0], f"NLCFS = {NLCFS}, DS_SIZES[RQ] = {DS_SIZES[RQ]}, DS_SIZES[ZQ] = {DS_SIZES[ZQ]}"
+
+##################################################################################################################################
+
 
 # read the original grid coordinates
 d = loadmat('tcv_params/grid.mat')
 rd, zd = d['r'].flatten(), d['z'].flatten() # original grid coordinates (DATA)
 r,z = np.linspace(rd[0], rd[-1], NGR), np.linspace(zd[0], zd[-1], NGZ)  # grid coordinates
 RRD, ZZD = np.meshgrid(rd, zd)  # meshgrid for the original grid coordinates (from the data)
+RRD2, ZZD2 = np.meshgrid(rd[1:-1], zd[1:-1])  
 del d, rd, zd, r, z
 
 # load the vessel perimeter
@@ -351,9 +374,7 @@ def test_dataset(ds:LiuqeDataset, verbose=True):
     for i, j in enumerate(idxs):
         inputs = ds[j][0].cpu()
         inputs = ((ds[j][0] - ds.x_mean_std[0]) / ds.x_mean_std[1]).cpu().numpy().squeeze() # normalize
-        if USE_CURRENTS: axs[i].plot(inputs[:19], label="currents")
-        if USE_MAGNETIC: axs[i].plot(inputs[19:57], label="magnetic")
-        if USE_PROFILES: axs[i].plot(inputs[57:], label="profiles")
+        axs[i].plot(inputs, label='inputs')
         axs[i].legend()
         axs[i].set_title(f"Sample {j}")
         axs[i].set_xlabel("Input index")
