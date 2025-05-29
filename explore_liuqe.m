@@ -30,14 +30,14 @@ times = LY.t;
 
 
 
-% calculatin Br, Bz, Bt fields, copying functions from source code (because mds2meq does not allow
-% to run meqpost)
+% calculatin Br, Bz, Bt fields, copying functions from source code of meqpost (because mds2meq does
+% not allow to run meqpost)
 
-% optional computation of Br,Bz fields on x grid
+L.i4pirxdzx = 1./(4*pi*L.dzx*L.rx');
+L.i4pirxdrx = 1./(4*pi*L.drx*L.rx');
 [Brx,Bzx] = meqBrBz(LY.Fx,L.i4pirxdzx,L.i4pirxdrx,L.nzx,L.nrx);
 Btx = meqBt(L,LY.Fx,Opy,ag,rBt,F0,F1,TQ);
 LY = meqlarg(LY,Brx,Bzx,Btx);
-
 
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
