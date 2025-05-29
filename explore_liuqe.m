@@ -49,20 +49,21 @@ br = Brx(:,:,nt);
 bz = Bzx(:,:,nt);
 b = Bx(:,:,nt);
 subplot(1,3,1);
-scatter(rr(:), zz(:), 10, br(:), 'filled');
+cs = 20
+scatter(rr(:), zz(:), cs, br(:), 'filled');
 title('Brx'); axis equal;
 subplot(1,3,2);
-scatter(rr(:), zz(:), 10, bz(:), 'filled');
+scatter(rr(:), zz(:), cs, bz(:), 'filled');
 title('Bzx'); axis equal;
 subplot(1,3,3);
-scatter(rr(:), zz(:), 10, b(:), 'filled');
+scatter(rr(:), zz(:), cs, b(:), 'filled');
 title('Bx'); axis equal;
 
 %plot Fx
 figure;
 f = LY.Fx(:,:,nt);
-scatter(rr(:), zz(:), 10, f(:), 'filled');
-title('Fx');
+scatter(rr(:), zz(:), cs, f(:), 'filled');
+title('Fx'); axis equal;
 
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
