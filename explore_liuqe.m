@@ -39,6 +39,22 @@ i4pirxdrx = 1./(4*pi*L.drx*L.rx');
 % Btx = meqBt(L,LY.Fx,Opy,ag,rBt,F0,F1,TQ);
 % LY = meqlarg(LY,Brx,Bzx,Btx);
 
+% plot in 2 separate figures Brx, Bzx
+figure;
+subplot(2,1,1);
+imagesc(LY.t, L.r, squeeze(Brx(:,1,:)));
+title('Brx');
+xlabel('Time (s)');
+ylabel('R (m)');
+subplot(2,1,2);
+imagesc(LY.t, L.r, squeeze(Bzx(:,1,:)));
+title('Bzx');
+xlabel('Time (s)');
+ylabel('R (m)');
+
+%save figure in test/
+saveas(gcf, 'test/Brx_Bzx.png');
+
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % Compute Br,Bz fields
