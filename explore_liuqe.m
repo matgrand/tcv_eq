@@ -39,14 +39,19 @@ i4pirxdrx = 1./(4*pi*L.drx*L.rx');
 % Btx = meqBt(L,LY.Fx,Opy,ag,rBt,F0,F1,TQ);
 % LY = meqlarg(LY,Brx,Bzx,Btx);
 
+Bx = sqrt(Brx.^2 + Bzx.^2); % total magnetic field
+
 % plot in 2 separate figures Brx, Bzx
 figure;
-subplot(2,1,1);
-imagesc(squeeze(Brx(:,1,:)));
+nt = 1200;
+subplot(3,1,1);
+imagesc(Brx(:,:,nt));
 title('Brx');
-subplot(2,1,2);
-imagesc(squeeze(Bzx(:,1,:)));
+subplot(3,1,2);
+imagesc(Bzx(:,:,nt));
 title('Bzx');
+subplot(3,1,3);
+imagesc(Bx(:,:,nt));
 
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
