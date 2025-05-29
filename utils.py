@@ -58,13 +58,15 @@ RB = f'rBt{"0" if USE_REAL_INPUTS else "1"}'
 # output names
 FX = 'Fx' 
 IY = 'Iy'
+BR = 'Br'
+BZ = 'Bz'
 RQ = 'rq'
 ZQ = 'zq'
 INPUT_NAMES = [BM, FF, FT, IA, IP, IU, RB] # input names
-OUTPUT_NAMES = [FX, IY, RQ, ZQ] # output names
+OUTPUT_NAMES = [FX, IY, BR, BZ, RQ, ZQ] # output names
 DS_NAMES = INPUT_NAMES + OUTPUT_NAMES # dataset names
 DS_SIZES = { BM:(38,), FF:(38,), FT:(1,), IA:(19,), IP:(1,), IU:(38,), RB:(1,),  # input sizes
-             FX:(65,28), IY:(63,26), RQ:(129,), ZQ:(129,) } # output sizes
+             FX:(65,28), IY:(63,26), BR:(65,28), BZ:(65,28), RQ:(129,), ZQ:(129,) } # output sizes
 
 from scipy.interpolate import RegularGridInterpolator
 INTERP_METHOD = 'linear' # fast, but less accurate

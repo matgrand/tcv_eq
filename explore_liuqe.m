@@ -43,15 +43,22 @@ Bx = sqrt(Brx.^2 + Bzx.^2); % total magnetic field
 
 % plot in 2 separate figures Brx, Bzx
 figure;
+rr, zz = L.rrx, L.zzx;
 nt = 1200;
 subplot(3,1,1);
-imagesc(Brx(:,:,nt));
+scatter(rr, zz, 10, Brx(:,:,nt), 'filled');
 title('Brx');
 subplot(3,1,2);
-imagesc(Bzx(:,:,nt));
+scatter(rr, zz, 10, Bzx(:,:,nt), 'filled');
 title('Bzx');
 subplot(3,1,3);
-imagesc(Bx(:,:,nt));
+scatter(rr, zz, 10, Bx(:,:,nt), 'filled');
+title('Bx');
+
+%plot Fx
+figure;
+scatter(rr, zz, 10, LY.Fx(:,:,nt), 'filled');
+title('Fx');
 
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
