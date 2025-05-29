@@ -45,19 +45,23 @@ Bx = sqrt(Brx.^2 + Bzx.^2); % total magnetic field
 figure;
 [rr, zz] = meshgrid(L.rx, L.zx); % create rr, zz grid for plotting
 nt = 1200;
-subplot(3,1,1);
-scatter(rr, zz, 10, Brx(:,:,nt), 'filled');
-title('Brx');
-subplot(3,1,2);
-scatter(rr, zz, 10, Bzx(:,:,nt), 'filled');
-title('Bzx');
-subplot(3,1,3);
-scatter(rr, zz, 10, Bx(:,:,nt), 'filled');
-title('Bx');
+br = Brx(:,:,nt);
+bz = Bzx(:,:,nt);
+b = Bx(:,:,nt);
+subplot(1,3,1);
+scatter(rr(:), zz(:), 10, br(:), 'filled');
+title('Brx'); axis equal;
+subplot(1,3,2);
+scatter(rr(:), zz(:), 10, bz(:), 'filled');
+title('Bzx'); axis equal;
+subplot(1,3,3);
+scatter(rr(:), zz(:), 10, b(:), 'filled');
+title('Bx'); axis equal;
 
 %plot Fx
 figure;
-scatter(rr, zz, 10, LY.Fx(:,:,nt), 'filled');
+f = LY.Fx(:,:,nt);
+scatter(rr(:), zz(:), 10, f(:), 'filled');
 title('Fx');
 
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
