@@ -39,25 +39,23 @@ i4pirxdrx = 1./(4*pi*L.drx*L.rx');
 % Btx = meqBt(L,LY.Fx,Opy,ag,rBt,F0,F1,TQ);
 % LY = meqlarg(LY,Brx,Bzx,Btx);
 
-Bx = sqrt(Brx.^2 + Bzx.^2); % total magnetic field
-
 % plot in 2 separate figures Brx, Bzx
 figure;
 [rr, zz] = meshgrid(L.rx, L.zx); % create rr, zz grid for plotting
 nt = 1200;
 br = Brx(:,:,nt);
 bz = Bzx(:,:,nt);
-b = Bx(:,:,nt);
-subplot(1,3,1);
 cs = 20
+subplot(1,3,1);
 scatter(rr(:), zz(:), cs, br(:), 'filled');
 title('Brx'); axis equal;
 subplot(1,3,2);
 scatter(rr(:), zz(:), cs, bz(:), 'filled');
 title('Bzx'); axis equal;
 subplot(1,3,3);
-scatter(rr(:), zz(:), cs, b(:), 'filled');
-title('Bx'); axis equal;
+quiver(rr, zz, br, bz, 'k');
+title('Brx (x) and Bzx (y) vector field');
+axis equal;
 
 %plot Fx
 figure;
