@@ -284,7 +284,7 @@ fprintf('Output files saved in: %s\n', OUT_DIR);
 % save a random mat in the /NoTivoli/grandin/ directory to show it is finished
 save(fullfile('/NoTivoli/grandin/', 'ds_done.mat'), 'shot_processing_times');
 
-
+% copied from meqpost
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % Compute Br,Bz fields
