@@ -36,8 +36,8 @@ times = LY.t;
 i4pirxdzx = 1./(4*pi*L.dzx*L.rx');
 i4pirxdrx = 1./(4*pi*L.drx*L.rx');
 [Brx,Bzx] = meqBrBz(LY.Fx,i4pirxdzx,i4pirxdrx,L.nzx,L.nrx);
-Btx = meqBt(L,LY.Fx,Opy,ag,rBt,F0,F1,TQ);
-LY = meqlarg(LY,Brx,Bzx,Btx);
+% Btx = meqBt(L,LY.Fx,Opy,ag,rBt,F0,F1,TQ);
+% LY = meqlarg(LY,Brx,Bzx,Btx);
 
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
@@ -59,26 +59,26 @@ function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     Bz(:,1      ,:) =  i4pirdr(1)       .* (-Fx(:,    3,:) + 4*Fx(:,    2,:) - 3*Fx(:,  1,:));
 end    
 
-function Btx = meqBt(L,Fx,Opy,ag,rBt,F0,F1,TQ)
-    % Btx = meqBt(L,Fx,Opy,ag,rBt,F0,F1,TQ)
-    % Computes toroidal field on x grid
+% function Btx = meqBt(L,Fx,Opy,ag,rBt,F0,F1,TQ)
+%     % Btx = meqBt(L,Fx,Opy,ag,rBt,F0,F1,TQ)
+%     % Computes toroidal field on x grid
 
-    Btx  = rBt*repmat(1./L.rx',L.nzx,1);
-    Bty = Btx(L.lxy);
+%     Btx  = rBt*repmat(1./L.rx',L.nzx,1);
+%     Bty = Btx(L.lxy);
 
-    nB = numel(F1);
-    for iB = 1:nB
-    Opyi = (Opy==iB); % mask for this domain    
-    if isequal(func2str(L.bfct),'bf3pmex')
-        assert(false, 'not implemented yet');
-        Btyi = L.bfct(8,L.bfp, Fx,F0(iB),F1(iB),int8(Opyi),ag(:,iB),rBt,L.idsx,L.iry);
-        Bty(Opyi) = Btyi(Opyi);
-    else
-        % Mode 8 not yet available for other bfs, to be added later
-        FyN = (Fx(L.lxy)-F0(iB))/(F1(iB)-F0(iB)); % rhopol.^2
-        Bty(Opyi) = interp1(L.pQ.^2,TQ(:,iB)',FyN(Opyi))./L.rry(Opyi);
-    end    
-    end
-    Btx(L.lxy) = Bty;
-end    
+%     nB = numel(F1);
+%     for iB = 1:nB
+%         Opyi = (Opy==iB); % mask for this domain    
+%         if isequal(func2str(L.bfct),'bf3pmex')
+%             assert(false, 'not implemented yet');
+%             Btyi = L.bfct(8,L.bfp, Fx,F0(iB),F1(iB),int8(Opyi),ag(:,iB),rBt,L.idsx,L.iry);
+%             Bty(Opyi) = Btyi(Opyi);
+%         else
+%             % Mode 8 not yet available for other bfs, to be added later
+%             FyN = (Fx(L.lxy)-F0(iB))/(F1(iB)-F0(iB)); % rhopol.^2
+%             Bty(Opyi) = interp1(L.pQ.^2,TQ(:,iB)',FyN(Opyi))./L.rry(Opyi);
+%         end    
+%     end
+%     Btx(L.lxy) = Bty;
+% end    
 
