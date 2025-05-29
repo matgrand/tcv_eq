@@ -26,16 +26,16 @@ times = LY.t;
 % times = times(1:10:end);
 
 % to get only the inputs, basically the same as RT, (caveat maybe some filtering on magentics)
-[L, LX] = liuqe(shot, times)
+[L, LX] = liuqe(shot, times);
 
 
 
 % calculatin Br, Bz, Bt fields, copying functions from source code of meqpost (because mds2meq does
 % not allow to run meqpost)
 
-L.i4pirxdzx = 1./(4*pi*L.dzx*L.rx');
-L.i4pirxdrx = 1./(4*pi*L.drx*L.rx');
-[Brx,Bzx] = meqBrBz(LY.Fx,L.i4pirxdzx,L.i4pirxdrx,L.nzx,L.nrx);
+i4pirxdzx = 1./(4*pi*L.dzx*L.rx');
+i4pirxdrx = 1./(4*pi*L.drx*L.rx');
+[Brx,Bzx] = meqBrBz(LY.Fx,i4pirxdzx,i4pirxdrx,L.nzx,L.nrx);
 Btx = meqBt(L,LY.Fx,Opy,ag,rBt,F0,F1,TQ);
 LY = meqlarg(LY,Brx,Bzx,Btx);
 
