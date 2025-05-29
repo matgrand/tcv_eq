@@ -39,4 +39,4 @@ Main data structures:
     ip = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');
     ```
 
-    to find the names of the variables, use jtraverser -> tcv_shot -> shot -> EQUIL_1 (liuqe.m) -> RESULTS 
+    to find the names of the variables, use jtraverser -> tcv_shot -> shot -> results -> EQUIL_1 (liuqe.m) -> RESULTS 
