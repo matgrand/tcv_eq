@@ -48,9 +48,6 @@ subplot(2,1,2);
 imagesc(squeeze(Bzx(:,1,:)));
 title('Bzx');
 
-%save figure in test/
-saveas(gcf, 'test/Brx_Bzx.png');
-
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % Compute Br,Bz fields
