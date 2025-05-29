@@ -43,8 +43,7 @@ Bx = sqrt(Brx.^2 + Bzx.^2); % total magnetic field
 
 % plot in 2 separate figures Brx, Bzx
 figure;
-rr = L.rx;
-zz = L.zx;
+[rr, zz] = meshgrid(L.rx, L.zx); % create rr, zz grid for plotting
 nt = 1200;
 subplot(3,1,1);
 scatter(rr, zz, 10, Brx(:,:,nt), 'filled');
