@@ -63,6 +63,9 @@ f = LY.Fx(:,:,nt);
 scatter(rr(:), zz(:), cs, f(:), 'filled');
 title('Fx'); axis equal;
 
+for i = 1:100
+    disp(' ');
+end
 
 % test meqBrBz function
 f = reshape(1:(28*65), 65, 28, 1);
@@ -77,7 +80,7 @@ function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % Br = -1/(2*pi*R)* dF/dz
     % Central differences dF/dz[i] =  F[i-1] - F[i+1]/(2*dz)
     df = (Fx(3:end,:,:) - Fx(1:end-2,:,:));
-    disp(['df size: ', mat2str(size(df)), ', df(1,1,:): ', mat2str(squeeze(df(1,1,:))')]);
+    disp(['df size: ', mat2str(size(df)), ', df(1,:): ', mat2str(df(1,:))]);
     Br(2:end-1,:,:) = -i4pirdz.* df;
     % At grid boundary i, use: dF/dz[i] = (-F(i+2) + 4*F(i+1) - 3*F(i))/(2*dz)
     Br(end,:  ,:) = -i4pirdz          .* (+Fx(end-2,:,:) - 4*Fx(end-1,:,:) + 3*Fx(end,:,:));
