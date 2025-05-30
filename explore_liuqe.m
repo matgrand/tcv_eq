@@ -69,6 +69,7 @@ end
 
 % test meqBrBz function
 f = reshape(1:(28*65), 65, 28, 1);
+f = [f; f];
 [Br,Bz] = meqBrBz(f,i4pirdz,i4pirdr,L.nzx,L.nrx);
 
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
