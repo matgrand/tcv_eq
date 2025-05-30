@@ -80,9 +80,7 @@ function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     [Br,Bz] = deal(zeros(nz,nr,size(Fx,3))); % init
     % Br = -1/(2*pi*R)* dF/dz
     % Central differences dF/dz[i] =  F[i-1] - F[i+1]/(2*dz)
-    df = (Fx(3:end,:,:) - Fx(1:end-2,:,:));
-    disp(['df size: ', mat2str(size(df)), ', df(1,:): ', mat2str(df(1,:))]);
-    Br(2:end-1,:,:) = -i4pirdz.* df;
+    Br(2:end-1,:,:) = -i4pirdz .* (Fx(3:end,:,:) - Fx(1:end-2,:,:));
     % At grid boundary i, use: dF/dz[i] = (-F(i+2) + 4*F(i+1) - 3*F(i))/(2*dz)
     Br(end,:  ,:) = -i4pirdz          .* (+Fx(end-2,:,:) - 4*Fx(end-1,:,:) + 3*Fx(end,:,:));
     Br(1  ,:  ,:) = -i4pirdz          .* (-Fx(    3,:,:) + 4*Fx(    2,:,:) - 3*Fx(  1,:,:));
