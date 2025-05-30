@@ -45,7 +45,7 @@ figure;
 nt = 1200;
 br = Brx(:,:,nt);
 bz = Bzx(:,:,nt);
-cs = 20
+cs = 20;
 subplot(1,3,1);
 scatter(rr(:), zz(:), cs, br(:), 'filled');
 title('Brx'); axis equal;
@@ -62,6 +62,11 @@ figure;
 f = LY.Fx(:,:,nt);
 scatter(rr(:), zz(:), cs, f(:), 'filled');
 title('Fx'); axis equal;
+
+
+% test meqBrBz function
+f = reshape(1:(28*65), 65, 28, 1);
+[Br,Bz] = meqBrBz(f,i4pirxdzx,i4pirxdrx,L.nzx,L.nrx);
 
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
