@@ -33,9 +33,9 @@ times = LY.t;
 % calculatin Br, Bz, Bt fields, copying functions from source code of meqpost (because mds2meq does
 % not allow to run meqpost)
 
-i4pirxdzx = 1./(4*pi*L.dzx*L.rx');
-i4pirxdrx = 1./(4*pi*L.drx*L.rx');
-[Brx,Bzx] = meqBrBz(LY.Fx,i4pirxdzx,i4pirxdrx,L.nzx,L.nrx);
+i4pirdz = 1./(4*pi*L.dzx*L.rx');
+i4pirdr = 1./(4*pi*L.drx*L.rx');
+[Brx,Bzx] = meqBrBz(LY.Fx,i4pirdz,i4pirdr,L.nzx,L.nrx);
 % Btx = meqBt(L,LY.Fx,Opy,ag,rBt,F0,F1,TQ);
 % LY = meqlarg(LY,Brx,Bzx,Btx);
 
