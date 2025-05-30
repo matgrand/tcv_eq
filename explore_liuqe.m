@@ -66,7 +66,7 @@ title('Fx'); axis equal;
 
 % test meqBrBz function
 f = reshape(1:(28*65), 65, 28, 1);
-[Br,Bz] = meqBrBz(f,i4pirxdzx,i4pirxdrx,L.nzx,L.nrx);
+[Br,Bz] = meqBrBz(f,i4pirdz,i4pirdr,L.nzx,L.nrx);
 
 function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
     % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
