@@ -58,15 +58,24 @@ RB = f'rBt{"0" if USE_REAL_INPUTS else "1"}'
 # output names
 FX = 'Fx' 
 IY = 'Iy'
-BR = 'Br'
-BZ = 'Bz'
+BR = 'Br' # recalculated in python, not in matlab
+BZ = 'Bz' # recalculated in python, not in matlab
 RQ = 'rq'
 ZQ = 'zq'
+#more names
+SEP = 'sep' # this is the LCFS, last closed flux surface, or separatrix
+PHYS = 'phys' # physics inputs
+PTS = 'pts' # points 
+
 INPUT_NAMES = [BM, FF, FT, IA, IP, IU, RB] # input names
 OUTPUT_NAMES = [FX, IY, BR, BZ, RQ, ZQ] # output names
 DS_NAMES = INPUT_NAMES + OUTPUT_NAMES # dataset names
-DS_SIZES = { BM:(38,), FF:(38,), FT:(1,), IA:(19,), IP:(1,), IU:(38,), RB:(1,),  # input sizes
-             FX:(65,28), IY:(63,26), BR:(65,28), BZ:(65,28), RQ:(129,), ZQ:(129,) } # output sizes
+DS_SIZES = { 
+    BM:(38,), FF:(38,), FT:(1,), IA:(19,), IP:(1,), IU:(38,), RB:(1,),  # input sizes
+    FX:(65,28), IY:(63,26), BR:(65,28), BZ:(65,28), RQ:(129,), ZQ:(129,),  # output sizes
+    SEP:(2*129,), # LCFS/SEP size, 2*NLCFS points (r,z) for the last closed flux surface
+}
+DTYPE = 'float32'
 
 from scipy.interpolate import RegularGridInterpolator
 INTERP_METHOD = 'linear' # fast, but less accurate
@@ -313,32 +322,34 @@ def test_network_io(verbose=True):
 def load_ds(ds_path):
     assert os.path.exists(ds_path), f"Dataset not found: {ds_path}"
     d = np.load(ds_path)
-    # output: magnetic flux, transposed (matlab is column-major)
-    X =  d["X"] # (n, NIN) # inputs: currents + measurements + profiles
-    r = d["r"] # (n, NGR) radial position of pixels 
-    z = d["z"] # (n, NGZ) vertical position of pixels 
-    Y1 =  d["Y1"] # (n, NGZ, NGZ) # outputs: magnetic flux
-    Y2 =  d["Y2"] # (n, NGZ, NGZ) # outputs: curr density
-    Y3 =  d["Y3"] # (n, NLCFS*2) # outputs: last closed flux surface (LCFS)
-    x_mean_std = d["x_mean_std"] # (2, NIN) # mean and std of the inputs
-    return X, r, z, Y1, Y2, Y3, x_mean_std
+    r = {
+        PHYS:d[PHYS], 
+        PTS:d[PTS], 
+        FX:d[FX], 
+        IY:d[IY], 
+        BR:d[BR], 
+        BZ:d[BZ], 
+        SEP:d[SEP], 
+        "x_mean_std":d["x_mean_std"]
+    }
+    return r
 
 ####################################################################################################
 class LiuqeDataset(Dataset):
-    def __init__(self, ds_mat_path, verbose=True):
-        X, r, z, Y1, Y2, Y3, x_mean_std = map(to_tensor, load_ds(ds_mat_path))
-        Y1 = Y1.view(-1,1,NGZ,NGR)
-        Y2 = Y2.view(-1,1,NGZ,NGR)
-        self.data = [X, r, z, Y1, Y2, Y3]
+    def __init__(self, ds_path, verbose=True):
+        d = load_ds(ds_path)
+        x_mean_std = to_tensor(d.pop("x_mean_std")) # mean and std for inputs
+        print(f"Dataset loaded from {ds_path}, keys: {d.keys()}")
+        self.data = {k:to_tensor(v) for k,v in d.items()} # convert to tensors
         # move to DEV (doable bc the dataset is fairly small, check memory usage)
-        tot_memory_ds = sum([x.element_size()*x.nelement() for x in self.data])
+        tot_memory_ds = sum([x.element_size()*x.nelement() for x in self.data.values()]) # total memory in bytes
         gpu_free_mem = torch.cuda.mem_get_info()[0] if DEV == CUDA else np.inf
         self.on_dev = DEV != CPU and tot_memory_ds < gpu_free_mem
-        if self.on_dev: self.data = [x.to(DEV) for x in self.data]
+        if self.on_dev: self.data = [x.to(DEV) for x in self.data.values()]
         self.x_mean_std = x_mean_std.to(DEV) if self.on_dev else x_mean_std
         if verbose: print(f"Dataset: N:{len(self)}, memory:{tot_memory_ds/1e6}MB, on_dev:{self.on_dev}")
-    def __len__(self): return len(self.data[0])
-    def __getitem__(self, idx): return [x[idx] for x in self.data]
+    def __len__(self): return len(self.data[PHYS]) # number of samples, all data should have the same length
+    def __getitem__(self, idx): return [x[idx] for x in self.data.values()] # return all data as a tuple
 
 def test_dataset(ds:LiuqeDataset, verbose=True):
     if verbose:
@@ -349,38 +360,34 @@ def test_dataset(ds:LiuqeDataset, verbose=True):
     n_plot = 10
     print(len(ds))
     idxs = np.random.randint(0, len(ds), n_plot)
-    fig, axs = plt.subplots(2, n_plot, figsize=(3*n_plot, 5))
+    plt.figure(figsize=(15, 3*n_plot))
     for i, j in enumerate(idxs):
-        X,r,z,Y1,Y2,Y3 = map(lambda x: x.cpu().numpy(), ds[j])
-        Y1, Y2 = Y1.reshape(NGZ, NGR), Y2.reshape(NGZ, NGR)
-        rr, zz = np.meshgrid(r, z)
-        # Y1
-        axs[0,i].contourf(rr, zz, Y1, 100)
-        plot_vessel(axs[0,i])
-        axs[0,i].plot(Y3[:NLCFS], Y3[NLCFS:], color='gray', lw=1.5)
-        fig.colorbar(axs[0,i].collections[0], ax=axs[0,i])
-        axs[0,i].axis("off")
-        axs[0,i].set_aspect("equal")
-        # Y2
-        axs[1,i].contourf(rr, zz, Y2, 100)
-        plot_vessel(axs[1,i])
-        axs[1,i].plot(Y3[:NLCFS], Y3[NLCFS:], color='gray', lw=1.5)
-        fig.colorbar(axs[1,i].collections[0], ax=axs[1,i])
-        axs[1,i].axis("off")
-        axs[1,i].set_aspect("equal")
+        x, pts, fx, iy, br, bz, sep = map(lambda x: x.cpu().numpy(), ds[j])
+        x = (x-ds.x_mean_std[0]) / ds.x_mean_std[1]  # normalize inputs
+        r,z = pts[:,0], pts[:,1]
+        ms = 1
+        plt.subplot(n_plot, 5, i*5+1)
+        plt.scatter(r, z, c=fx, s=ms), plt.title('FX')
+        plt.plot(sep[:NLCFS], sep[NLCFS:], 'gray', lw=2)
+        plot_vessel(), plt.axis('equal'), plt.axis('off'), plt.colorbar()
+        plt.subplot(n_plot, 5, i*5+2)
+        plt.scatter(r, z, c=iy, s=ms), plt.title('IY')
+        plt.plot(sep[:NLCFS], sep[NLCFS:], 'gray', lw=2)
+        plot_vessel(), plt.axis('equal'), plt.axis('off'), plt.colorbar()
+        plt.subplot(n_plot, 5, i*5+3)
+        plt.scatter(r, z, c=br, s=ms), plt.title('Br')
+        plt.plot(sep[:NLCFS], sep[NLCFS:], 'gray', lw=2)
+        plot_vessel(), plt.axis('equal'), plt.axis('off'), plt.colorbar()
+        plt.subplot(n_plot, 5, i*5+4)
+        plt.scatter(r, z, c=bz, s=ms), plt.title('Bz')
+        plt.plot(sep[:NLCFS], sep[NLCFS:], 'gray', lw=2)
+        plot_vessel(), plt.axis('equal'), plt.axis('off'), plt.colorbar()
+        plt.subplot(n_plot, 5, i*5+5)
+        plt.bar(np.arange(len(x)), x), plt.title('Physical Inputs')
+        plt.suptitle(f'Dataset Example')
+        plt.tight_layout()
+    plt.savefig(f"{TEST_DIR}/dataset_examples.png")
 
-    plt.savefig(f"{TEST_DIR}/dataset_outputs.png")
-
-    # now do the same fot the input:
-    fig, axs = plt.subplots(1, n_plot, figsize=(3*n_plot, 5))
-    for i, j in enumerate(idxs):
-        inputs = ds[j][0].cpu()
-        inputs = ((ds[j][0] - ds.x_mean_std[0]) / ds.x_mean_std[1]).cpu().numpy().squeeze() # normalize
-        axs[i].plot(inputs, label='inputs')
-        axs[i].legend()
-        axs[i].set_title(f"Sample {j}")
-        axs[i].set_xlabel("Input index")
-    plt.savefig(f"{TEST_DIR}/dataset_inputs.png")
     return
 
 
@@ -443,6 +450,23 @@ def resample_on_new_subgrid(fs:list, rrG, zzG, nr=64, nz=64):
     fs_int = [interp_fun(ψ, rrG, zzG, rrg, zzg) for ψ in fs]
     return fs_int, rrg, zzg
 
+def sample_random_points(n):
+    pts = np.zeros((n, 2), dtype=DTYPE)
+    pts[:,0] = uniform(RRD[0,0], RRD[0,-1], n) # r
+    pts[:,1] = uniform(ZZD[0,0], ZZD[-1,0], n) # z
+    return pts
+
+def interp_pts(f:np.array, pts:np.array, gr=RRD[0,:], gz=ZZD[:,0], method=INTERP_METHOD):
+    """
+    Interpolate the function f at the points pts using the grid gr, gz.
+    f should be a 2D array with shape (len(gr), len(gz)).
+    pts should be a 2D array with shape (n, 2), where n is the number of points.
+    """
+    assert f.ndim == 2, f"f.ndim = {f.ndim}, f.shape = {f.shape}"
+    assert pts.ndim == 2 and pts.shape[1] == 2, f"pts.ndim = {pts.ndim}, pts.shape = {pts.shape}"
+    interp_func = RegularGridInterpolator((gr, gz), f.T, method=method)
+    return interp_func(pts).reshape(-1)
+
 ####################################################################################################
 # kernels
 def calc_laplace_df_dr_ker(hr, hz):
@@ -500,6 +524,31 @@ def calc_gso_batch(Ψ, r, z, dev=torch.device(CPU)):
     ΔΨ = (1/β.view(-1,1,1,1)) * (Ϛ(Ψ, laplace_ker(Δr, Δz, α, dev)) - Ϛ(Ψ, dr_ker(Δr, Δz, α, dev))/rr) # grad-shafranov operator
     # ΔΨ = Ϛ(ΔΨ, gauss_ker(dev)) # apply gauss kernel
     return ΔΨ
+
+# calculate Br, Bz from the flux map (Fx)
+def meqBrBz(f:np.ndarray):
+    if f.ndim == 2: f = f.reshape((1, *f.shape)) 
+    assert f.ndim == 3, f'Input array must be 2D or 3D, got {f.ndim}D'
+    assert f.shape[1:] == (65, 28), f'Input array must have shape (N, 28, 65), got {f.shape}'
+
+    dr, dz, r = RRD[0,1]-RRD[0,0], ZZD[1,0]-ZZD[0,0], RRD[0]
+    i4pirdr, i4pirdz = 1/(4*np.pi*dr*r), 1/(4*np.pi*dz*r)
+    Br, Bz = np.zeros_like(f, dtype=DTYPE), np.zeros_like(f, dtype=DTYPE)
+
+    # Br = -1/(2*pi*R)* dF/dz
+    # Central differences for interior points: F/dz[i] =  F[i-1] - F[i+1]/(2*dz)
+    Br[:,1:-1,:]    = -i4pirdz *  (f[:,2:,:] - f[:,:-2,:])
+    # At grid boundary i, use: dF/dz[i] = (-F(i+2) + 4*F(i+1) - 3*F(i))/(2*dz)
+    Br[:,-1,:]      = -i4pirdz * (+f[:,-3,:] - 4*f[:,-2,:] + 3*f[:,-1,:])
+    Br[:,0,:]       = -i4pirdz * (-f[:,2,:]  + 4*f[:,1,:]  - 3*f[:,0,:])
+
+    # Bz = 1/(2*pi*R)* dF/dr
+    # Central differences dF/dz[i] =  F[i-1] - F[i+1]/(2*dz)
+    Bz[:,:,1:-1]    = i4pirdr[1:-1] * (f[:,:,2:] - f[:,:,:-2])
+    # At grid boundary i, use: dF/dz[i] = (-F(i+2) + 4*F(i+1) - 3*F(i))/(2*dz)
+    Bz[:,:,-1]      = i4pirdr[-1] * (f[:,:,-3] - 4*f[:,:,-2] + 3*f[:,:,-1])
+    Bz[:,:,0]       = i4pirdr[0] *  (-f[:,:,2] + 4*f[:,:,1]  - 3*f[:,:,0])
+    return Br, Bz
 
 ####################################################################################################
 ## PLOTTING

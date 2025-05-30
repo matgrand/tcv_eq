@@ -93,17 +93,17 @@ for i = 1:length(shots)
         fprintf('\tip filtered -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(ip_valid1)/numel(ip_valid1)), sum(ip_valid1), numel(ip_valid1));
         assert(sum(ip_valid1) > 0.8 * numel(ip_valid1), 'IP MEAS and IPLIUQE are different in too many samples');
 
-        % calculate magnetic fields (copied from meqpost)
-        i4pirxdzx = 1./(4*pi*L.dzx*L.rx');
-        i4pirxdrx = 1./(4*pi*L.drx*L.rx');
-        [Brx,Bzx] = meqBrBz(LY.Fx,i4pirxdzx,i4pirxdrx,L.nzx,L.nrx);
+        % % calculate magnetic fields (copied from meqpost) (actually, do it later to save memory)
+        % i4pirxdzx = 1./(4*pi*L.dzx*L.rx');
+        % i4pirxdrx = 1./(4*pi*L.drx*L.rx');
+        % [Brx,Bzx] = meqBrBz(LY.Fx,i4pirxdzx,i4pirxdrx,L.nzx,L.nrx);
 
         %% extract quantities
         % Ouputs
         Fx = LY.Fx; % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
         Iy = LY.Iy; % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
-        Br = Brx;
-        Bz = Bzx;
+        % Br = Brx;
+        % Bz = Bzx;
         rq = rq; % LCFS r coordinate
         zq = zq; % LCFS z coordinate
 
@@ -127,8 +127,8 @@ for i = 1:length(shots)
         % check the dimensions
         assert(all(size(Fx) == [65, 28, nt]), 'Fx has wrong size');
         assert(all(size(Iy) == [63, 26, nt]), 'Iy has wrong size');
-        assert(all(size(Br) == [65, 28, nt]), 'Brx has wrong size');
-        assert(all(size(Bz) == [65, 28, nt]), 'Bzx has wrong size');
+        % assert(all(size(Br) == [65, 28, nt]), 'Brx has wrong size');
+        % assert(all(size(Bz) == [65, 28, nt]), 'Bzx has wrong size');
         assert(all(size(rq) == [129, nt]), 'rq has wrong size');
         assert(all(size(zq) == [129, nt]), 'zq has wrong size');
 
@@ -145,8 +145,8 @@ for i = 1:length(shots)
         % mFx  = reshape(all(all(~isnan(Fx) & ~isinf(Fx),1),2), [],1);
         mFx = reshape(all(all(~isnan(Fx) & ~isinf(Fx),1),2), [], 1);
         mIy = reshape(all(all(~isnan(Iy) & ~isinf(Iy),1),2), [], 1);
-        mBr = reshape(all(all(~isnan(Br) & ~isinf(Br),1),2), [], 1);
-        mBz = reshape(all(all(~isnan(Bz) & ~isinf(Bz),1),2), [], 1);
+        % mBr = reshape(all(all(~isnan(Br) & ~isinf(Br),1),2), [], 1);
+        % mBz = reshape(all(all(~isnan(Bz) & ~isinf(Bz),1),2), [], 1);
         mrq = reshape(all(~isnan(rq) & ~isinf(rq), 1), [], 1);
         mzq = reshape(all(~isnan(zq) & ~isinf(zq), 1), [], 1);
 
@@ -165,7 +165,8 @@ for i = 1:length(shots)
         mrBt0 = reshape(~isnan(rBt0) & ~isinf(rBt0), [], 1);
         mrBt1 = reshape(~isnan(rBt1) & ~isinf(rBt1), [], 1);
 
-        valid = mFx & mIy & mBr & mBz & mrq & mzq & ...
+        % valid = mFx & mIy & mBr & mBz & mrq & mzq & ...
+        valid = mFx & mIy & mrq & mzq & ...
             mBm0 & mBm1 & mFf0 & mFf1 & mFt0 & mFt1 & ...
             mIa0 & mIa1 & mIp0 & mIp1 & mIu0 & mIu1 & ...
             mrBt0 & mrBt1 & ip_valid1; % keep only the samples where all quantities are valid and IP is valid
@@ -182,8 +183,8 @@ for i = 1:length(shots)
         t = t(valid);
         Fx = Fx(:,:,valid);
         Iy = Iy(:,:,valid);
-        Br = Br(:,:,valid);
-        Bz = Bz(:,:,valid);
+        % Br = Br(:,:,valid);
+        % Bz = Bz(:,:,valid);
         rq = rq(:,valid);
         zq = zq(:,valid);
         Bm0 = Bm0(:,valid);
@@ -205,8 +206,8 @@ for i = 1:length(shots)
         t = t(1:DECIMATION:end);
         Fx = Fx(:,:,1:DECIMATION:end);
         Iy = Iy(:,:,1:DECIMATION:end);
-        Br = Br(:,:,1:DECIMATION:end);
-        Bz = Bz(:,:,1:DECIMATION:end);
+        % Br = Br(:,:,1:DECIMATION:end);
+        % Bz = Bz(:,:,1:DECIMATION:end);
         rq = rq(:,1:DECIMATION:end);
         zq = zq(:,1:DECIMATION:end);
         Bm0 = Bm0(:,1:DECIMATION:end);
@@ -227,8 +228,8 @@ for i = 1:length(shots)
         % convert to single precision to save space
         Fx = single(Fx); 
         Iy = single(Iy);
-        Br = single(Br);
-        Bz = single(Bz);
+        % Br = single(Br);
+        % Bz = single(Bz);
         rq = single(rq);
         zq = single(zq);
         Bm1 = single(Bm1);
@@ -247,8 +248,14 @@ for i = 1:length(shots)
         rBt0 = single(rBt0);
 
         % print final sizes
-        fprintf('\tFinal sizes -> Fx:%s, Iy:%s, Br:%s, Bz:%s, rq:%s, zq:%s, \n\tBm0:%s, Bm1:%s, Ff0:%s, Ff1:%s, Ft0:%s, Ft1:%s, Ia0:%s, Ia1:%s, Ip0:%s, Ip1:%s, Iu0:%s, Iu1:%s, rBt0:%s, rBt1:%s\n', ...
-            mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Br)), mat2str(size(Bz)), mat2str(size(rq)), mat2str(size(zq)), ...
+        % fprintf('\tFinal sizes -> Fx:%s, Iy:%s, Br:%s, Bz:%s, rq:%s, zq:%s, \n\tBm0:%s, Bm1:%s, Ff0:%s, Ff1:%s, Ft0:%s, Ft1:%s, Ia0:%s, Ia1:%s, Ip0:%s, Ip1:%s, Iu0:%s, Iu1:%s, rBt0:%s, rBt1:%s\n', ...
+        %     mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Br)), mat2str(size(Bz)), mat2str(size(rq)), mat2str(size(zq)), ...
+        %     mat2str(size(Bm0)), mat2str(size(Bm1)), mat2str(size(Ff0)), mat2str(size(Ff1)), ...
+        %     mat2str(size(Ft0)), mat2str(size(Ft1)), mat2str(size(Ia0)), mat2str(size(Ia1)), ...
+        %     mat2str(size(Ip0)), mat2str(size(Ip1)), mat2str(size(Iu0)), mat2str(size(Iu1)), ...
+        %     mat2str(size(rBt0)), mat2str(size(rBt1)));
+        fprintf('\tFinal sizes -> Fx:%s, Iy:%s, rq:%s, zq:%s, \n\tBm0:%s, Bm1:%s, Ff0:%s, Ff1:%s, Ft0:%s, Ft1:%s, Ia0:%s, Ia1:%s, Ip0:%s, Ip1:%s, Iu0:%s, Iu1:%s, rBt0:%s, rBt1:%s\n', ...
+            mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(rq)), mat2str(size(zq)), ...
             mat2str(size(Bm0)), mat2str(size(Bm1)), mat2str(size(Ff0)), mat2str(size(Ff1)), ...
             mat2str(size(Ft0)), mat2str(size(Ft1)), mat2str(size(Ia0)), mat2str(size(Ia1)), ...
             mat2str(size(Ip0)), mat2str(size(Ip1)), mat2str(size(Iu0)), mat2str(size(Iu1)), ...
@@ -258,7 +265,11 @@ for i = 1:length(shots)
 
         % save data into a .mat file
         save_file = fullfile(OUT_DIR, sprintf('%d.mat', shot));
-        save(save_file, 't', 'Fx', 'Iy', 'Br', 'Bz', 'rq', 'zq', ...
+        % save(save_file, 't', 'Fx', 'Iy', 'Br', 'Bz', 'rq', 'zq', ...
+        %     'Bm0', 'Bm1', 'Ff0', 'Ff1', 'Ft0', 'Ft1', ...
+        %     'Ia0', 'Ia1', 'Ip0', 'Ip1', 'Iu0', 'Iu1', ...
+        %     'rBt0', 'rBt1');
+        save(save_file, 't', 'Fx', 'Iy', 'rq', 'zq', ...
             'Bm0', 'Bm1', 'Ff0', 'Ff1', 'Ft0', 'Ft1', ...
             'Ia0', 'Ia1', 'Ip0', 'Ip1', 'Iu0', 'Iu1', ...
             'rBt0', 'rBt1');
@@ -284,23 +295,23 @@ fprintf('Output files saved in: %s\n', OUT_DIR);
 % save a random mat in the /NoTivoli/grandin/ directory to show it is finished
 save(fullfile('/NoTivoli/grandin/', 'ds_done.mat'), 'shot_processing_times');
 
-% copied from meqpost
-function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
-    % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
-    % Compute Br,Bz fields
-    % General version that also accepts time-varying Fx
+% % copied from meqpost
+% function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
+%     % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
+%     % Compute Br,Bz fields
+%     % General version that also accepts time-varying Fx
 
-    [Br,Bz] = deal(zeros(nz,nr,size(Fx,3))); % init
-    % Br = -1/(2*pi*R)* dF/dz
-    % Central differences dF/dz[i] =  F[i-1] - F[i+1]/(2*dz)
-    Br(2:end-1,:,:) = -i4pirdz.* (Fx(3:end,:,:) - Fx(1:end-2,:,:));
-    % At grid boundary i, use: dF/dz[i] = (-F(i+2) + 4*F(i+1) - 3*F(i))/(2*dz)
-    Br(end,:  ,:) = -i4pirdz          .* (+Fx(end-2,:,:) - 4*Fx(end-1,:,:) + 3*Fx(end,:,:));
-    Br(1  ,:  ,:) = -i4pirdz          .* (-Fx(    3,:,:) + 4*Fx(    2,:,:) - 3*Fx(  1,:,:));
+%     [Br,Bz] = deal(zeros(nz,nr,size(Fx,3))); % init
+%     % Br = -1/(2*pi*R)* dF/dz
+%     % Central differences dF/dz[i] =  F[i-1] - F[i+1]/(2*dz)
+%     Br(2:end-1,:,:) = -i4pirdz.* (Fx(3:end,:,:) - Fx(1:end-2,:,:));
+%     % At grid boundary i, use: dF/dz[i] = (-F(i+2) + 4*F(i+1) - 3*F(i))/(2*dz)
+%     Br(end,:  ,:) = -i4pirdz          .* (+Fx(end-2,:,:) - 4*Fx(end-1,:,:) + 3*Fx(end,:,:));
+%     Br(1  ,:  ,:) = -i4pirdz          .* (-Fx(    3,:,:) + 4*Fx(    2,:,:) - 3*Fx(  1,:,:));
 
-    % Bz = 1/(2*pi*R)* dF/dr
-    Bz(:,2:end-1,:) =  i4pirdr(2:end-1) .* (+Fx(:,  3:end,:) - Fx(:,1:end-2,:));
-    % Same as for Br
-    Bz(:,end    ,:) =  i4pirdr(end)     .* (+Fx(:,end-2,:) - 4*Fx(:,end-1,:) + 3*Fx(:,end,:));
-    Bz(:,1      ,:) =  i4pirdr(1)       .* (-Fx(:,    3,:) + 4*Fx(:,    2,:) - 3*Fx(:,  1,:));
-end    
+%     % Bz = 1/(2*pi*R)* dF/dr
+%     Bz(:,2:end-1,:) =  i4pirdr(2:end-1) .* (+Fx(:,  3:end,:) - Fx(:,1:end-2,:));
+%     % Same as for Br
+%     Bz(:,end    ,:) =  i4pirdr(end)     .* (+Fx(:,end-2,:) - 4*Fx(:,end-1,:) + 3*Fx(:,end,:));
+%     Bz(:,1      ,:) =  i4pirdr(1)       .* (-Fx(:,    3,:) + 4*Fx(:,    2,:) - 3*Fx(:,  1,:));
+% end    
