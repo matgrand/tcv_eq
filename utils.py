@@ -349,7 +349,7 @@ class LiuqeDataset(Dataset):
         tot_memory_ds = sum([x.element_size()*x.nelement() for x in self.data.values()]) # total memory in bytes
         gpu_free_mem = torch.cuda.mem_get_info()[0] if DEV == CUDA else np.inf
         self.on_dev = DEV != CPU and tot_memory_ds < gpu_free_mem
-        if self.on_dev: self.data = [x.to(DEV) for x in self.data.values()]
+        if self.on_dev: self.data = {k:v.to(DEV) for k,v in self.data.items()} # move to device
         self.x_mean_std = x_mean_std.to(DEV) if self.on_dev else x_mean_std
         if verbose: print(f"Dataset: N:{len(self)}, memory:{tot_memory_ds/1e6}MB, on_dev:{self.on_dev}")
     def __len__(self): return len(self.data[PHYS]) # number of samples, all data should have the same length
