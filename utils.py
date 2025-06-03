@@ -66,6 +66,7 @@ ZQ = 'zq'
 SEP = 'sep' # this is the LCFS, last closed flux surface, or separatrix
 PHYS = 'phys' # physics inputs
 PTS = 'pts' # points 
+FG = 'fg' # full grid
 
 INPUT_NAMES = [BM, FF, FT, IA, IP, IU, RB] # input names
 OUTPUT_NAMES = [FX, IY, BR, BZ, RQ, ZQ] # output names
@@ -89,7 +90,7 @@ TRAIN_DS_PATH = f'{DS_DIR}/train_ds.npz'
 EVAL_DS_PATH = f'{DS_DIR}/eval_ds.npz'
 
 # paths to the best models
-LOSS_NAMES = ['l1', 'l2', 'l3', 'gso'] # loss names
+LOSS_NAMES = ['lFx', 'lIy', 'lBr', 'lBz', 'lSep'] # loss names
 def model_path(loss_name, save_dir=SAVE_DIR):
     assert loss_name in LOSS_NAMES, f"loss_name should be one of {LOSS_NAMES}, got {loss_name}"
     return f"{save_dir}/best_{loss_name}.pth"
@@ -175,7 +176,7 @@ class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
             Linear(PHYSICS_LS+2, 64), ActF(),
             Linear(64, 1), ActF(),
         )
-    def forward(self, gr): return self.head(gr)
+    def forward(self, v): return self.head(v).squeeze(-1)
     
 class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
     def __init__(self):
@@ -226,16 +227,16 @@ class FullNet(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
         iy = self.iy_head(pts_ph) # get current density
         br = self.br_head(pts_ph) # get Br
         bz = self.bz_head(pts_ph) # get Bz
-        assert fx.dim() == 3 and fx.shape[-1] == 1, f"fx.dim() = {fx.dim()}, fx.shape[-1] = {fx.shape[-1]}, should be 2 (batch, 1)"
-        assert iy.dim() == 3 and iy.shape[-1] == 1, f"iy.dim() = {iy.dim()}, iy.shape[-1] = {iy.shape[-1]}, should be 2 (batch, 1)"
-        assert br.dim() == 3 and br.shape[-1] == 1, f"br.dim() = {br.dim()}, br.shape[-1] = {br.shape[-1]}, should be 2 (batch, 1)"
-        assert bz.dim() == 3 and bz.shape[-1] == 1, f"bz.dim() = {bz.dim()}, bz.shape[-1] = {bz.shape[-1]}, should be 2 (batch, 1)"
+        assert fx.dim() == 2 and fx.shape[1] == pts.shape[1], f"fx.dim() = {fx.dim()}, fx.shape[1] = {fx.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
+        assert iy.dim() == 2 and iy.shape[1] == pts.shape[1], f"iy.dim() = {iy.dim()}, iy.shape[1] = {iy.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
+        assert br.dim() == 2 and br.shape[1] == pts.shape[1], f"br.dim() = {br.dim()}, br.shape[1] = {br.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
+        assert bz.dim() == 2 and bz.shape[1] == pts.shape[1], f"bz.dim() = {bz.dim()}, bz.shape[1] = {bz.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
         lcfs = self.lcfs_head(ph) # get LCFS
         assert lcfs.dim() == 2 and lcfs.shape[1] == NLCFS*2, f"lcfs.dim() = {lcfs.dim()}, lcfs.shape[1] = {lcfs.shape[1]}, should be 2*NLCFS = {NLCFS*2}"
         return fx, iy, br, bz, lcfs # return flux, current density, Br, Bz, LCFS
 
         
-class LiuqeRTNet(Module): # LCFS net
+class LiuqeRTNet(Module): # Liuqe Real Time surrogate net
     def __init__(self, input_net:InputNet, fx_head:FHead, br_head:FHead, bz_head:FHead):
         super(LiuqeRTNet, self).__init__()
         self.input_net = input_net
@@ -261,6 +262,21 @@ class LiuqeRTNet(Module): # LCFS net
         bz = self.bz_head(pts_ph) # get Bz
         return fx, br, bz
 
+class LCFSNet(Module):
+    def __init__(self, input_net:InputNet, lcfs_head:LCFSHead):
+        super(LCFSNet, self).__init__()
+        self.input_net = input_net
+        self.lcfs_head = lcfs_head
+    def to(self, device):
+        super(LCFSNet, self).to(device)
+        self.input_net.to(device)
+        return self
+    def forward(self, x):
+        ph = self.input_net(x) # get physics vector
+        assert ph.dim() == 2 and ph.shape[1] == PHYSICS_LS, f"ph.dim() = {ph.dim()}, ph.shape[1] = {ph.shape[1]}, PHYSICS_LS = {PHYSICS_LS}"
+        lcfs = self.lcfs_head(ph) # get LCFS
+        assert lcfs.dim() == 2 and lcfs.shape[1] == NLCFS*2, f"lcfs.dim() = {lcfs.dim()}, lcfs.shape[1] = {lcfs.shape[1]}, should be 2*NLCFS = {NLCFS*2}"
+        return lcfs
     
 def test_network_io(verbose=True):
     v = verbose
@@ -280,7 +296,7 @@ def test_network_io(verbose=True):
                         full_net.bz_head)
     fx, iy, br, bz, lcfs = full_net(x, pts)
     fx2, br2, bz2 = rt_net(x, pts)
-    assert fx.shape == (1, n_points, 1), f"fx.shape = {fx.shape}, should be (1, {n_points}, 1)"
+    assert fx.shape == (1, n_points), f"fx.shape = {fx.shape}, should be (1, {n_points})"
     assert fx.shape == iy.shape == br.shape == bz.shape, "fx, iy, br, bz should have the same shape"
     assert fx.shape == fx2.shape == br2.shape == bz2.shape, "fx, fx2, br2, bz2 should have the same shape" 
     assert lcfs.shape == (1, NLCFS*2), f"lcfs.shape = {lcfs.shape}, should be (1, {NLCFS*2})"
@@ -294,7 +310,7 @@ def test_network_io(verbose=True):
     x, pts = torch.rand(bs, NIN), torch.rand(bs, n_points, 2) # x: (bs, NIN), pts: (bs, n_points, 2)
     fx, iy, br, bz, lcfs = full_net(x, pts)
     fx2, br2, bz2 = rt_net(x, pts)
-    assert fx.shape == (bs, n_points, 1), f"fx.shape = {fx.shape}, should be ({bs}, {n_points}, 1)"
+    assert fx.shape == (bs, n_points), f"fx.shape = {fx.shape}, should be ({bs}, {n_points})"
     assert fx.shape == iy.shape == br.shape == bz.shape, "fx, iy, br, bz should have the same shape"
     assert fx.shape == fx2.shape == br2.shape == bz2.shape, "fx, fx2, br2, bz2 should have the same shape"
     assert lcfs.shape == (bs, NLCFS*2), f"lcfs.shape = {lcfs.shape}, should be ({bs}, {NLCFS*2})"
@@ -316,7 +332,8 @@ def load_ds(ds_path):
         BR:d[BR], 
         BZ:d[BZ], 
         SEP:d[SEP], 
-        "x_mean_std":d["x_mean_std"]
+        "x_mean_std":d["x_mean_std"],
+        FG:d[FG] if FG in d else None, # full grid, optional
     }
     return r
 
@@ -325,6 +342,7 @@ class LiuqeDataset(Dataset):
     def __init__(self, ds_path, verbose=True):
         d = load_ds(ds_path)
         x_mean_std = to_tensor(d.pop("x_mean_std")) # mean and std for inputs
+        self.fg = d.pop(FG) 
         print(f"Dataset loaded from {ds_path}, keys: {d.keys()}")
         self.data = {k:to_tensor(v) for k,v in d.items()} # convert to tensors
         # move to DEV (doable bc the dataset is fairly small, check memory usage)
@@ -335,7 +353,7 @@ class LiuqeDataset(Dataset):
         self.x_mean_std = x_mean_std.to(DEV) if self.on_dev else x_mean_std
         if verbose: print(f"Dataset: N:{len(self)}, memory:{tot_memory_ds/1e6}MB, on_dev:{self.on_dev}")
     def __len__(self): return len(self.data[PHYS]) # number of samples, all data should have the same length
-    def __getitem__(self, idx): return [x[idx] for x in self.data.values()] # return all data as a tuple
+    def __getitem__(self, idx): return [x[idx] for x in self.data.values()] # [PHYS, PTS, FX, IY, BR, BZ, SEP]
 
 def test_dataset(ds:LiuqeDataset, verbose=True):
     if verbose:
@@ -378,29 +396,6 @@ def test_dataset(ds:LiuqeDataset, verbose=True):
 
 
 ####################################################################################################
-# def sample_random_subgrid(rrG, zzG, nr=64, nz=64): # old, working
-#     rm, rM, zm, zM = rrG.min(), rrG.max(), zzG.min(), zzG.max()
-#     delta_r_min = .33*(rM-rm)
-#     delta_r_max = .75*(rM-rm)
-#     delta_z_min = .2*(zM-zm)
-#     delta_z_max = .75*(zM-zm)
-#     delta_r = uniform(delta_r_min, delta_r_max, 1)
-#     r0 = uniform(rm, rm+delta_r_max-delta_r, 1)
-#     delta_z = uniform(delta_z_min, delta_z_max, 1)
-#     z0 = uniform(zm,zm+delta_z_max-delta_z, 1)
-#     rr = np.linspace(r0, r0+delta_r, nr)
-#     zz = np.linspace(z0, z0+delta_z, nz)
-#     rrg, zzg = np.meshgrid(rr, zz)
-#     return rrg, zzg
-
-# def sample_random_subgrid(rrG, zzG, nr=64, nz=64): #general, working
-#     rm, rM, zm, zM = rrG[0,0], rrG[-1,-1], zzG[0,0], zzG[-1,-1]
-#     Δr, Δz = rM-rm, zM-zm 
-#     nΔr, nΔz = Δr*uniform(0.4, 1.0), Δz*uniform(0.4, 1.0)
-#     r0, z0 = uniform(rm, rM-nΔr), uniform(zm, zM-nΔz)
-#     rr, zz = np.linspace(r0, r0+nΔr, nr), np.linspace(z0, z0+nΔz, nz)
-#     rrg, zzg = np.meshgrid(rr, zz)
-#     return rrg, zzg
 
 def sample_random_subgrid(rrG, zzG, nr=64, nz=64): # tcv specific
     rm, rM, zm, zM = rrG[0,0], rrG[-1,-1], zzG[0,0], zzG[-1,-1]
@@ -604,88 +599,64 @@ def test_plot_vessel():
     # plt.close()s
 
 def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
+    assert ds.fg is not None, "Dataset does not have full grid data (fg)"
     model.eval()
     model.to(CPU)
     os.makedirs(f"{SAVE_DIR}/imgs", exist_ok=True)
-    for i in np.random.randint(0, len(ds), 2 if LOCAL else 50):  
-        fig, axs = plt.subplots(2, 5, figsize=(16, 9))
-        x, r, z, y1, y2, y3 = ds[i]
-        x, r, z, y1, y2, y3 = map(lambda x: x.to(CPU), [x,r,z,y1,y2,y3])
-        x, r, z, y1, y2, y3 = x.reshape(1,-1), r.reshape(1,NGR), z.reshape(1,NGZ), y1.reshape(1,1,NGZ,NGR), y2.reshape(1,1,NGZ,NGR), y3.reshape(1,2*NLCFS)
-        yp1, yp2, yp3 = model(x, r, z)
-        gso, gsop = calc_gso_batch(y1, r, z), calc_gso_batch(yp1, r, z)
-        gso, gsop = gso.detach().numpy().reshape(NGZ,NGR), gsop.detach().numpy().reshape(NGZ,NGR)        
-        rr, zz = np.meshgrid(r.detach().cpu().numpy(), z.detach().cpu().numpy())
-        yp1 = yp1.detach().numpy().reshape(NGZ,NGR)
-        y1 = y1.detach().numpy().reshape(NGZ,NGR)
-        yp2 = yp2.detach().numpy().reshape(NGZ,NGR)
-        y2 = y2.detach().numpy().reshape(NGZ,NGR)
-        yp3 = yp3.detach().numpy().reshape(2*NLCFS)
-        y3 = y3.detach().numpy().reshape(2*NLCFS)
-        min1, max1 = np.min([y1, yp1]), np.max([y1, yp1]) # min max Y1
-        min2, max2 = np.min([y2, yp2]), np.max([y2, yp2]) # min max Y2
-        levels1 = np.linspace(min1, max1, 13, endpoint=True)
-        levels2 = np.linspace(min2, max2, 13, endpoint=True)
-        y1_mae = np.abs(y1 - yp1)
-        y2_mae = np.abs(y2 - yp2)
-        lev0 = np.linspace(0, 1.0, 13, endpoint=True)
-        lev1 = np.linspace(0, 0.1, 13, endpoint=True) 
-        lev2 = np.linspace(0, 1.0, 13, endpoint=True)
-        lev3 = np.linspace(0, 0.1, 13, endpoint=True)
-
-        lw3, col3 = 1.5, 'gray'
-        im00 = axs[0,0].scatter(rr, zz, c=y1, s=4, vmin=min1, vmax=max1)
-        axs[0,0].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3)
-        axs[0,0].set_title("Actual")
-        axs[0,0].set_aspect('equal')
-        axs[0,0].set_ylabel("Y1")
-        fig.colorbar(im00, ax=axs[0,0]) 
-        im01 = axs[0,1].scatter(rr, zz, c=yp1, s=4, vmin=min1, vmax=max1)
-        axs[0,1].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
-        axs[0,1].set_title("Predicted")
-        fig.colorbar(im01, ax=axs[0,1])
-        im02 = axs[0,2].contour(rr, zz, y1, levels1, linestyles='dashed')
-        axs[0,2].contour(rr, zz, yp1, levels1)
-        axs[0,2].set_title("Contours")
-        fig.colorbar(im02, ax=axs[0,2])
-        im03 = axs[0,3].scatter(rr, zz, c=y1_mae, s=4, vmin=lev2[0], vmax=lev2[-1])
-        axs[0,3].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3, linestyle='dashed')
-        axs[0,3].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
-        axs[0,3].set_title(f"MAE {lev2[-1]}")
-        fig.colorbar(im03, ax=axs[0,3])
-        im04 = axs[0,4].scatter(rr, zz, c=y1_mae, s=4, vmin=lev3[0], vmax=lev3[-1])
-        axs[0,4].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3, linestyle='dashed')
-        axs[0,4].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
-        axs[0,4].set_title(f"MAE {lev3[-1]}")
-        fig.colorbar(im04, ax=axs[0,4])
-
-        im10 = axs[1,0].scatter(rr, zz, c=y2, s=4, vmin=min2, vmax=max2)
-        axs[1,0].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3)
-        axs[1,0].set_ylabel("Y2")
-        fig.colorbar(im10, ax=axs[1,0])
-        im11 = axs[1,1].scatter(rr, zz, c=yp2, s=4, vmin=min2, vmax=max2)
-        axs[1,1].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
-        fig.colorbar(im11, ax=axs[1,1])
-        im12 = axs[1,2].contour(rr, zz, y2, levels2, linestyles='dashed')
-        axs[1,2].contour(rr, zz, yp2, levels2)
-        fig.colorbar(im12, ax=axs[1,2])
-        im13 = axs[1,3].scatter(rr, zz, c=y2_mae, s=4, vmin=lev0[0], vmax=lev0[-1])
-        axs[1,3].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3, linestyle='dashed')
-        axs[1,3].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
-        fig.colorbar(im13, ax=axs[1,3])
-        im14 = axs[1,4].scatter(rr, zz, c=y2_mae, s=4, vmin=lev1[0], vmax=lev1[-1])
-        axs[1,4].plot(y3[:NLCFS], y3[NLCFS:], col3, lw=lw3, linestyle='dashed')
-        axs[1,4].plot(yp3[:NLCFS], yp3[NLCFS:], col3, lw=lw3)
-        fig.colorbar(im14, ax=axs[1,4])
-
-        for ax in axs.flatten(): 
-            ax.grid(False), ax.set_xticks([]), ax.set_yticks([]), ax.set_aspect("equal")
-            plot_vessel(ax)
+    n_plots = 2 if LOCAL else 50 # number of plots to show
+    for pi, i in enumerate(np.random.randint(0, len(ds), n_plots)):  
+        on_grid = pi >= (n_plots // 2) # on grid or not
+        plt.figure(figsize=(20, 9))
+        x, p, fx, iy, br, bz, sep = ds[i]
+        x, p, fx, iy, br, bz, sep = map(lambda x: x.to(CPU), [x, p, fx, iy, br, bz, sep])
+        if on_grid: 
+            p = torch.stack([torch.tensor(RRD.reshape(-1), dtype=torch.float32), torch.tensor(ZZD.reshape(-1), dtype=torch.float32)], dim=1)  # shape (n, 2)
+            fx, iy, br, bz = [to_tensor(v.reshape(-1)) for v in ds.fg[i]] # reshape to (n,)
+        # x, p, fx, iy, br, bz, sep = x.reshape(1,-1), r.reshape(1,NGR), z.reshape(1,NGZ), y1.reshape(1,1,NGZ,NGR), y2.reshape(1,1,NGZ,NGR), y3.reshape(1,2*NLCFS)
+        fxp, iyp, brp, bzp, sepp = model(x.unsqueeze(0), p.unsqueeze(0))
+        fxp, iyp, brp, bzp, sepp = map(lambda t: t.squeeze(0), [fxp, iyp, brp, bzp, sepp]) # remove batch dimension
+        # gso, gsop = calc_gso_batch(y1, r, z), calc_gso_batch(yp1, r, z)
+        # gso, gsop = gso.detach().numpy().reshape(NGZ,NGR), gsop.detach().numpy().reshape(NGZ,NGR)        
+        # rr, zz = np.meshgrid(r.detach().cpu().numpy(), z.detach().cpu().numpy())
+        p, fx, iy, br, bz, fxp, iyp, brp, bzp, sepp = map(lambda t: t.detach().cpu().numpy(), [p, fx, iy, br, bz, fxp, iyp, brp, bzp, sepp]) # move to CPU and numpy
+        mfx, Mfx = np.min([fx, fxp]), np.max([fx, fxp])
+        miy, Miy = np.min([iy, iyp]), np.max([iy, iyp])
+        mbr, Mbr = np.min([br, brp]), np.max([br, brp])
+        mbz, Mbz = np.min([bz, bzp]), np.max([bz, bzp])
+        lw, col, ms = 1.5, 'gray', 4
+        limits = [(mfx, Mfx), (miy, Miy), (mbr, Mbr), (mbz, Mbz)]
+        vals = [(fx, fxp), (iy, iyp), (br, brp), (bz, bzp)]
+        names = ["Fx", "Iy", "Br", "Bz"]
+        def prep_plot(ax):
+            ax.grid(False)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_aspect("equal")
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['left'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
-
+            plot_vessel(ax) # plot vessel
+        nraws = 2
+        ncols = 8 if on_grid else 6 # number of columns
+        for j, ((v, vp), l, n) in enumerate(zip(vals, limits, names)):
+            plt.subplot(nraws, ncols, j*(ncols//2)+1), plt.title(f"{n} Actual")
+            plt.scatter(p[:,0], p[:,1], c=v, s=ms, vmin=l[0], vmax=l[1])
+            plt.plot(sep[:NLCFS], sep[NLCFS:], lw=lw, color=col) # plot LCFS
+            prep_plot(plt.gca()), plt.colorbar()
+            plt.subplot(nraws, ncols, j*(ncols//2) + 2), plt.title(f"{n} Predicted")
+            plt.scatter(p[:,0], p[:,1], c=vp, s=ms, vmin=l[0], vmax=l[1])
+            plt.plot(sepp[:NLCFS], sepp[NLCFS:], lw=lw, color=col)
+            prep_plot(plt.gca()), plt.colorbar()
+            plt.subplot(nraws, ncols, j*(ncols//2) + 3), plt.title(f"{n} Diff")
+            plt.scatter(p[:,0], p[:,1], c=np.abs(v-vp), s=ms, vmin=0, vmax=np.max(np.abs(v-vp)))
+            plt.plot(sep[:NLCFS], sep[NLCFS:], lw=lw, color=col)
+            prep_plot(plt.gca()), plt.colorbar()
+            if on_grid: # plot contours if on grid
+                plt.subplot(nraws, ncols, j*(ncols//2) + 4), plt.title(f"{n} Contours")
+                plt.contour(RRD, ZZD, v.reshape(65,28))
+                plt.contour(RRD, ZZD, vp.reshape(65,28), linestyles='dashed')
+                prep_plot(plt.gca()), plt.colorbar()
         #suptitle
         plt.suptitle(f"[{JOBID}] FullNet: {title} {i}")
         plt.tight_layout()
@@ -700,7 +671,7 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LiuqeRTNet, title='test'):
     lw3 = 1.5
     for i in np.random.randint(0, len(ds), 5 if LOCAL else 50):  
         plt.figure(figsize=(16, 9))
-        x, y3 = ds[i][0].to(CPU), ds[i][5].to(CPU)
+        x, y3 = ds[i][0].to(CPU), ds[i][6].to(CPU)  # x: (NIN,), pts: (n_points, 2), y3: (2*NLCFS,)
         x = x.reshape(1, -1)
         yp3 = model(x)
         yp3 = yp3.detach().numpy().reshape(2 * NLCFS)
