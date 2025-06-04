@@ -275,24 +275,23 @@ class LiuqeRTNet(Module): # Liuqe Real Time surrogate net
         super(LiuqeRTNet, self).to(device)
         self.input_net.to(device)
         return self
-    def forward(self, x, pts):
-        assert pts.shape[-1] == 2, f"pts.shape[-1] = {pts.shape[-1]}, should be 2 (r,z)"
-        assert pts.dim() == 3, f"pts.dim() = {pts.dim()}, should be 3 (batch, n_points, 2)"
-        assert x.dim() == 2, f"x.dim() = {x.dim()}, should be 2 (batch, NIN)"
-        assert x.shape[-1] == NIN, f"x.shape[1] = {x.shape[1]}, NIN = {NIN}"
-        assert pts.shape[0] == x.shape[0], f"pts.shape[0] = {pts.shape[0]}, x.shape[0] = {x.shape[0]}, should be equal (batch size)"
-        # calculate physics vector ph and repeat it for each point in pts
-        ph = self.input_net(x) # get physics vector
-        ph = ph.unsqueeze(1).expand(-1, pts.shape[1], -1)
+    def forward(self, x, r, z):
+        assert x.dim() == 1, f"x.dim() = {x.dim()}, should be 1(NIN,)"
+        assert x.shape == (NIN,), f"x.shape = {x.shape}, should be (NIN,)"
+        assert r.dim() == 1 and z.dim() == 1, f"r.dim() = {r.dim()}, z.dim() = {z.dim()}, should be 1"
+        assert r.shape == z.shape, f"r.shape = {r.shape}, z.shape = {z.shape}, should be equal"
+        n = r.shape[0] # number of points
+        pts = torch.stack([r, z], dim=1).view(1,n,2) # create points tensor (n, 2)
+        ph = self.input_net(x.view(1, -1)) # get physics vector
+        ph = ph.unsqueeze(1).expand(-1, n, -1)
         ps = self.pts_enc(pts) # encode points
         assert ps.shape == ph.shape, f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal"
         psh = ph * ps # element-wise multiplication
-        # psh = concat_pts_ph(pts, ph) # concatenate pts and ph
         assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
         fx = self.fx_head(psh) # get flux
         br = self.br_head(psh) # get Br
         bz = self.bz_head(psh) # get Bz
-        return fx, br, bz # return flux, current density, Br, Bz, LCFS
+        return fx.view(n), br.view(n), bz.view(n) # return flux, Br, Bz as 1D tensors
 
 class LCFSNet(Module):
     def __init__(self, input_net:InputNet, lcfs_head:LCFSHead):
@@ -321,30 +320,57 @@ def test_network_io(verbose=True):
     fn = FullNet(InputNet(),PtsEncoder(),FHead(),FHead(),FHead(),FHead(),LCFSHead())
     rt_net = LiuqeRTNet(fn.input_net,fn.pts_enc,fn.fx_head,fn.br_head,fn.bz_head)
     fx, iy, br, bz, lcfs = fn(x, pts)
-    fx2, br2, bz2 = rt_net(x, pts)
+    r, z = pts[0,:,0], pts[0,:,1] # r, z: (n_points,)
+    fx2, br2, bz2 = rt_net(x.view(-1), r, z) # fx2, br2, bz2: (1, n_points)
     assert fx.shape == (1, n_points), f"fx.shape = {fx.shape}, should be (1, {n_points})"
     assert fx.shape == iy.shape == br.shape == bz.shape, "fx, iy, br, bz should have the same shape"
-    assert fx.shape == fx2.shape == br2.shape == bz2.shape, "fx, fx2, br2, bz2 should have the same shape" 
+    assert fx2.shape == (n_points,), f"fx2.shape = {fx2.shape}, should be ({n_points},)"
+    assert br2.shape == (n_points,), f"br2.shape = {br2.shape}, should be ({n_points},)"
+    assert bz2.shape == (n_points,), f"bz2.shape = {bz2.shape}, should be ({n_points},)"
+    assert pts.shape == (1, n_points, 2), f"pts.shape = {pts.shape}, should be (1, {n_points}, 2)"
     assert lcfs.shape == (1, NLCFS*2), f"lcfs.shape = {lcfs.shape}, should be (1, {NLCFS*2})"
     assert torch.allclose(fx, fx2), f"fx and fx2 should be close, but got {torch.max(torch.abs(fx-fx2))}"
     assert torch.allclose(br, br2), f"br and br2 should be close, but got {torch.max(torch.abs(br-br2))}"
     assert torch.allclose(bz, bz2), f"bz and bz2 should be close, but got {torch.max(torch.abs(bz-bz2))}"
-    if v: print(f"FullNet -> in: [{x.shape}, {pts.shape}], \n            out: [{fx.shape}, {iy.shape}, {br.shape}, {bz.shape}, {lcfs.shape}]")
-    if v: print(f"LiuqeRTNet  -> in: [{x.shape}, {pts.shape}], \n            out: [{fx2.shape}, {br2.shape}, {bz2.shape}]") 
+    if v: print(f"single FullNet -> in: [{x.shape}, {pts.shape}], \n            out: [{fx.shape}, {iy.shape}, {br.shape}, {bz.shape}, {lcfs.shape}]")
+    if v: print(f"single LiuqeRTNet  -> in: [{x.shape}, {pts.shape}], \n            out: [{fx2.shape}, {br2.shape}, {bz2.shape}]") 
     # batched
     bs = 7
     x, pts = torch.rand(bs, NIN), torch.rand(bs, n_points, 2) # x: (bs, NIN), pts: (bs, n_points, 2)
     fx, iy, br, bz, lcfs = fn(x, pts)
-    fx2, br2, bz2 = rt_net(x, pts)
     assert fx.shape == (bs, n_points), f"fx.shape = {fx.shape}, should be ({bs}, {n_points})"
     assert fx.shape == iy.shape == br.shape == bz.shape, "fx, iy, br, bz should have the same shape"
-    assert fx.shape == fx2.shape == br2.shape == bz2.shape, "fx, fx2, br2, bz2 should have the same shape"
     assert lcfs.shape == (bs, NLCFS*2), f"lcfs.shape = {lcfs.shape}, should be ({bs}, {NLCFS*2})"
-    assert torch.allclose(fx, fx2), f"fx and fx2 should be close, but got {torch.max(torch.abs(fx-fx2))}"
-    assert torch.allclose(br, br2), f"br and br2 should be close, but got {torch.max(torch.abs(br-br2))}"
-    assert torch.allclose(bz, bz2), f"bz and bz2 should be close, but got {torch.max(torch.abs(bz-bz2))}"
-    if v: print(f"FullNet -> in: [{x.shape}, {pts.shape}], \n            out: [{fx.shape}, {iy.shape}, {br.shape}, {bz.shape}, {lcfs.shape}]")
-    if v: print(f"LiuqeRTNet  -> in: [{x.shape}, {pts.shape}], \n            out: [{fx2.shape}, {br2.shape}, {bz2.shape}]")
+    if v: print(f"batched FullNet -> in: [{x.shape}, {pts.shape}], \n            out: [{fx.shape}, {iy.shape}, {br.shape}, {bz.shape}, {lcfs.shape}]")
+
+def convert_to_onnx(net:LiuqeRTNet, save_dir=SAVE_DIR):
+    net.to(CPU)  
+    net.eval()  # Set the network to evaluation mode
+    dummy_phys = torch.randn(NIN, device=CPU)
+    n = 12 # number of inference points
+    dummy_r = torch.randn(n, device=CPU)  # Dummy points for inference
+    dummy_z = torch.randn(n, device=CPU)  # Dummy points for inference
+    onnx_net_path = f'{save_dir}/net.onnx'
+    # Export to ONNX
+    torch.onnx.export(
+        net,
+        args=(dummy_phys, dummy_r, dummy_z),  # Dummy inputs for the network
+        f=onnx_net_path,
+        input_names=[PHYS, 'r', 'z'],  # Input names
+        output_names=[FX, BR, BZ],
+        dynamic_axes={
+            "r": {0: "n"},   # dynamic first dimension of r
+            "z": {0: "n"},   # dynamic first dimension of z
+            FX: {0: "n"},    # dynamic first dimension of fx output
+            BR: {0: "n"},    # dynamic first dimension of br output
+            BZ: {0: "n"}     # dynamic first dimension of bz output
+        },
+        opset_version=12,
+        do_constant_folding=True,  # Optimize the model
+        export_params=True  # Export the parameters
+    )
+    print(f'ONNX model saved to {onnx_net_path}')
+    return
 
 # function to load the dataset
 def load_ds(ds_path):
