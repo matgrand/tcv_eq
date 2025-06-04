@@ -632,7 +632,8 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
     n_plots = 2 if LOCAL else 50 # number of plots to show
     for pi, i in enumerate(np.random.randint(0, len(ds), n_plots)):  
         on_grid = pi >= (n_plots // 2) # on grid or not
-        plt.figure(figsize=(20, 9))
+        fs = (20, 8) if on_grid else (15, 8) # figure size
+        plt.figure(figsize=fs, facecolor='dimgray')
         x, p, fx, iy, br, bz, sep = ds[i]
         x, p, fx, iy, br, bz, sep = map(lambda x: x.to(CPU), [x, p, fx, iy, br, bz, sep])
         if on_grid: 
@@ -674,8 +675,8 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
             plt.scatter(p[:,0], p[:,1], c=vp, s=ms, vmin=l[0], vmax=l[1])
             plt.plot(sepp[:NLCFS], sepp[NLCFS:], lw=lw, color=col)
             prep_plot(plt.gca()), plt.colorbar()
-            plt.subplot(nraws, ncols, j*(ncols//2) + 3), plt.title(f"{n} Diff")
-            plt.scatter(p[:,0], p[:,1], c=np.abs(v-vp), s=ms, vmin=0, vmax=np.max(np.abs(v-vp)))
+            plt.subplot(nraws, ncols, j*(ncols//2) + 3), plt.title(f"{n} Error %")
+            plt.scatter(p[:,0], p[:,1], c=100*np.abs(v-vp)/(l[1]-l[0]), s=ms, vmin=0, vmax=np.max(100*np.abs(v-vp)/(l[1]-l[0])))
             plt.plot(sep[:NLCFS], sep[NLCFS:], lw=lw, color=col)
             prep_plot(plt.gca()), plt.colorbar()
             if on_grid: # plot contours if on grid
@@ -683,8 +684,17 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
                 plt.contour(RRD, ZZD, v.reshape(65,28))
                 plt.contour(RRD, ZZD, vp.reshape(65,28), linestyles='dashed')
                 prep_plot(plt.gca()), plt.colorbar()
-        #suptitle
-        plt.suptitle(f"[{JOBID}] FullNet: {title} {i}")
+        fig = plt.gcf() # Get the current figure
+        dx, xoff = 0.004, 0.01 #0.005, 0.008
+        dy, yoff = dx*fs[0]/fs[1], -0.012 #dx*fs[0]/fs[1], 0.003
+        tvs = 0.033 # title verticale space
+        from matplotlib.patches import Rectangle
+        for x0, y0, lx, ly in [(0.0+dx, 0.5+dy/2+yoff, (1-3*dx)/2+xoff, (1-3*dy)/2-yoff-tvs),
+                               (0.5+dx/2+xoff, 0.5+dy/2+yoff, (1-3*dx)/2-xoff, (1-3*dy)/2-yoff-tvs),
+                               (0.0+dx, 0.0+dy, (1-3*dx)/2+xoff, (1-3*dy)/2+yoff),
+                               (0.5+dx/2+xoff, 0.0+dy, (1-3*dx)/2-xoff, (1-3*dy)/2+yoff)]:
+            fig.patches.append(Rectangle( (x0, y0), lx, ly, transform=fig.transFigure, color='black', alpha=1, zorder=-1))
+        plt.suptitle(f"[{JOBID}] FullNet: {title} {i}", y=0.985)
         plt.tight_layout()
         plt.show() if LOCAL else plt.savefig(f"{SAVE_DIR}/imgs/net_example_{title}_{i}.png")
         plt.close()
@@ -740,7 +750,7 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LiuqeRTNet, title='test'):
         plt.xlabel("R")
         plt.ylabel("Z")
 
-        plt.suptitle(f"[{JOBID}] LiuqeRTNet: {title} {i}")
+        plt.suptitle(f"[{JOBID}] LCFSNet: {title} {i}")
         plt.tight_layout()
         plt.show() if LOCAL else plt.savefig(f"{SAVE_DIR}/imgs/lcfs_example_{title}_{i}.png")
         plt.close()
