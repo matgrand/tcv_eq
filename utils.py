@@ -90,7 +90,7 @@ TRAIN_DS_PATH = f'{DS_DIR}/train_ds.npz'
 EVAL_DS_PATH = f'{DS_DIR}/eval_ds.npz'
 
 # paths to the best models
-LOSS_NAMES = ['lFx', 'lIy', 'lBr', 'lBz', 'lSep'] # loss names
+LOSS_NAMES = [FX, IY, BR, BZ, SEP] # loss names
 def model_path(loss_name, save_dir=SAVE_DIR):
     assert loss_name in LOSS_NAMES, f"loss_name should be one of {LOSS_NAMES}, got {loss_name}"
     return f"{save_dir}/best_{loss_name}.pth"
