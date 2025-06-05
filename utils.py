@@ -179,14 +179,23 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
         self.x_mean_std = self.x_mean_std.to(device)
         return self
 
+# class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density) 
+#     def __init__(self):
+#         super(FHead, self).__init__()
+#         self.head = Sequential(
+#             Linear(PHYSICS_LS, 64), ActF(),
+#             Linear(64, 1), ActF(),
+#         )
+#     def forward(self, v): return self.head(v).squeeze(-1)
+
 class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density) 
     def __init__(self):
         super(FHead, self).__init__()
         self.head = Sequential(
             Linear(PHYSICS_LS, 64), ActF(),
-            Linear(64, 1), ActF(),
+            Linear(64, 4), ActF(),
         )
-    def forward(self, v): return self.head(v).squeeze(-1)
+    def forward(self, v): return self.head(v)
     
 class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
     def __init__(self):
@@ -246,10 +255,12 @@ class FullNet(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
         psh = ph * ps # element-wise multiplication
         # psh = concat_pts_ph(pts, ph) # concatenate pts and ph
         assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
-        fx = self.fx_head(psh) # get flux
-        iy = self.iy_head(psh) # get current density
-        br = self.br_head(psh) # get Br
-        bz = self.bz_head(psh) # get Bz
+        # fx = self.fx_head(psh) # get flux
+        # iy = self.iy_head(psh) # get current density
+        # br = self.br_head(psh) # get Br
+        # bz = self.bz_head(psh) # get Bz
+        outs = self.fx_head(psh) # get flux, current density, Br, Bz
+        fx, iy, br, bz = outs[:, :, 0], outs[:, :, 1], outs[:, :, 2], outs[:, :, 3] # split outputs
         assert fx.dim() == 2 and fx.shape[1] == pts.shape[1], f"fx.dim() = {fx.dim()}, fx.shape[1] = {fx.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
         assert iy.dim() == 2 and iy.shape[1] == pts.shape[1], f"iy.dim() = {iy.dim()}, iy.shape[1] = {iy.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
         assert br.dim() == 2 and br.shape[1] == pts.shape[1], f"br.dim() = {br.dim()}, br.shape[1] = {br.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
@@ -288,9 +299,11 @@ class LiuqeRTNet(Module): # Liuqe Real Time surrogate net
         assert ps.shape == ph.shape, f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal"
         psh = ph * ps # element-wise multiplication
         assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
-        fx = self.fx_head(psh) # get flux
-        br = self.br_head(psh) # get Br
-        bz = self.bz_head(psh) # get Bz
+        # fx = self.fx_head(psh) # get flux
+        # br = self.br_head(psh) # get Br
+        # bz = self.bz_head(psh) # get Bz
+        outs = self.fx_head(psh)
+        fx, br, bz = outs[:, :, 0], outs[:, :, 2], outs[:, :, 3]
         return fx.view(n), br.view(n), bz.view(n) # return flux, Br, Bz as 1D tensors
 
 class LCFSNet(Module):
