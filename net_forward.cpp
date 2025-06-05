@@ -11,10 +11,6 @@
 #include <unistd.h> // For readlink (to get executable path)
 #include <limits.h> // For PATH_MAX (to define buffer size for readlink)
 
-
-const int NET_INPUT_SIZE = 95; // Expected input size for the model
-const int NET_OUTPUT_SIZE = 258; // Expected output size for the model
-
 // ONNX Runtime global objects, similar to how 'module' was global for LibTorch
 Ort::Env ort_env(ORT_LOGGING_LEVEL_WARNING, "net_forward_mex_env"); // Initialize once
 Ort::SessionOptions session_options;
@@ -22,15 +18,10 @@ Ort::Session* ort_session = nullptr; // Global session pointer, initialized in l
 bool session_loaded = false;
 Ort::AllocatorWithDefaultOptions allocator; // Global allocator
 
-// Store owned strings for node names, and char* pointers for the ONNX Runtime API
-std::string global_input_name_str;
-std::string global_output_name_str;
-const char* global_input_node_names[1];  // Array for Run API, assuming 1 input
-const char* global_output_node_names[1]; // Array for Run API, assuming 1 output
+const int PHYS_SIZE = 136; // Size of the 'phys' input
 
 const char* onnx_env_dir = std::getenv("ONNX_NET_FORWARD_DIR");
 const std::string net_default_path = onnx_env_dir ? (std::string(onnx_env_dir) + "/net.onnx") : "net.onnx"; // Default model path
-
 
 // Cleanup function to be called by mexAtExit to release ONNX Runtime session
 static void cleanup_session() {
@@ -53,19 +44,11 @@ void load_session_once(std::filesystem::path model_path) {
 
             // Optional: configure session_options here (e.g., for execution providers)
             // session_options.SetIntraOpNumThreads(1);
+            // session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
             
+            // Create the ONNX Runtime session
             ort_session = new Ort::Session(ort_env, model_path.string().c_str(), session_options);
             
-            // Get input node name (assuming single input for this model)
-            Ort::AllocatedStringPtr input_name_alloc = ort_session->GetInputNameAllocated(0, allocator);
-            global_input_name_str = input_name_alloc.get(); // Store the string data in our global std::string
-            global_input_node_names[0] = global_input_name_str.c_str(); // Use pointer to our stored string data
-
-            // Get output node name (assuming single output for this model)
-            Ort::AllocatedStringPtr output_name_alloc = ort_session->GetOutputNameAllocated(0, allocator);
-            global_output_name_str = output_name_alloc.get(); // Store the string data
-            global_output_node_names[0] = global_output_name_str.c_str(); // Use pointer
-
             session_loaded = true;
             mexPrintf(" Success.\n");
 
@@ -91,36 +74,15 @@ void load_session_once(std::filesystem::path model_path) {
     }
 }
 
-// Corresponds to 'run_inference'. Takes an ONNX input tensor and returns ONNX output tensors.
-// The Ort::Value objects in the returned vector own their data.
-std::vector<Ort::Value> run_inference(Ort::Value& input_tensor) {
-    try {
-        // Run inference
-        auto output_values = ort_session->Run(Ort::RunOptions{nullptr},
-                                              global_input_node_names, &input_tensor, 1, // Pass pointer to input_tensor
-                                              global_output_node_names, 1);
-        return output_values; // std::vector<Ort::Value>
-    } catch (const Ort::Exception& e) {
-        std::string err_msg = "Error during ONNX Runtime inference: " + std::string(e.what()) + " (ErrorCode: " + std::to_string(e.GetOrtErrorCode()) + ")";
-        mexErrMsgIdAndTxt("MATLAB:net_forward:inferenceError", err_msg.c_str());
-        return {}; // Should not be reached due to mexErrMsgIdAndTxt throwing an exception
-    } catch (const std::exception& e) {
-        std::string err_msg = "A standard error occurred during ONNX inference: " + std::string(e.what());
-        mexErrMsgIdAndTxt("MATLAB:net_forward:inferenceErrorStdEx", err_msg.c_str());
-        return {}; // Should not be reached
-    }
-}
-
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-    
     // TODO: impleent this as -> if read "-model" interpret next argument as model path
     std::filesystem::path model_path = net_default_path;
     // Check number of input arguments
     if (nrhs < 1 && session_loaded) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumInputs", "Model already loaded: at least one input required.");
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumInputs", "Model already loaded: 3 inputs required: (phys, r, z) or a single string argument for model path.");
     }
-    if (nrhs > 2) {
+    if (nrhs > 3) {
         mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumInputs", "Too many input arguments");
     }
     if (nrhs == 1 && !session_loaded && mxIsChar(prhs[0])) {
@@ -134,8 +96,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         load_session_once(model_path); // Load the session with the provided model path
         return; // Exit after loading the session
     } else {
-        // Check input type
-        if (!mxIsSingle(prhs[0])) {
+        if (nrhs != 3) { // If not a single string input, expect three inputs
+            mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumInputs", "Expected 3 inputs: (phys, r, z) or a single string argument for model path.");
+        }
+        if (!mxIsSingle(prhs[0])) { // Check input type
             mexErrMsgIdAndTxt("MATLAB:net_forward:inputNotSingle", "Input must be a single array.");
         }
     }
@@ -143,69 +107,118 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     // Ensure ONNX session is loaded (this also registers mexAtExit if it's the first successful load)
     load_session_once(net_default_path); 
 
-
     // Get input dimensions and data pointer
-    size_t n_elements = mxGetNumberOfElements(prhs[0]);
-    
-    if (n_elements != NET_INPUT_SIZE) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidInputSize", "Input size must be %d, but got %zu.", NET_INPUT_SIZE, n_elements);
+    size_t phys_size = mxGetNumberOfElements(prhs[0]);
+    size_t n_pts = mxGetNumberOfElements(prhs[1]);
+    size_t n_pts2 = mxGetNumberOfElements(prhs[2]);
+
+    // check n_pts == n_pts2
+    if (n_pts != n_pts2) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:inputSizeMismatch", "Inputs 'r' and 'z' must have the same number of elements.");
     }
 
-    float* input_data_ptr_matlab = (float*)mxGetData(prhs[0]);
+    //check prhs[1] and prhs[2] have the same size
+    if (mxGetNumberOfElements(prhs[1]) != mxGetNumberOfElements(prhs[2])) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:inputSizeMismatch", "Inputs 'r' and 'z' must have the same size.");
+    }
+    
+    if (phys_size != PHYS_SIZE) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidInputSize", "Input size must be %d, but got %zu.", PHYS_SIZE, phys_size);
+    }
+
+    // names
+    std::vector<const char*> input_names = {"phys", "r", "z"};
+    std::vector<const char*> output_names = {"Fx", "Br", "Bz"};
+    // data
+    float* phys = (float*)mxGetData(prhs[0]);
+    float* r    = (float*)mxGetData(prhs[1]);
+    float* z    = (float*)mxGetData(prhs[2]);
 
     // Create ONNX Runtime input tensor from MATLAB data
-    std::vector<int64_t> input_tensor_shape = {1, (long int)n_elements}; // Expected shape {1, 2}
+    std::vector<int64_t> phys_shape = {PHYS_SIZE}; // Shape for 'phys'
+    std::vector<int64_t> rz_shape = {static_cast<int64_t>(n_pts)}; // Shape for 'r' and 'z'
     Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    std::vector<Ort::Value> input_tensors; // Vector to hold input tensors
     
-    Ort::Value input_ort_tensor = Ort::Value::CreateTensor<float>(
-        memory_info, input_data_ptr_matlab, n_elements,
-        input_tensor_shape.data(), input_tensor_shape.size()
-    );
+    input_tensors.emplace_back( Ort::Value::CreateTensor<float>(
+        memory_info, phys, phys_size, phys_shape.data(), phys_shape.size()));
+    input_tensors.emplace_back( Ort::Value::CreateTensor<float>(
+        memory_info, r, n_pts, rz_shape.data(), rz_shape.size()));
+    input_tensors.emplace_back( Ort::Value::CreateTensor<float>(
+        memory_info, z, n_pts, rz_shape.data(), rz_shape.size()));
 
     // Run inference
-    // Original: torch::Tensor output_tensor = run_inference(input_torch_tensor);
-    std::vector<Ort::Value> output_ort_tensors = run_inference(input_ort_tensor);
-    
+    auto output_tensors = ort_session->Run(
+                            Ort::RunOptions{nullptr},
+                            input_names.data(), input_tensors.data(), input_names.size(),
+                            output_names.data(), output_names.size());
+
     // Process output
-    if (output_ort_tensors.empty() || !output_ort_tensors[0].IsTensor()) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:inferenceFailed", "Inference did not return a valid tensor.");
+    mexPrintf("Processing output tensors...\n");
+    if (output_tensors.size() != 3) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumOutputs", "Expected 3 output tensors, but got %zu.", output_tensors.size());
     }
-    Ort::Value& output_onnx_tensor_ref = output_ort_tensors[0]; // Get ref to the first output tensor
+    Ort::Value& fx_ref = output_tensors[0];
+    Ort::Value& br_ref = output_tensors[1];
+    Ort::Value& bz_ref = output_tensors[2];
+
 
     // Get output tensor properties
-    Ort::TensorTypeAndShapeInfo output_shape_info = output_onnx_tensor_ref.GetTensorTypeAndShapeInfo();
-    ONNXTensorElementDataType output_type = output_shape_info.GetElementType();
-
-    if (output_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:unexpectedOutputType", "Output tensor is not float type as expected by this MEX function.");
-    }
-
-    std::vector<int64_t> output_dims = output_shape_info.GetShape();
-    size_t output_total_elements = output_shape_info.GetElementCount();
-
-    if (output_total_elements != NET_OUTPUT_SIZE) {
-        std::string err_msg = "Output size mismatch: expected %d, but got %zu.";
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputSize", err_msg.c_str(), NET_OUTPUT_SIZE, output_total_elements);
-    }
-
-    // Create MATLAB output matrix
-    // Original code: plhs[0] = mxCreateDoubleMatrix(1, output_tensor.numel(), mxREAL);
-    // This implies the output is expected to be a row vector in MATLAB.
-    // For a Linear(2,3) model with input [1,2], output is [1,3].
-    if (output_dims.size() == 2 && output_dims[0] == 1) { // Standard case: [1, N]
-        plhs[0] = mxCreateNumericMatrix(output_dims[0], output_dims[1], mxSINGLE_CLASS, mxREAL);
-    } else { // generate error if the output is not [1, N]
-        // This is a simple check; you can add more sophisticated checks if needed.
-        std::string err_msg = "Output tensor shape is not compatible with MATLAB: expected [1, N], but got [%zu, %zu].";
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", err_msg.c_str(), output_dims[0], output_dims[1]);
-    }
+    Ort::TensorTypeAndShapeInfo fx_shape_info = fx_ref.GetTensorTypeAndShapeInfo();
+    Ort::TensorTypeAndShapeInfo br_shape_info = br_ref.GetTensorTypeAndShapeInfo();
+    Ort::TensorTypeAndShapeInfo bz_shape_info = bz_ref.GetTensorTypeAndShapeInfo();
     
-    float* output_matlab_ptr = (float*)mxGetData(plhs[0]); // Get pointer to MATLAB output matrix
-    const float* inferred_output_data_ptr = output_onnx_tensor_ref.GetTensorData<float>(); // Get pointer to ONNX output tensor data
+    // check types
+    ONNXTensorElementDataType fx_type = fx_shape_info.GetElementType();
+    ONNXTensorElementDataType br_type = br_shape_info.GetElementType();
+    ONNXTensorElementDataType bz_type = bz_shape_info.GetElementType();
+    if (fx_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT ||
+        br_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT ||
+        bz_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputType", "Expected output tensors to be of type float.");
+    }
+
+    std::vector<int64_t> fx_shape = fx_shape_info.GetShape();
+    std::vector<int64_t> br_shape = br_shape_info.GetShape();
+    std::vector<int64_t> bz_shape = bz_shape_info.GetShape();
+    size_t fx_n = fx_shape_info.GetElementCount();
+    size_t br_n = br_shape_info.GetElementCount();
+    size_t bz_n = bz_shape_info.GetElementCount();
+    if (fx_n != n_pts || br_n != n_pts || bz_n != n_pts) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputSize", "Output tensors must have the same number of elements as input 'r' and 'z': expected %zu, but got fx: %zu, br: %zu, bz: %zu.", n_pts, fx_n, br_n, bz_n);
+    }
+
+    // Check output shapes
+    if (fx_shape.size() != 1 || fx_shape[0] != n_pts) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'Fx' must have shape (n_pts, ) but got [%zu].", fx_shape);
+    }
+    if (br_shape.size() != 1 || br_shape[0] != n_pts) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'Br' must have shape (n_pts, ) but got [%zu].", br_shape);
+    }
+    if (bz_shape.size() != 1 || bz_shape[0] != n_pts) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'Bz' must have shape (n_pts, ) but got [%zu].", bz_shape);
+    }
+
+    // Get pointer to ONNX output tensor data
+    const float* fx_ort_ptr = fx_ref.GetTensorData<float>(); 
+    const float* br_ort_ptr = br_ref.GetTensorData<float>(); 
+    const float* bz_ort_ptr = bz_ref.GetTensorData<float>(); 
+
+    // initialize output matrices
+    plhs[0] = mxCreateNumericMatrix(1, n_pts, mxSINGLE_CLASS, mxREAL); // Fx
+    plhs[1] = mxCreateNumericMatrix(1, n_pts, mxSINGLE_CLASS, mxREAL); // Br
+    plhs[2] = mxCreateNumericMatrix(1, n_pts, mxSINGLE_CLASS, mxREAL); // Bz
+    
+    // Get pointer to MATLAB output matrix
+    float* fx_matlab_ptr = (float*)mxGetData(plhs[0]); 
+    float* br_matlab_ptr = (float*)mxGetData(plhs[1]); 
+    float* bz_matlab_ptr = (float*)mxGetData(plhs[2]); 
 
     // Copy data from ONNX tensor to MATLAB matrix
-    std::memcpy(output_matlab_ptr, inferred_output_data_ptr, output_total_elements * sizeof(float));
+    std::memcpy(fx_matlab_ptr, fx_ort_ptr, n_pts * sizeof(float));
+    std::memcpy(br_matlab_ptr, br_ort_ptr, n_pts * sizeof(float));
+    std::memcpy(bz_matlab_ptr, bz_ort_ptr, n_pts * sizeof(float));
     
-    // Ort::Value objects in output_ort_tensors (and their underlying data buffers if owned by ONNX Runtime)
-    // are managed. They will be destructed when output_ort_tensors goes out of scope.
+    // Ort::Value objects in output_tensors (and their underlying data buffers if owned by ONNX Runtime)
+    // are managed. They will be destructed when output_tensors goes out of scope.
 }
