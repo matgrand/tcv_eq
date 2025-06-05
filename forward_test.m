@@ -2,6 +2,9 @@
 try
     clc; clear; close all;
     PLOT = false;
+    n_ctrl_pts = 24; % number of control points
+
+
     addpath([pwd '/onnx_net_forward']);
     model_path = [pwd '/onnx_net_forward/net.onnx'];
 
@@ -36,6 +39,17 @@ try
     fprintf('bz_pred -> [ %s ]\n', num2str(Bz(1:min(5,end)), '%+.4f '));
     fprintf('bz_true -> [ %s ]\n', num2str(d.Bz(rand_i, 1:min(5,end)), '%+.4f '));
 
+    % use timeit to measure inference time
+    for n = [1, 2, 3, 4, 8, 16, 32, 64, 128, 256]
+        phys = d.phys(rand_i, :); 
+        r = d.pts(rand_i, 1:n, 1);
+        z = d.pts(rand_i, 1:n, 2);
+        t = timeit(@() net_forward_mex(single(phys), single(r), single(z)));
+        fprintf('Inference time for %d control points: %.1f μs\n', n, t * 1e6);
+    end
+
+
+    % assert(false, 'This is a test, please remove this line to continue.');
 
     n_plots = 10;
     rand_idxs =  randi([1, size(d.phys, 1)], 1, n_plots);
@@ -91,13 +105,14 @@ try
     end
 
     N = 30000;
-    n_ctrl_pts = 24; % number of control points
+    % n_ctrl_pts = 24; % number of control points
     fprintf('Testing inference time for %d iterations...', N);
+    rand_idxs = randi([1, size(n_examples, 1)], N, 1);
     times = zeros(1, N);
     outs = zeros(N, n_ctrl_pts, 3);
     ttot = tic;
     for i = 1:N
-        ri = randi([1, size(n_examples, 1)], 1, 1);
+        ri = rand_idxs(i);
         phys = d.phys(ri, :);
         r = d.pts(ri, 1:n_ctrl_pts, 1);
         z = d.pts(ri, 1:n_ctrl_pts, 2);
