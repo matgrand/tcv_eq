@@ -147,15 +147,15 @@ class ActF(Module): # swish
         self.beta = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
     def forward(self, x): return x*torch.sigmoid(self.beta*x)
 
-PHYSICS_LS = 64 # physics latent size [ph]
+PHYSICS_LS = 64 # physics latent size [ph] 64 <-
 
 class PtsEncoder(Module): # positional encoding for the input vector
     def __init__(self):
         super(PtsEncoder, self).__init__()
         self.pts_encoder = Sequential(
             Linear(2, 32), ActF(),
-            Linear(32, 32), ActF(),
-            Linear(32, PHYSICS_LS), ActF(), # output is a single value (flux/Br/Bz)
+            Linear(32, 32), ActF(), 
+            Linear(32, PHYSICS_LS), ActF(), 
         )
     def forward(self, pts): return self.pts_encoder(pts) # pts: (BS, NP, 2) -> (BS, NP, PHYSICS_LS)
 
@@ -167,7 +167,7 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
         self.input_net = Sequential(
             Linear(NIN, 64), ActF(),
             Linear(64, 64), ActF(),
-            Linear(64, PHYSICS_LS), Tanh(),
+            Linear(64, PHYSICS_LS), Tanh(), 
         )
     def forward(self, x): 
         assert x.shape[1] == NIN, f"x.shape[1] = {x.shape[1]}, NIN = {NIN}"
@@ -347,7 +347,7 @@ def convert_to_onnx(net:LiuqeRTNet, save_dir=SAVE_DIR):
     net.to(CPU)  
     net.eval()  # Set the network to evaluation mode
     dummy_phys = torch.randn(NIN, device=CPU)
-    n = 12 # number of inference points
+    n = 24 # number of inference points
     dummy_r = torch.randn(n, device=CPU)  # Dummy points for inference
     dummy_z = torch.randn(n, device=CPU)  # Dummy points for inference
     onnx_net_path = f'{save_dir}/net.onnx'
