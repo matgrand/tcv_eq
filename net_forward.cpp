@@ -43,7 +43,7 @@ void load_session_once(std::filesystem::path model_path) {
             mexPrintf("Loading ONNX model from: %s ...", model_path.string().c_str());
 
             // Optional: configure session_options here (e.g., for execution providers)
-            // session_options.SetIntraOpNumThreads(1);
+            // session_options.SetIntraOpNumThreads(1); // Set number of threads for intra-op parallelism
             // session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
             
             // Create the ONNX Runtime session
@@ -85,7 +85,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     if (nrhs > 3) {
         mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumInputs", "Too many input arguments");
     }
-    if (nrhs == 1 && !session_loaded && mxIsChar(prhs[0])) {
+    if (nrhs == 1 && mxIsChar(prhs[0])) { // (nrhs == 1 && !session_loaded && mxIsChar(prhs[0]))
         // If only one input and it's a string, treat it as the model path
         char model_path_buf[PATH_MAX];
         if (mxGetString(prhs[0], model_path_buf, sizeof(model_path_buf)) != 0) {
@@ -154,14 +154,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
                             output_names.data(), output_names.size());
 
     // Process output
-    mexPrintf("Processing output tensors...\n");
     if (output_tensors.size() != 3) {
         mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumOutputs", "Expected 3 output tensors, but got %zu.", output_tensors.size());
     }
+
     Ort::Value& fx_ref = output_tensors[0];
     Ort::Value& br_ref = output_tensors[1];
     Ort::Value& bz_ref = output_tensors[2];
-
 
     // Get output tensor properties
     Ort::TensorTypeAndShapeInfo fx_shape_info = fx_ref.GetTensorTypeAndShapeInfo();
@@ -203,6 +202,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     const float* fx_ort_ptr = fx_ref.GetTensorData<float>(); 
     const float* br_ort_ptr = br_ref.GetTensorData<float>(); 
     const float* bz_ort_ptr = bz_ref.GetTensorData<float>(); 
+
+    // // no checks for output tensors, assume they are valid
+    // const float* fx_ort_ptr = output_tensors[0].GetTensorData<float>(); 
+    // const float* br_ort_ptr = output_tensors[1].GetTensorData<float>(); 
+    // const float* bz_ort_ptr = output_tensors[2].GetTensorData<float>(); 
 
     // initialize output matrices
     plhs[0] = mxCreateNumericMatrix(1, n_pts, mxSINGLE_CLASS, mxREAL); // Fx
