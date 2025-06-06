@@ -150,7 +150,7 @@ class ActF(Module): # swish
         self.beta = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
     def forward(self, x): return x*torch.sigmoid(self.beta*x)
 
-PHYSICS_LS = 32 # physics latent size [ph] 64 <-
+PHYSICS_LS = 64 # physics latent size [ph] 64 <-
 
 class PtsEncoder(Module): # positional encoding for the input vector
     def __init__(self):
@@ -181,15 +181,6 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
         super(InputNet, self).to(device)
         self.x_mean_std = self.x_mean_std.to(device)
         return self
-
-# class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density) 
-#     def __init__(self):
-#         super(FHead, self).__init__()
-#         self.head = Sequential(
-#             Linear(PHYSICS_LS, 64), ActF(),
-#             Linear(64, 1), ActF(),
-#         )
-#     def forward(self, v): return self.head(v).squeeze(-1)
 
 class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density) 
     def __init__(self, nout=1):
