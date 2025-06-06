@@ -1,16 +1,18 @@
 
 try
 
-    % current best speeds:
+    %% current best speeds:
     % 1k -> 365 μs (fx, br, bz, iy grouped, dynamic axes)
     % 1k -> 247 μs (fx, br, bz, iy grouped, static axes)
     % 64 -> 44 μs (fx, br, bz, iy grouped, static axes)
     % 64 -> 45 μs (fx, br, bz, iy grouped, dynamic axes)
-
+    % new architecture: (fx, br, bz grouped)
+    % 25 -> 23 / 49+-22 / tot 63 dynamic 
+    % 25 -> 20 / 20+-10 / tot 27 static [much faster]
     clc; clear; close all;
     PLOT = false;
     n_ctrl_pts = 25; % number of control points
-    N = 10000; % number of iterations for inference time test
+    N = 1000; % number of iterations for inference time test
 
 
     addpath([pwd '/onnx_net_forward']);

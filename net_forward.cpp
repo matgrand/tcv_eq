@@ -128,7 +128,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
     // names
     std::vector<const char*> input_names = {"phys", "r", "z"};
-    std::vector<const char*> output_names = {"Fx", "Br", "Bz"};
+    std::vector<const char*> output_names = {"rt"};
     // data
     float* phys = (float*)mxGetData(prhs[0]);
     float* r    = (float*)mxGetData(prhs[1]);
@@ -154,59 +154,76 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
                             output_names.data(), output_names.size());
 
     // Process output
-    if (output_tensors.size() != 3) {
+    if (output_tensors.size() != 1) {
         mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumOutputs", "Expected 3 output tensors, but got %zu.", output_tensors.size());
     }
 
-    Ort::Value& fx_ref = output_tensors[0];
-    Ort::Value& br_ref = output_tensors[1];
-    Ort::Value& bz_ref = output_tensors[2];
+    // Ort::Value& fx_ref = output_tensors[0];
+    // Ort::Value& br_ref = output_tensors[1];
+    // Ort::Value& bz_ref = output_tensors[2];
+    Ort::Value& rt_ref = output_tensors[0];
 
     // Get output tensor properties
-    Ort::TensorTypeAndShapeInfo fx_shape_info = fx_ref.GetTensorTypeAndShapeInfo();
-    Ort::TensorTypeAndShapeInfo br_shape_info = br_ref.GetTensorTypeAndShapeInfo();
-    Ort::TensorTypeAndShapeInfo bz_shape_info = bz_ref.GetTensorTypeAndShapeInfo();
+    // Ort::TensorTypeAndShapeInfo fx_shape_info = fx_ref.GetTensorTypeAndShapeInfo();
+    // Ort::TensorTypeAndShapeInfo br_shape_info = br_ref.GetTensorTypeAndShapeInfo();
+    // Ort::TensorTypeAndShapeInfo bz_shape_info = bz_ref.GetTensorTypeAndShapeInfo();
+    Ort::TensorTypeAndShapeInfo rt_shape_info = rt_ref.GetTensorTypeAndShapeInfo();
     
     // check types
-    ONNXTensorElementDataType fx_type = fx_shape_info.GetElementType();
-    ONNXTensorElementDataType br_type = br_shape_info.GetElementType();
-    ONNXTensorElementDataType bz_type = bz_shape_info.GetElementType();
-    if (fx_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT ||
-        br_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT ||
-        bz_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputType", "Expected output tensors to be of type float.");
+    // ONNXTensorElementDataType fx_type = fx_shape_info.GetElementType();
+    // ONNXTensorElementDataType br_type = br_shape_info.GetElementType();
+    // ONNXTensorElementDataType bz_type = bz_shape_info.GetElementType();
+    ONNXTensorElementDataType rt_type = rt_shape_info.GetElementType();
+    // if (fx_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT ||
+    //     br_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT ||
+    //     bz_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+    //     mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputType", "Expected output tensors to be of type float.");
+    // }
+    if (rt_type != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputType", "Expected output tensor to be of type float.");
     }
 
-    std::vector<int64_t> fx_shape = fx_shape_info.GetShape();
-    std::vector<int64_t> br_shape = br_shape_info.GetShape();
-    std::vector<int64_t> bz_shape = bz_shape_info.GetShape();
-    size_t fx_n = fx_shape_info.GetElementCount();
-    size_t br_n = br_shape_info.GetElementCount();
-    size_t bz_n = bz_shape_info.GetElementCount();
-    if (fx_n != n_pts || br_n != n_pts || bz_n != n_pts) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputSize", "Output tensors must have the same number of elements as input 'r' and 'z': expected %zu, but got fx: %zu, br: %zu, bz: %zu.", n_pts, fx_n, br_n, bz_n);
+    // std::vector<int64_t> fx_shape = fx_shape_info.GetShape();
+    // std::vector<int64_t> br_shape = br_shape_info.GetShape();
+    // std::vector<int64_t> bz_shape = bz_shape_info.GetShape();
+    std::vector<int64_t> rt_shape = rt_shape_info.GetShape(); // (n_pts, 3)
+    // size_t fx_n = fx_shape_info.GetElementCount();
+    // size_t br_n = br_shape_info.GetElementCount();
+    // size_t bz_n = bz_shape_info.GetElementCount();
+    size_t rt_n = rt_shape_info.GetElementCount();
+    // if (fx_n != n_pts || br_n != n_pts || bz_n != n_pts) {
+    //     mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputSize", "Output tensors must have the same number of elements as input 'r' and 'z': expected %zu, but got fx: %zu, br: %zu, bz: %zu.", n_pts, fx_n, br_n, bz_n);
+    // }
+    if (rt_n != n_pts * 3) { // Assuming rt is a 2D tensor with shape (n_pts, 3)
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputSize", "Output tensor 'rt' must have %zu elements (shape (n_pts, 3)), but got %zu.", n_pts * 3, rt_n);
     }
 
     // Check output shapes
-    if (fx_shape.size() != 1 || fx_shape[0] != n_pts) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'Fx' must have shape (n_pts, ) but got [%zu].", fx_shape);
-    }
-    if (br_shape.size() != 1 || br_shape[0] != n_pts) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'Br' must have shape (n_pts, ) but got [%zu].", br_shape);
-    }
-    if (bz_shape.size() != 1 || bz_shape[0] != n_pts) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'Bz' must have shape (n_pts, ) but got [%zu].", bz_shape);
+    // if (fx_shape.size() != 1 || fx_shape[0] != n_pts) {
+    //     mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'Fx' must have shape (n_pts, ) but got [%zu].", fx_shape);
+    // }
+    // if (br_shape.size() != 1 || br_shape[0] != n_pts) {
+    //     mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'Br' must have shape (n_pts, ) but got [%zu].", br_shape);
+    // }
+    // if (bz_shape.size() != 1 || bz_shape[0] != n_pts) {
+    //     mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'Bz' must have shape (n_pts, ) but got [%zu].", bz_shape);
+    // }
+    if (rt_shape.size() != 2 || rt_shape[0] != n_pts || rt_shape[1] != 3) {
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'rt' must have shape (n_pts, 3) but got [%zu, %zu].", rt_shape[0], rt_shape[1]);
     }
 
     // Get pointer to ONNX output tensor data
-    const float* fx_ort_ptr = fx_ref.GetTensorData<float>(); 
-    const float* br_ort_ptr = br_ref.GetTensorData<float>(); 
-    const float* bz_ort_ptr = bz_ref.GetTensorData<float>(); 
+    // const float* fx_ort_ptr = fx_ref.GetTensorData<float>(); 
+    // const float* br_ort_ptr = br_ref.GetTensorData<float>(); 
+    // const float* bz_ort_ptr = bz_ref.GetTensorData<float>();
+    
+    const float* rt_ort_ptr = rt_ref.GetTensorData<float>(); // Pointer to the output tensor data 
 
     // // no checks for output tensors, assume they are valid
     // const float* fx_ort_ptr = output_tensors[0].GetTensorData<float>(); 
     // const float* br_ort_ptr = output_tensors[1].GetTensorData<float>(); 
     // const float* bz_ort_ptr = output_tensors[2].GetTensorData<float>(); 
+    // const float* fx_ort_ptr = rt_ort_ptr; // First column for Fx
 
     // initialize output matrices
     plhs[0] = mxCreateNumericMatrix(1, n_pts, mxSINGLE_CLASS, mxREAL); // Fx
@@ -219,10 +236,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     float* bz_matlab_ptr = (float*)mxGetData(plhs[2]); 
 
     // Copy data from ONNX tensor to MATLAB matrix
-    std::memcpy(fx_matlab_ptr, fx_ort_ptr, n_pts * sizeof(float));
-    std::memcpy(br_matlab_ptr, br_ort_ptr, n_pts * sizeof(float));
-    std::memcpy(bz_matlab_ptr, bz_ort_ptr, n_pts * sizeof(float));
-    
+    std::memcpy(fx_matlab_ptr, rt_ort_ptr, n_pts * sizeof(float)); // First column for Fx
+    std::memcpy(br_matlab_ptr, rt_ort_ptr + n_pts, n_pts * sizeof(float)); // Second column for Br
+    std::memcpy(bz_matlab_ptr, rt_ort_ptr + 2 * n_pts, n_pts * sizeof(float)); // Third column for Bz
+
+
     // Ort::Value objects in output_tensors (and their underlying data buffers if owned by ONNX Runtime)
     // are managed. They will be destructed when output_tensors goes out of scope.
 }

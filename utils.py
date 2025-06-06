@@ -69,6 +69,7 @@ SEP = 'sep' # this is the LCFS, last closed flux surface, or separatrix
 PHYS = 'phys' # physics inputs
 PTS = 'pts' # points 
 FG = 'fg' # full grid
+RT = 'rt' # real time output
 
 INPUT_NAMES = [BM, FF, FT, IA, IP, IU, RB] # input names
 OUTPUT_NAMES = [FX, IY, BR, BZ, RQ, ZQ] # output names
@@ -149,7 +150,7 @@ class ActF(Module): # swish
         self.beta = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
     def forward(self, x): return x*torch.sigmoid(self.beta*x)
 
-PHYSICS_LS = 64 # physics latent size [ph] 64 <-
+PHYSICS_LS = 32 # physics latent size [ph] 64 <-
 
 class PtsEncoder(Module): # positional encoding for the input vector
     def __init__(self):
@@ -167,8 +168,8 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
         assert x_mean_std.shape == (2, NIN), f"x_mean_std.shape = {x_mean_std.shape}, NIN = {NIN}"
         self.x_mean_std = x_mean_std
         self.input_net = Sequential(
-            Linear(NIN, 64), ActF(),
-            Linear(64, 64), ActF(),
+            Linear(NIN, 128), ActF(), # (NIN, 64) <-
+            Linear(128, 64), ActF(), # (64, 64) <-
             Linear(64, PHYSICS_LS), Tanh(), 
         )
     def forward(self, x): 
@@ -191,13 +192,14 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
 #     def forward(self, v): return self.head(v).squeeze(-1)
 
 class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density) 
-    def __init__(self):
+    def __init__(self, nout=1):
         super(FHead, self).__init__()
         self.head = Sequential(
             Linear(PHYSICS_LS, 64), ActF(),
-            Linear(64, 4), ActF(),
+            Linear(64, nout), ActF(),
         )
-    def forward(self, v): return self.head(v)
+        self.nout = nout # number of outputs
+    def forward(self, v): return self.head(v) if self.nout > 1 else self.head(v).squeeze(-1)
     
 class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
     def __init__(self):
@@ -209,34 +211,18 @@ class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
         )
     def forward(self, ph): return self.lcfs(ph)
 
-def concat_pts_ph(pts, ph):
-    # pts: (BS, NP, 2)
-    # ph: (BS, PHYSICS_LS)
-    assert pts.dim() == 3, f'Expected pts to be of shape (BS, NPTS, 2), got {pts.shape}'
-    bs, npts = pts.shape[:2]
-    # Reshape ph to (BS, 1, PHYSICS_LS) and expand to (BS, NPTS, PHYSICS_LS)
-    assert ph.dim() == 2, f'Expected ph to be of shape (BS, PX), got {ph.shape}'
-    x_expanded = ph.view(bs, 1, PHYSICS_LS).expand(bs, npts, PHYSICS_LS)
-    # Concatenate along the last dimension
-    out = torch.cat([pts, x_expanded], dim=-1)  # (BS, NP, PHYSICS_LS+2)
-    return out
-
 class FullNet(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
-    def __init__(self, input_net:InputNet, pts_enc:PtsEncoder, fx_head:FHead, iy_head:FHead, br_head:FHead, bz_head:FHead, lcfs_head:LCFSHead):
+    def __init__(self, input_net:InputNet, pts_enc:PtsEncoder, rt_head:FHead, iy_head:FHead, lcfs_head:LCFSHead):
         super(FullNet, self).__init__()
         self.input_net = input_net
         self.pts_enc = pts_enc
-        self.fx_head = fx_head
         self.iy_head = iy_head
-        self.br_head = br_head
-        self.bz_head = bz_head
+        self.rt_head = rt_head
         self.lcfs_head = lcfs_head
         assert isinstance(self.input_net, InputNet), f"input_net should be an instance of InputNet, got {type(self.input_net)}"
         assert isinstance(self.pts_enc, PtsEncoder), f"pts_enc should be an instance of PtsEncoder, got {type(self.pts_enc)}"
-        assert isinstance(self.fx_head, FHead), f"fx_head should be an instance of FHead, got {type(self.fx_head)}"
+        assert isinstance(self.rt_head, FHead), f"rt_head should be an instance of FHead, got {type(self.rt_head)}"
         assert isinstance(self.iy_head, FHead), f"iy_head should be an instance of FHead, got {type(self.iy_head)}"
-        assert isinstance(self.br_head, FHead), f"br_head should be an instance of FHead, got {type(self.br_head)}"
-        assert isinstance(self.bz_head, FHead), f"bz_head should be an instance of FHead, got {type(self.bz_head)}"
     def to(self, device):
         super(FullNet, self).to(device)
         self.input_net.to(device)
@@ -257,33 +243,23 @@ class FullNet(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
         psh = ph * ps # element-wise multiplication
         # psh = concat_pts_ph(pts, ph) # concatenate pts and ph
         assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
-        # fx = self.fx_head(psh) # get flux
-        # iy = self.iy_head(psh) # get current density
-        # br = self.br_head(psh) # get Br
-        # bz = self.bz_head(psh) # get Bz
-        outs = self.fx_head(psh) # get flux, current density, Br, Bz
-        fx, iy, br, bz = outs[:, :, 0], outs[:, :, 1], outs[:, :, 2], outs[:, :, 3] # split outputs
-        assert fx.dim() == 2 and fx.shape[1] == pts.shape[1], f"fx.dim() = {fx.dim()}, fx.shape[1] = {fx.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
+        iy = self.iy_head(psh) # get current density
+        rt = self.rt_head(psh) # get flux, Br, Bz (rt quantities)
         assert iy.dim() == 2 and iy.shape[1] == pts.shape[1], f"iy.dim() = {iy.dim()}, iy.shape[1] = {iy.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
-        assert br.dim() == 2 and br.shape[1] == pts.shape[1], f"br.dim() = {br.dim()}, br.shape[1] = {br.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
-        assert bz.dim() == 2 and bz.shape[1] == pts.shape[1], f"bz.dim() = {bz.dim()}, bz.shape[1] = {bz.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
+        assert rt.dim() == 3 and rt.shape[1] == pts.shape[1] and rt.shape[2] == 3, f"rt.dim() = {rt.dim()}, rt.shape = {rt.shape}, should be (BS, NP, 4)"
         assert lcfs.dim() == 2 and lcfs.shape[1] == NLCFS*2, f"lcfs.dim() = {lcfs.dim()}, lcfs.shape[1] = {lcfs.shape[1]}, should be 2*NLCFS = {NLCFS*2}"
-        return fx, iy, br, bz, lcfs # return flux, current density, Br, Bz, LCFS
+        return rt, iy, lcfs # return rt (flux, Br, Bz), current density iy, and LCFS
 
         
 class LiuqeRTNet(Module): # Liuqe Real Time surrogate net
-    def __init__(self, input_net:InputNet, pts_enc:PtsEncoder, fx_head:FHead, br_head:FHead, bz_head:FHead):
+    def __init__(self, input_net:InputNet, pts_enc:PtsEncoder, rt_head:FHead):
         super(LiuqeRTNet, self).__init__()
         self.input_net = input_net
         self.pts_enc = pts_enc
-        self.fx_head = fx_head
-        self.br_head = br_head
-        self.bz_head = bz_head
+        self.rt_head = rt_head
         assert isinstance(self.input_net, InputNet), f"input_net should be an instance of InputNet, got {type(self.input_net)}"
         assert isinstance(self.pts_enc, PtsEncoder), f"pts_enc should be an instance of PtsEncoder, got {type(self.pts_enc)}"
-        assert isinstance(self.fx_head, FHead), f"fx_head should be an instance of FHead, got {type(self.fx_head)}"
-        assert isinstance(self.br_head, FHead), f"br_head should be an instance of FHead, got {type(self.br_head)}"
-        assert isinstance(self.bz_head, FHead), f"bz_head should be an instance of FHead, got {type(self.bz_head)}"
+        assert isinstance(self.rt_head, FHead), f"rt_head should be an instance of FHead, got {type(self.rt_head)}"
     def to(self, device):
         super(LiuqeRTNet, self).to(device)
         self.input_net.to(device)
@@ -301,12 +277,8 @@ class LiuqeRTNet(Module): # Liuqe Real Time surrogate net
         assert ps.shape == ph.shape, f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal"
         psh = ph * ps # element-wise multiplication
         assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
-        # fx = self.fx_head(psh) # get flux
-        # br = self.br_head(psh) # get Br
-        # bz = self.bz_head(psh) # get Bz
-        outs = self.fx_head(psh)
-        fx, br, bz = outs[:, :, 0], outs[:, :, 2], outs[:, :, 3]
-        return fx.view(n), br.view(n), bz.view(n) # return flux, Br, Bz as 1D tensors
+        rt = self.rt_head(psh)
+        return rt.view(n, 3) # return flux, Br, Bz as (n, 3) tensor
 
 class LCFSNet(Module):
     def __init__(self, input_net:InputNet, lcfs_head:LCFSHead):
@@ -332,31 +304,25 @@ def test_network_io(verbose=True):
     n_points = 5 # number of points to sample
     # single sample
     x, pts = (torch.rand(1, NIN), torch.rand(1, n_points, 2)) # x: (1, NIN), pts: (1, n_points, 2)
-    fn = FullNet(InputNet(),PtsEncoder(),FHead(),FHead(),FHead(),FHead(),LCFSHead())
-    rt_net = LiuqeRTNet(fn.input_net,fn.pts_enc,fn.fx_head,fn.br_head,fn.bz_head)
-    fx, iy, br, bz, lcfs = fn(x, pts)
+    fn = FullNet(InputNet(),PtsEncoder(),FHead(3),FHead(1),LCFSHead())
+    rt_net = LiuqeRTNet(fn.input_net,fn.pts_enc,fn.rt_head)
+    rt, iy, lcfs = fn(x, pts)
     r, z = pts[0,:,0], pts[0,:,1] # r, z: (n_points,)
-    fx2, br2, bz2 = rt_net(x.view(-1), r, z) # fx2, br2, bz2: (1, n_points)
-    assert fx.shape == (1, n_points), f"fx.shape = {fx.shape}, should be (1, {n_points})"
-    assert fx.shape == iy.shape == br.shape == bz.shape, "fx, iy, br, bz should have the same shape"
-    assert fx2.shape == (n_points,), f"fx2.shape = {fx2.shape}, should be ({n_points},)"
-    assert br2.shape == (n_points,), f"br2.shape = {br2.shape}, should be ({n_points},)"
-    assert bz2.shape == (n_points,), f"bz2.shape = {bz2.shape}, should be ({n_points},)"
+    rt2 = rt_net(x.view(-1), r, z) # fx2, br2, bz2: (1, n_points, 3)
+    assert rt.shape == (1, n_points, 3), f"rt.shape = {rt.shape}, should be (1, {n_points}, 3)"
+    assert rt2.shape == (n_points, 3), f"rt2.shape = {rt2.shape}, should be ({n_points}, 3)"
     assert pts.shape == (1, n_points, 2), f"pts.shape = {pts.shape}, should be (1, {n_points}, 2)"
     assert lcfs.shape == (1, NLCFS*2), f"lcfs.shape = {lcfs.shape}, should be (1, {NLCFS*2})"
-    assert torch.allclose(fx, fx2), f"fx and fx2 should be close, but got {torch.max(torch.abs(fx-fx2))}"
-    assert torch.allclose(br, br2), f"br and br2 should be close, but got {torch.max(torch.abs(br-br2))}"
-    assert torch.allclose(bz, bz2), f"bz and bz2 should be close, but got {torch.max(torch.abs(bz-bz2))}"
-    if v: print(f"single FullNet -> in: [{x.shape}, {pts.shape}], \n            out: [{fx.shape}, {iy.shape}, {br.shape}, {bz.shape}, {lcfs.shape}]")
-    if v: print(f"single LiuqeRTNet  -> in: [{x.shape}, {pts.shape}], \n            out: [{fx2.shape}, {br2.shape}, {bz2.shape}]") 
+    assert torch.allclose(rt, rt2), f"rt and rt2 should be close, but got {torch.max(torch.abs(rt-rt2))}"
+    if v: print(f"single FullNet -> in: [{x.shape}, {pts.shape}], \n            out: [{rt.shape}, {iy.shape}, {lcfs.shape}]")
+    if v: print(f"single LiuqeRTNet  -> in: [{x.shape}, {pts.shape}], \n            out: [{rt2.shape}]") 
     # batched
     bs = 7
     x, pts = torch.rand(bs, NIN), torch.rand(bs, n_points, 2) # x: (bs, NIN), pts: (bs, n_points, 2)
-    fx, iy, br, bz, lcfs = fn(x, pts)
-    assert fx.shape == (bs, n_points), f"fx.shape = {fx.shape}, should be ({bs}, {n_points})"
-    assert fx.shape == iy.shape == br.shape == bz.shape, "fx, iy, br, bz should have the same shape"
+    rt, iy, lcfs = fn(x, pts)
+    assert rt.shape == (bs, n_points, 3), f"rt.shape = {rt.shape}, should be ({bs}, {n_points}, 3)"
     assert lcfs.shape == (bs, NLCFS*2), f"lcfs.shape = {lcfs.shape}, should be ({bs}, {NLCFS*2})"
-    if v: print(f"batched FullNet -> in: [{x.shape}, {pts.shape}], \n            out: [{fx.shape}, {iy.shape}, {br.shape}, {bz.shape}, {lcfs.shape}]")
+    if v: print(f"batched FullNet -> in: [{x.shape}, {pts.shape}], \n            out: [{rt.shape}, {iy.shape}, {lcfs.shape}]")
 
 def convert_to_onnx_dyn(net:LiuqeRTNet, save_dir=SAVE_DIR):
     net.to(CPU)  
@@ -372,13 +338,11 @@ def convert_to_onnx_dyn(net:LiuqeRTNet, save_dir=SAVE_DIR):
         args=(dummy_phys, dummy_r, dummy_z),  # Dummy inputs for the network
         f=onnx_net_path,
         input_names=[PHYS, 'r', 'z'],  # Input names
-        output_names=[FX, BR, BZ],
+        output_names=[RT],
         dynamic_axes={
             "r": {0: "n"},   # dynamic first dimension of r
             "z": {0: "n"},   # dynamic first dimension of z
-            FX: {0: "n"},    # dynamic first dimension of fx output
-            BR: {0: "n"},    # dynamic first dimension of br output
-            BZ: {0: "n"}     # dynamic first dimension of bz output
+            RT: {0: "n"},    # dynamic first dimension of rt output
         },
         opset_version=12,
         do_constant_folding=True,  # Optimize the model
@@ -400,7 +364,7 @@ def convert_to_onnx_static(net:LiuqeRTNet, npts=N_CTRL_PTS, save_dir=SAVE_DIR):
         args=(dummy_phys, dummy_r, dummy_z),  # Dummy inputs for the network
         f=onnx_net_path,
         input_names=[PHYS, 'r', 'z'],  # Input names
-        output_names=[FX, BR, BZ],
+        output_names=[RT],
         opset_version=12,
         do_constant_folding=True,  # Optimize the model
         export_params=True  # Export the parameters
