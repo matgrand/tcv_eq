@@ -1,8 +1,16 @@
 
 try
+
+    % current best speeds:
+    % 1k -> 365 μs (fx, br, bz, iy grouped, dynamic axes)
+    % 1k -> 247 μs (fx, br, bz, iy grouped, static axes)
+    % 64 -> 44 μs (fx, br, bz, iy grouped, static axes)
+    % 64 -> 45 μs (fx, br, bz, iy grouped, dynamic axes)
+
     clc; clear; close all;
     PLOT = false;
-    n_ctrl_pts = 24; % number of control points
+    n_ctrl_pts = 25; % number of control points
+    N = 10000; % number of iterations for inference time test
 
 
     addpath([pwd '/onnx_net_forward']);
@@ -24,12 +32,11 @@ try
     %% test with simplified inputs
     rand_i = randi([1, size(d.phys, 1)], 1, 1);
     phys = d.phys(rand_i, :); 
-    r = d.pts(rand_i, :, 1);
-    z = d.pts(rand_i, :, 2);
+    r = d.pts(rand_i, 1:n_ctrl_pts, 1);
+    z = d.pts(rand_i, 1:n_ctrl_pts, 2);
 
     fprintf('phys size: %d, r size: %d, z size: %d\n', size(phys, 2), size(r, 2), size(z, 2));
 
-    % net_forward_mex([pwd 'onnx_net_forward/net.onnx']); % to load the model
     [Fx, Br, Bz] = net_forward_mex(single(phys), single(r), single(z));
     % print first 5 elements of results
     fprintf('fx_pred -> [ %s ]\n', num2str(Fx(1:min(5,end)), '%+.4f '));
@@ -40,12 +47,29 @@ try
     fprintf('bz_true -> [ %s ]\n', num2str(d.Bz(rand_i, 1:min(5,end)), '%+.4f '));
 
     % use timeit to measure inference time
-    for n = [1, 2, 3, 4, 8, 16, 32, 64, 128, 256]
+    fprintf('Measuring inference time...\n');
+    for n = [1, 2, 3, 4, 8, 16, 25, 64, 100, 128, 256, 300, 400, 500, 1000]
         phys = d.phys(rand_i, :); 
         r = d.pts(rand_i, 1:n, 1);
         z = d.pts(rand_i, 1:n, 2);
-        t = timeit(@() net_forward_mex(single(phys), single(r), single(z)));
-        fprintf('Inference time for %d control points: %.1f μs\n', n, t * 1e6);
+        try
+            t1 = timeit(@() net_forward_mex(single(phys), single(r), single(z)));
+        catch ME
+            t1 = NaN; % in case of error, set time to NaN
+        end
+        % fprintf('1 sample,      %d control points: %.1f μs\n', n, t * 1e6);
+        rand_idxs = randi([1, size(d.phys, 1)], N, 1);
+        vphys = d.phys(rand_idxs, :);
+        vr = d.pts(rand_idxs, 1:n, 1);
+        vz = d.pts(rand_idxs, 1:n, 2);
+        try 
+            t2 = timeit(@() test_speed(vphys, vr, vz, n));
+        catch ME
+            t2 = NaN; % in case of error, set time to NaN
+        end
+        % fprintf('%d samples, %d control points: %.1f μs per sample\n', N, n, t * 1e6 / N);
+        fprintf('%d pts -> [%.1f μs (1)] [%.1f μs (%d)]\n', ...
+            n, t1 * 1e6, t2 * 1e6 / N, N);
     end
 
 
@@ -104,7 +128,6 @@ try
         fprintf(' Done.\n');
     end
 
-    N = 30000;
     % n_ctrl_pts = 24; % number of control points
     fprintf('Testing inference time for %d iterations...', N);
     rand_idxs = randi([1, size(n_examples, 1)], N, 1);
@@ -149,4 +172,15 @@ catch ME
     for i = 1:length(ME.stack)
         fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
     end
+end
+
+function t = test_speed(vphys, vr, vz, ncp)
+    start = tic;
+    n = size(vphys, 1);
+    assert(size(vr,1) == n && size(vz,1) == n, ...
+        'Input vectors must have the same number of rows.');
+    for i = 1:n
+        [fx, br, bz] = net_forward_mex(single(vphys(i,:)), single(vr(i,1:ncp)), single(vz(i,1:ncp)));
+    end
+    t = toc(start);
 end
