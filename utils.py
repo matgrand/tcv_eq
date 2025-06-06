@@ -43,6 +43,8 @@ except:
 print(f"Running JOBID: {JOBID}, on {DEV}, GPU_MEM: {GPU_MEM/1e9:.2f} GB" if DEV != CPU else f"Running JOBID: {JOBID}, on cpu")
 SAVE_DIR = f"data/{JOBID}"
 
+N_CTRL_PTS = 25 # number of control points to estimate
+
 ##################################################################################################################################
 ## Dataset inputs/outputs (see create_ds.m)
 USE_REAL_INPUTS = True # if True, use real inputs, otherwise use random inputs
@@ -356,7 +358,7 @@ def test_network_io(verbose=True):
     assert lcfs.shape == (bs, NLCFS*2), f"lcfs.shape = {lcfs.shape}, should be ({bs}, {NLCFS*2})"
     if v: print(f"batched FullNet -> in: [{x.shape}, {pts.shape}], \n            out: [{fx.shape}, {iy.shape}, {br.shape}, {bz.shape}, {lcfs.shape}]")
 
-def convert_to_onnx(net:LiuqeRTNet, save_dir=SAVE_DIR):
+def convert_to_onnx_dyn(net:LiuqeRTNet, save_dir=SAVE_DIR):
     net.to(CPU)  
     net.eval()  # Set the network to evaluation mode
     dummy_phys = torch.randn(NIN, device=CPU)
@@ -378,6 +380,27 @@ def convert_to_onnx(net:LiuqeRTNet, save_dir=SAVE_DIR):
             BR: {0: "n"},    # dynamic first dimension of br output
             BZ: {0: "n"}     # dynamic first dimension of bz output
         },
+        opset_version=12,
+        do_constant_folding=True,  # Optimize the model
+        export_params=True  # Export the parameters
+    )
+    print(f'ONNX model saved to {onnx_net_path}')
+    return
+
+def convert_to_onnx_static(net:LiuqeRTNet, npts=N_CTRL_PTS, save_dir=SAVE_DIR):
+    net.to(CPU)  
+    net.eval()  # Set the network to evaluation mode
+    dummy_phys = torch.randn(NIN, device=CPU)
+    dummy_r = torch.randn(npts, device=CPU)  # Dummy points for inference
+    dummy_z = torch.randn(npts, device=CPU)  # Dummy points for inference
+    onnx_net_path = f'{save_dir}/net.onnx'
+    # Export to ONNX
+    torch.onnx.export(
+        net,
+        args=(dummy_phys, dummy_r, dummy_z),  # Dummy inputs for the network
+        f=onnx_net_path,
+        input_names=[PHYS, 'r', 'z'],  # Input names
+        output_names=[FX, BR, BZ],
         opset_version=12,
         do_constant_folding=True,  # Optimize the model
         export_params=True  # Export the parameters
