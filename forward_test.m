@@ -12,7 +12,7 @@ try
     clc; clear; close all;
     PLOT = false;
     n_ctrl_pts = 25; % number of control points
-    N = 10000; % number of iterations for inference time test
+    N = 100000; % number of iterations for inference time test
 
 
     addpath([pwd '/onnx_net_forward']);

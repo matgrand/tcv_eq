@@ -150,7 +150,7 @@ class ActF(Module): # swish
         self.beta = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
     def forward(self, x): return x*torch.sigmoid(self.beta*x)
 
-PHYSICS_LS = 64 # physics latent size [ph] 64 <-
+PHYSICS_LS = 128 # physics latent size [ph] 64 <-
 
 class PtsEncoder(Module): # positional encoding for the input vector
     def __init__(self):
@@ -657,7 +657,8 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
             p = torch.stack([torch.tensor(RRD.reshape(-1), dtype=torch.float32), torch.tensor(ZZD.reshape(-1), dtype=torch.float32)], dim=1)  # shape (n, 2)
             fx, iy, br, bz = [to_tensor(v.reshape(-1)) for v in ds.fg[i]] # reshape to (n,)
         # x, p, fx, iy, br, bz, sep = x.reshape(1,-1), r.reshape(1,NGR), z.reshape(1,NGZ), y1.reshape(1,1,NGZ,NGR), y2.reshape(1,1,NGZ,NGR), y3.reshape(1,2*NLCFS)
-        fxp, iyp, brp, bzp, sepp = model(x.unsqueeze(0), p.unsqueeze(0))
+        rtp, iyp, sepp = model(x.unsqueeze(0), p.unsqueeze(0))
+        fxp, brp, bzp = rtp[:,:,0], rtp[:,:,1], rtp[:,:,2]
         fxp, iyp, brp, bzp, sepp = map(lambda t: t.squeeze(0), [fxp, iyp, brp, bzp, sepp]) # remove batch dimension
         # gso, gsop = calc_gso_batch(y1, r, z), calc_gso_batch(yp1, r, z)
         # gso, gsop = gso.detach().numpy().reshape(NGZ,NGR), gsop.detach().numpy().reshape(NGZ,NGR)        
