@@ -12,7 +12,7 @@ try
     clc; clear; close all;
     PLOT = false;
     n_ctrl_pts = 25; % number of control points
-    N = 1000; % number of iterations for inference time test
+    N = 10000; % number of iterations for inference time test
 
 
     addpath([pwd '/onnx_net_forward']);
@@ -138,13 +138,9 @@ try
     ttot = tic;
     for i = 1:N
         ri = rand_idxs(i);
-        phys = d.phys(ri, :);
-        r = d.pts(ri, 1:n_ctrl_pts, 1);
-        z = d.pts(ri, 1:n_ctrl_pts, 2);
         t1 = tic;
-        [fx, br, bz] = net_forward_mex(single(phys), single(r), single(z));
+        [fx, br, bz] = net_forward_mex(single(d.phys(ri, :)), single(d.pts(ri, 1:n_ctrl_pts, 1)), single(d.pts(ri, 1:n_ctrl_pts, 2)));
         times(i) = toc(t1);
-        ys(i, :) = [fx, br, bz];
     end
     ttot = toc(ttot);
     fprintf(' Done.\n');
