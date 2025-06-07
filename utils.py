@@ -98,7 +98,7 @@ def model_path(loss_name, save_dir=SAVE_DIR):
     assert loss_name in LOSS_NAMES, f"loss_name should be one of {LOSS_NAMES}, got {loss_name}"
     return f"{save_dir}/best_{loss_name}.pth"
 
-BEST_MODEL_DIR = 'data/best/' # where the best models are saved
+BEST_MODEL_DIR = 'data/best' # where the best models are saved
 STRICT_LOAD = True # for loading the weights, should be true, but for testing varying architectures, set to false
 
 TEST_DIR = 'test' if LOCAL else '/nfsd/automatica/grandinmat/test'
@@ -339,6 +339,7 @@ def convert_to_onnx_dyn(net:LiuqeRTNet, save_dir=SAVE_DIR):
         do_constant_folding=True,  # Optimize the model
         export_params=True  # Export the parameters
     )
+    assert os.path.exists(onnx_net_path), f"ONNX model not saved to {onnx_net_path}"
     print(f'ONNX model saved to {onnx_net_path}')
     return
 
@@ -360,6 +361,7 @@ def convert_to_onnx_static(net:LiuqeRTNet, npts=N_CTRL_PTS, save_dir=SAVE_DIR):
         do_constant_folding=True,  # Optimize the model
         export_params=True  # Export the parameters
     )
+    assert os.path.exists(onnx_net_path), f"ONNX model not saved to {onnx_net_path}"
     print(f'ONNX model saved to {onnx_net_path}')
     return
 

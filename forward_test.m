@@ -33,7 +33,8 @@ try
     NIN = 136;
 
     %% test with simplified inputs
-    rand_i = randi([1, size(d.phys, 1)], 1, 1);
+    % rand_i = randi([1, size(d.phys, 1)], 1, 1);
+    rand_i = 1;
     phys = d.phys(rand_i, :); 
     r = d.pts(rand_i, 1:n_ctrl_pts, 1);
     z = d.pts(rand_i, 1:n_ctrl_pts, 2);
@@ -42,16 +43,22 @@ try
 
     [Fx, Br, Bz] = net_forward_mex(single(phys), single(r), single(z));
     % print first 5 elements of results
-    fprintf('fx_pred -> [ %s ]\n', num2str(Fx(1:min(5,end)), '%+.4f '));
-    fprintf('fx_true -> [ %s ]\n', num2str(d.Fx(rand_i, 1:min(5,end)), '%+.4f '));
-    fprintf('br_pred -> [ %s ]\n', num2str(Br(1:min(5,end)), '%+.4f '));
-    fprintf('br_true -> [ %s ]\n', num2str(d.Br(rand_i, 1:min(5,end)), '%+.4f '));
-    fprintf('bz_pred -> [ %s ]\n', num2str(Bz(1:min(5,end)), '%+.4f '));
-    fprintf('bz_true -> [ %s ]\n', num2str(d.Bz(rand_i, 1:min(5,end)), '%+.4f '));
+    fprintf('fx_pred -> [ %s ]\n', num2str(Fx(1:min(8,end)), '%+.4f '));
+    fprintf('fx_true -> [ %s ]\n', num2str(d.Fx(rand_i, 1:min(8,end)), '%+.4f '));
+    fprintf('br_pred -> [ %s ]\n', num2str(Br(1:min(8,end)), '%+.4f '));
+    fprintf('br_true -> [ %s ]\n', num2str(d.Br(rand_i, 1:min(8,end)), '%+.4f '));
+    fprintf('bz_pred -> [ %s ]\n', num2str(Bz(1:min(8,end)), '%+.4f '));
+    fprintf('bz_true -> [ %s ]\n', num2str(d.Bz(rand_i, 1:min(8,end)), '%+.4f '));
 
     % use timeit to measure inference time
     fprintf('Measuring inference time...\n');
     for n = [1, 2, 3, 4, 8, 16, 25, 64, 100, 128, 256, 300, 400, 500, 1000]
+        if n >= 100
+            n_iter = round(N/30);
+        else
+            n_iter = N;
+        end
+
         phys = d.phys(rand_i, :); 
         r = d.pts(rand_i, 1:n, 1);
         z = d.pts(rand_i, 1:n, 2);
@@ -61,7 +68,7 @@ try
             t1 = NaN; % in case of error, set time to NaN
         end
         % fprintf('1 sample,      %d control points: %.1f μs\n', n, t * 1e6);
-        rand_idxs = randi([1, size(d.phys, 1)], N, 1);
+        rand_idxs = randi([1, size(d.phys, 1)], n_iter, 1);
         vphys = d.phys(rand_idxs, :);
         vr = d.pts(rand_idxs, 1:n, 1);
         vz = d.pts(rand_idxs, 1:n, 2);
@@ -72,7 +79,7 @@ try
         end
         % fprintf('%d samples, %d control points: %.1f μs per sample\n', N, n, t * 1e6 / N);
         fprintf('%d pts -> [%.1f μs (1)] [%.1f μs (%d)]\n', ...
-            n, t1 * 1e6, t2 * 1e6 / N, N);
+            n, t1 * 1e6, t2 * 1e6 / n_iter, n_iter);
     end
 
 
