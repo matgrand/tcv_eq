@@ -388,6 +388,27 @@ def convert_to_onnx_static(net:LiuqeRTNet, npts=N_CTRL_PTS, save_dir=[SAVE_DIR])
         print(f'ONNX model saved to {onnx_net_path}')
     return
 
+# def convert_to_onnx_static(net:LiuqeRTNet, npts=N_CTRL_PTS, save_dir=[SAVE_DIR]):
+#     net.to(CPU)  
+#     net.eval()  # Set the network to evaluation mode
+#     dummy_phys = torch.randn(NIN, device=CPU)
+#     dummy_r = torch.randn(npts, device=CPU)  # Dummy points for inference
+#     dummy_z = torch.randn(npts, device=CPU)  # Dummy points for inference
+#     for d in save_dir:
+#         onnx_net_path = f'{d}/net.onnx'
+#         # Export to ONNX
+#         onnx_model = torch.onnx.export(net, 
+#                                     (dummy_phys, dummy_r, dummy_z), 
+#                                     dynamo=True,
+#                                     input_names=[PHYS, 'r', 'z'],  # Input names
+#                                     output_names=[RT],
+#                                        )
+#         onnx_model.optimize()
+#         onnx_model.save(onnx_net_path)
+#         assert os.path.exists(onnx_net_path), f"ONNX model not saved to {onnx_net_path}"
+#         print(f'ONNX model saved to {onnx_net_path}')
+#     return
+
 # function to load the dataset
 def load_ds(ds_path):
     assert os.path.exists(ds_path), f"Dataset not found: {ds_path}"

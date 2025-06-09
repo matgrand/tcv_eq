@@ -43,8 +43,9 @@ void load_session_once(std::filesystem::path model_path) {
             mexPrintf("Loading ONNX model from: %s ...", model_path.string().c_str());
 
             // Optional: configure session_options here (e.g., for execution providers)
-            // session_options.SetIntraOpNumThreads(1); // Set number of threads for intra-op parallelism
-            // session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+            session_options.SetIntraOpNumThreads(1); // Set number of threads for intra-op parallelism
+            // session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL); // default is ORT_SEQUENTIAL, ORT_PARALLEL slower
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL); // default and best ORT_ENABLE_ALL
             
             // Create the ONNX Runtime session
             ort_session = new Ort::Session(ort_env, model_path.string().c_str(), session_options);
