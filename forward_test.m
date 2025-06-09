@@ -10,8 +10,8 @@ try
     % 25 -> 23 / 49+-22 / tot 63 dynamic 
     % 25 -> 20 / 20+-10 / tot 27 static [much faster]
     clc; clear; close all;
-    % PLOT = false;
-    PLOT = true; % set to true to plot results
+    PLOT = false;
+    % PLOT = true; % set to true to plot results
     n_ctrl_pts = 25; % number of control points
     N = 10000; % number of iterations for inference time test
 
@@ -52,7 +52,7 @@ try
 
     % use timeit to measure inference time
     fprintf('Measuring inference time...\n');
-    for n = [1, 2, 3, 4, 8, 16, 25, 64, 100, 128, 256, 300, 400, 500, 1000]
+    for n = [1, 10, 20, 25, 30, 100, 128, 256, 300, 400, 500, 1000]
         if n >= 100
             n_iter = round(N/30);
         else
@@ -85,7 +85,7 @@ try
 
     % assert(false, 'This is a test, please remove this line to continue.');
 
-    n_plots = 10;
+    n_plots = 20;
     rand_idxs =  randi([1, size(d.phys, 1)], 1, n_plots);
 
     if PLOT
