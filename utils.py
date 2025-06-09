@@ -82,8 +82,8 @@ DS_SIZES = {
 DTYPE = 'float32'
 
 from scipy.interpolate import RegularGridInterpolator
-INTERP_METHOD = 'linear' # fast, but less accurate
-# INTERP_METHOD = 'quintic' # slowest, but most accurate
+# INTERP_METHOD = 'linear' # fast, but less accurate
+INTERP_METHOD = 'quintic' # slowest, but most accurate
 if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which is fast but less accurate')
 
 # DS_DIR = 'dss/ds' # where the final dataset will be stored
@@ -124,6 +124,7 @@ RRD, ZZD = np.meshgrid(rd, zd)  # meshgrid for the original grid coordinates (fr
 RRD2, ZZD2 = np.meshgrid(rd[1:-1], zd[1:-1])  
 del d, rd, zd, r, z
 
+
 # load the vessel perimeter
 m = loadmat('tcv_params/vess.mat')
 vr, vz = m['vess_r'], m['vess_z']
@@ -134,6 +135,27 @@ vi, vo = np.hstack([vri, vzi]), np.hstack([vro, vzo])
 VESS = np.vstack([v, v[0]])[::-1]
 VESSI = np.vstack([vi, vi[0]])
 VESSO = np.vstack([vo, vo[0]])
+_vess_corners_idxs = [92, 101, 140, 165, 201, 211, 220, 338, 372, 411, 420]
+VESS_CORNERS = VESS[_vess_corners_idxs]  # corners of the vessel, used for plotting
+
+def inpoly(pts, poly=VESS_CORNERS):
+    pts_shape = pts.shape
+    assert pts_shape[-1] == 2, f"pts.shape = {pts_shape}, should be (whatever, 2)"
+    pts = pts.reshape(-1, 2)  # ensure pts is a 2D array of shape (n, 2)
+    # Polygon edges: (xi, yi) to (xj, yj)
+    xi, yi = poly[:, 0], poly[:, 1]
+    xj, yj = np.roll(xi, -1), np.roll(yi, -1)
+    px = pts[:, 0][:, np.newaxis]
+    py = pts[:, 1][:, np.newaxis]
+    # Check if point is between yi and yj, and if it is to the left of the edge
+    intersect = ((yi <= py) & (py < yj)) | ((yj <= py) & (py < yi))
+    slope = (xj - xi) / (yj - yi + 1e-12)  # avoid division by zero
+    xints = xi + (py - yi) * slope
+    crosses = px < xints
+    inside = np.sum(intersect & crosses, axis=1) % 2 == 1
+    return inside.reshape(pts_shape[:-1])  # reshape back to original shape
+
+IV = inpoly(np.stack([RRD[:,:,np.newaxis], ZZD[:,:,np.newaxis]], axis=-1)).reshape(RRD.shape)  # inside vessel mask
 del m, vr, vz, vri, vzi, vro, vzo, v, vi, vo
 
 if not LOCAL: # Redefine the print function to always flush
@@ -241,7 +263,6 @@ class FullNet(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
         assert lcfs.dim() == 2 and lcfs.shape[1] == NLCFS*2, f"lcfs.dim() = {lcfs.dim()}, lcfs.shape[1] = {lcfs.shape[1]}, should be 2*NLCFS = {NLCFS*2}"
         return rt, iy, lcfs # return rt (flux, Br, Bz), current density iy, and LCFS
 
-        
 class LiuqeRTNet(Module): # Liuqe Real Time surrogate net
     def __init__(self, input_net:InputNet, pts_enc:PtsEncoder, rt_head:FHead):
         super(LiuqeRTNet, self).__init__()
@@ -315,54 +336,56 @@ def test_network_io(verbose=True):
     assert lcfs.shape == (bs, NLCFS*2), f"lcfs.shape = {lcfs.shape}, should be ({bs}, {NLCFS*2})"
     if v: print(f"batched FullNet -> in: [{x.shape}, {pts.shape}], \n            out: [{rt.shape}, {iy.shape}, {lcfs.shape}]")
 
-def convert_to_onnx_dyn(net:LiuqeRTNet, save_dir=SAVE_DIR):
+def convert_to_onnx_dyn(net:LiuqeRTNet, save_dir=[SAVE_DIR]):
     net.to(CPU)  
     net.eval()  # Set the network to evaluation mode
     dummy_phys = torch.randn(NIN, device=CPU)
     n = 24 # number of inference points
     dummy_r = torch.randn(n, device=CPU)  # Dummy points for inference
     dummy_z = torch.randn(n, device=CPU)  # Dummy points for inference
-    onnx_net_path = f'{save_dir}/net.onnx'
-    # Export to ONNX
-    torch.onnx.export(
-        net,
-        args=(dummy_phys, dummy_r, dummy_z),  # Dummy inputs for the network
-        f=onnx_net_path,
-        input_names=[PHYS, 'r', 'z'],  # Input names
-        output_names=[RT],
-        dynamic_axes={
-            "r": {0: "n"},   # dynamic first dimension of r
-            "z": {0: "n"},   # dynamic first dimension of z
-            RT: {0: "n"},    # dynamic first dimension of rt output
-        },
-        opset_version=12,
-        do_constant_folding=True,  # Optimize the model
-        export_params=True  # Export the parameters
-    )
-    assert os.path.exists(onnx_net_path), f"ONNX model not saved to {onnx_net_path}"
-    print(f'ONNX model saved to {onnx_net_path}')
+    for d in save_dir:
+        onnx_net_path = f'{d}/net.onnx'
+        # Export to ONNX
+        torch.onnx.export(
+            net,
+            args=(dummy_phys, dummy_r, dummy_z),  # Dummy inputs for the network
+            f=onnx_net_path,
+            input_names=[PHYS, 'r', 'z'],  # Input names
+            output_names=[RT],
+            dynamic_axes={
+                "r": {0: "n"},   # dynamic first dimension of r
+                "z": {0: "n"},   # dynamic first dimension of z
+                RT: {0: "n"},    # dynamic first dimension of rt output
+            },
+            opset_version=12,
+            do_constant_folding=True,  # Optimize the model
+            export_params=True  # Export the parameters
+        )
+        assert os.path.exists(onnx_net_path), f"ONNX model not saved to {onnx_net_path}"
+        print(f'ONNX model saved to {onnx_net_path}')
     return
 
-def convert_to_onnx_static(net:LiuqeRTNet, npts=N_CTRL_PTS, save_dir=SAVE_DIR):
+def convert_to_onnx_static(net:LiuqeRTNet, npts=N_CTRL_PTS, save_dir=[SAVE_DIR]):
     net.to(CPU)  
     net.eval()  # Set the network to evaluation mode
     dummy_phys = torch.randn(NIN, device=CPU)
     dummy_r = torch.randn(npts, device=CPU)  # Dummy points for inference
     dummy_z = torch.randn(npts, device=CPU)  # Dummy points for inference
-    onnx_net_path = f'{save_dir}/net.onnx'
-    # Export to ONNX
-    torch.onnx.export(
-        net,
-        args=(dummy_phys, dummy_r, dummy_z),  # Dummy inputs for the network
-        f=onnx_net_path,
-        input_names=[PHYS, 'r', 'z'],  # Input names
-        output_names=[RT],
-        opset_version=12,
-        do_constant_folding=True,  # Optimize the model
-        export_params=True  # Export the parameters
-    )
-    assert os.path.exists(onnx_net_path), f"ONNX model not saved to {onnx_net_path}"
-    print(f'ONNX model saved to {onnx_net_path}')
+    for d in save_dir:
+        onnx_net_path = f'{d}/net.onnx'
+        # Export to ONNX
+        torch.onnx.export(
+            net,
+            args=(dummy_phys, dummy_r, dummy_z),  # Dummy inputs for the network
+            f=onnx_net_path,
+            input_names=[PHYS, 'r', 'z'],  # Input names
+            output_names=[RT],
+            opset_version=12,
+            do_constant_folding=True,  # Optimize the model
+            export_params=True  # Export the parameters
+        )
+        assert os.path.exists(onnx_net_path), f"ONNX model not saved to {onnx_net_path}"
+        print(f'ONNX model saved to {onnx_net_path}')
     return
 
 # function to load the dataset
@@ -441,6 +464,14 @@ def test_dataset(ds:LiuqeDataset, verbose=True):
 
 
 ####################################################################################################
+def sample_random_points_inside_fw(n):
+    over_n = int(n * 1.4)  # oversample to ensure we get enough points inside the vessel (Area ratio: 0.8895 ± 0.0081)
+    pts = np.zeros((n, 2), dtype=DTYPE)
+    cpts = sample_random_points(over_n)  # sample random points
+    # inside = inpoly(cpts, poly=VESS)  # check if points are inside the vessel
+    inside = inpoly(cpts)  # check if points are inside the vessel
+    pts = cpts[inside]  # keep only points inside the vessel
+    return pts[:n]  # return the first n points
 
 def sample_random_subgrid(rrG, zzG, nr=64, nz=64): # tcv specific
     rm, rM, zm, zM = rrG[0,0], rrG[-1,-1], zzG[0,0], zzG[-1,-1]
@@ -652,7 +683,7 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
     for pi, i in enumerate(np.random.randint(0, len(ds), n_plots)):  
         on_grid = pi >= (n_plots // 2) # on grid or not
         fs = (20, 8) if on_grid else (15, 8) # figure size
-        plt.figure(figsize=fs, facecolor='dimgray')
+        plt.figure(figsize=fs, facecolor='white')
         x, p, fx, iy, br, bz, sep = ds[i]
         x, p, fx, iy, br, bz, sep = map(lambda x: x.to(CPU), [x, p, fx, iy, br, bz, sep])
         if on_grid: 
@@ -666,10 +697,11 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
         # gso, gsop = gso.detach().numpy().reshape(NGZ,NGR), gsop.detach().numpy().reshape(NGZ,NGR)        
         # rr, zz = np.meshgrid(r.detach().cpu().numpy(), z.detach().cpu().numpy())
         p, fx, iy, br, bz, fxp, iyp, brp, bzp, sepp = map(lambda t: t.detach().cpu().numpy(), [p, fx, iy, br, bz, fxp, iyp, brp, bzp, sepp]) # move to CPU and numpy
-        mfx, Mfx = np.min([fx, fxp]), np.max([fx, fxp])
-        miy, Miy = np.min([iy, iyp]), np.max([iy, iyp])
-        mbr, Mbr = np.min([br, brp]), np.max([br, brp])
-        mbz, Mbz = np.min([bz, bzp]), np.max([bz, bzp])
+        iv = inpoly(p) # inside vessel indices
+        mfx, Mfx = np.min([fx[iv], fxp[iv]]), np.max([fx[iv], fxp[iv]])
+        miy, Miy = np.min([iy[iv], iyp[iv]]), np.max([iy[iv], iyp[iv]])
+        mbr, Mbr = np.min([br[iv], brp[iv]]), np.max([br[iv], brp[iv]])
+        mbz, Mbz = np.min([bz[iv], bzp[iv]]), np.max([bz[iv], bzp[iv]])
         lw, col, ms = 1.5, 'gray', 4
         limits = [(mfx, Mfx), (miy, Miy), (mbr, Mbr), (mbz, Mbz)]
         vals = [(fx, fxp), (iy, iyp), (br, brp), (bz, bzp)]
@@ -688,15 +720,16 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
         ncols = 8 if on_grid else 6 # number of columns
         for j, ((v, vp), l, n) in enumerate(zip(vals, limits, names)):
             plt.subplot(nraws, ncols, j*(ncols//2)+1), plt.title(f"{n} Actual")
-            plt.scatter(p[:,0], p[:,1], c=v, s=ms, vmin=l[0], vmax=l[1])
+            plt.scatter(p[iv,0], p[iv,1], c=v[iv], s=ms, vmin=l[0], vmax=l[1])
             plt.plot(sep[:NLCFS], sep[NLCFS:], lw=lw, color=col) # plot LCFS
             prep_plot(plt.gca()), plt.colorbar()
             plt.subplot(nraws, ncols, j*(ncols//2) + 2), plt.title(f"{n} Predicted")
-            plt.scatter(p[:,0], p[:,1], c=vp, s=ms, vmin=l[0], vmax=l[1])
+            plt.scatter(p[iv,0], p[iv,1], c=vp[iv], s=ms, vmin=l[0], vmax=l[1])
             plt.plot(sepp[:NLCFS], sepp[NLCFS:], lw=lw, color=col)
             prep_plot(plt.gca()), plt.colorbar()
             plt.subplot(nraws, ncols, j*(ncols//2) + 3), plt.title(f"{n} Error %")
-            plt.scatter(p[:,0], p[:,1], c=100*np.abs(v-vp)/(l[1]-l[0]), s=ms, vmin=0, vmax=np.max(100*np.abs(v-vp)/(l[1]-l[0])))
+            ep = 100*np.abs(v[iv]-vp[iv])/(l[1]-l[0]) # error in %
+            plt.scatter(p[iv,0], p[iv,1], c=ep, s=ms, vmin=0, vmax=np.max(ep))
             plt.plot(sep[:NLCFS], sep[NLCFS:], lw=lw, color=col)
             prep_plot(plt.gca()), plt.colorbar()
             if on_grid: # plot contours if on grid
@@ -714,7 +747,7 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
                                (0.0+dx, 0.0+dy, (1-3*dx)/2+xoff, (1-3*dy)/2+yoff),
                                (0.5+dx/2+xoff, 0.0+dy, (1-3*dx)/2-xoff, (1-3*dy)/2+yoff)]:
             fig.patches.append(Rectangle( (x0, y0), lx, ly, transform=fig.transFigure, color='black', alpha=1, zorder=-1))
-        plt.suptitle(f"[{JOBID}] FullNet: {title} {i}", y=0.985)
+        plt.suptitle(f"[{JOBID}] FullNet: {title} {i}", y=0.985, color='black')
         plt.tight_layout()
         plt.show() if LOCAL else plt.savefig(f"{SAVE_DIR}/imgs/net_example_{title}_{i}.png")
         plt.close()
