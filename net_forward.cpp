@@ -235,10 +235,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     float* br_matlab_ptr = (float*)mxGetData(plhs[1]); 
     float* bz_matlab_ptr = (float*)mxGetData(plhs[2]); 
 
-    // Copy data from ONNX tensor to MATLAB matrix
-    std::memcpy(fx_matlab_ptr, rt_ort_ptr, n_pts * sizeof(float)); // First column for Fx
-    std::memcpy(br_matlab_ptr, rt_ort_ptr + n_pts, n_pts * sizeof(float)); // Second column for Br
-    std::memcpy(bz_matlab_ptr, rt_ort_ptr + 2 * n_pts, n_pts * sizeof(float)); // Third column for Bz
+    // // Copy data from ONNX tensor to MATLAB matrix // NOTE: this is wrong, prob because matlab is column-major
+    // std::memcpy(fx_matlab_ptr, rt_ort_ptr, n_pts * sizeof(float)); // First column for Fx
+    // std::memcpy(br_matlab_ptr, rt_ort_ptr + n_pts, n_pts * sizeof(float)); // Second column for Br
+    // std::memcpy(bz_matlab_ptr, rt_ort_ptr + 2 * n_pts, n_pts * sizeof(float)); // Third column for Bz
+    
+    // Copy data from ONNX tensors to matlab (column-major order)
+    for (size_t i = 0; i < n_pts; ++i) {
+        fx_matlab_ptr[i] = rt_ort_ptr[i*3];     // First column for Fx
+        br_matlab_ptr[i] = rt_ort_ptr[i*3 + 1]; // Second column for Br
+        bz_matlab_ptr[i] = rt_ort_ptr[i*3 + 2]; // Third column for Bz
+    }
 
 
     // Ort::Value objects in output_tensors (and their underlying data buffers if owned by ONNX Runtime)
