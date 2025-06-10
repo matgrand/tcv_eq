@@ -7,4 +7,4 @@
 - multiple estimation from (real) thomson + interf + sxr
 - estimate not only the Flux map but also something else
 - instead of multiplication in the latent space, use 1d convolution (this is probably equivalent to
-  current batched version) or other operation (like exp, cos, sin) or mix of these.
+  current batched version) or other operation (like exp, cos, sin) or mix of these, or try fourier encoding
