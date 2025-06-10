@@ -9,7 +9,7 @@ try
     % new architecture: (fx, br, bz grouped)
     % 25 -> 23 / 49+-22 / tot 63 dynamic 
     % 25 -> 20 / 20+-10 / tot 27 static [much faster]
-    clc; clear; close all;
+    clear; close all;
     PLOT = false;
     % PLOT = true; % set to true to plot results
     n_ctrl_pts = 25; % number of control points
