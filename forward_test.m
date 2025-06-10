@@ -139,6 +139,7 @@ try
     end
 
     % n_ctrl_pts = 24; % number of control points
+    N = 100000;
     fprintf('Testing inference time for %d iterations...', N);
     rand_idxs = randi([1, size(n_examples, 1)], N, 1);
     times = zeros(1, N);
