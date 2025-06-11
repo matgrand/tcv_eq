@@ -178,10 +178,10 @@ class PtsEncoder(Module): # positional encoding for the input vector
     def __init__(self):
         super(PtsEncoder, self).__init__()
         self.pts_encoder = Sequential(
-            Linear(2, 32), ActF(),
-            Linear(32, 32), ActF(), 
+            Linear(2, 16), ActF(),
+            # Linear(32, 32), ActF(), 
             # Linear(32, PHYSICS_LS), ActF(), 
-            Linear(32, PHYSICS_LS//2), ActF(), 
+            Linear(16, PHYSICS_LS//2), ActF(), 
         )
     def forward(self, pts): return self.pts_encoder(pts) # pts: (BS, NP, 2) -> (BS, NP, PHYSICS_LS)
 
