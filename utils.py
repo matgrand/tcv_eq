@@ -666,14 +666,13 @@ def test_plot_vessel():
     plt.savefig(f"{TEST_DIR}/vessel.png")
     # plt.close()s
 
-def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
+def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test", save_dir=SAVE_DIR, nplt=2 if LOCAL else 50):
     assert ds.fg is not None, "Dataset does not have full grid data (fg)"
     model.eval()
     model.to(CPU)
-    os.makedirs(f"{SAVE_DIR}/imgs", exist_ok=True)
-    n_plots = 2 if LOCAL else 50 # number of plots to show
-    for pi, i in enumerate(np.random.randint(0, len(ds), n_plots)):  
-        on_grid = pi >= (n_plots // 2) # on grid or not
+    os.makedirs(f"{save_dir}/imgs", exist_ok=True)
+    for pi, i in enumerate(np.random.randint(0, len(ds), nplt)):  
+        on_grid = pi >= (nplt // 2) # on grid or not
         fs = (20, 8) if on_grid else (15, 8) # figure size
         plt.figure(figsize=fs, facecolor='white')
         x, p, fx, iy, br, bz, sep = ds[i]
@@ -719,13 +718,13 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
             plt.scatter(p[iv,0], p[iv,1], c=vp[iv], s=ms, vmin=l[0], vmax=l[1])
             plt.plot(sepp[:NLCFS], sepp[NLCFS:], lw=lw, color=col)
             prep_plot(plt.gca()), plt.colorbar()
-            plt.subplot(nraws, ncols, j*(ncols//2) + 3), plt.title(f"{n} Error %")
+            plt.subplot(nraws, ncols, j*(ncols//2) + ncols//2), plt.title(f"{n} Error %")
             ep = 100*np.abs(v[iv]-vp[iv])/(l[1]-l[0]) # error in %
             plt.scatter(p[iv,0], p[iv,1], c=ep, s=ms, vmin=0, vmax=np.max(ep))
             plt.plot(sep[:NLCFS], sep[NLCFS:], lw=lw, color=col)
             prep_plot(plt.gca()), plt.colorbar()
             if on_grid: # plot contours if on grid
-                plt.subplot(nraws, ncols, j*(ncols//2) + 4), plt.title(f"{n} Contours")
+                plt.subplot(nraws, ncols, j*(ncols//2) + 3), plt.title(f"{n} Contours")
                 plt.contour(RRD, ZZD, v.reshape(65,28))
                 plt.contour(RRD, ZZD, vp.reshape(65,28), linestyles='dashed')
                 prep_plot(plt.gca()), plt.colorbar()
@@ -741,17 +740,18 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test"):
             fig.patches.append(Rectangle( (x0, y0), lx, ly, transform=fig.transFigure, color='black', alpha=1, zorder=-1))
         plt.suptitle(f"[{JOBID}] FullNet: {title} {i}", y=0.985, color='black')
         plt.tight_layout()
-        plt.show() if LOCAL else plt.savefig(f"{SAVE_DIR}/imgs/net_example_{title}_{i}.png")
+        plt.savefig(f"{save_dir}/imgs/net_example_{'g_' if on_grid else ''}{title}_{i}.png")
+        if LOCAL: plt.show()  
         plt.close()
     return
     
-def plot_lcfs_net_out(ds:LiuqeDataset, model:LiuqeRTNet, title='test'):
+def plot_lcfs_net_out(ds:LiuqeDataset, model:LiuqeRTNet, title='test', save_dir=SAVE_DIR, nplt=5 if LOCAL else 50):
     model.eval()
     model.to(CPU)
-    os.makedirs(f"{SAVE_DIR}/imgs", exist_ok=True)
+    os.makedirs(f"{save_dir}/imgs", exist_ok=True)
     lw3 = 1.5
-    for i in np.random.randint(0, len(ds), 5 if LOCAL else 50):  
-        plt.figure(figsize=(16, 9))
+    for i in np.random.randint(0, len(ds), nplt):  
+        plt.figure(figsize=(20, 8))
         x, y3 = ds[i][0].to(CPU), ds[i][6].to(CPU)  # x: (NIN,), pts: (n_points, 2), y3: (2*NLCFS,)
         x = x.reshape(1, -1)
         yp3 = model(x)
@@ -797,7 +797,8 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LiuqeRTNet, title='test'):
 
         plt.suptitle(f"[{JOBID}] LCFSNet: {title} {i}")
         plt.tight_layout()
-        plt.show() if LOCAL else plt.savefig(f"{SAVE_DIR}/imgs/lcfs_example_{title}_{i}.png")
+        plt.savefig(f"{save_dir}/imgs/lcfs_example_{title}_{i}.png")
+        if LOCAL: plt.show()
         plt.close()
     return
 

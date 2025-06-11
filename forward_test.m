@@ -10,10 +10,10 @@ try
     % 25 -> 23 / 49+-22 / tot 63 dynamic 
     % 25 -> 20 / 20+-10 / tot 27 static [much faster]
     clear; close all;
-    PLOT = false;
-    % PLOT = true; % set to true to plot results
+    % PLOT = false;
+    PLOT = true; % set to true to plot results
     n_ctrl_pts = 25; % number of control points
-    N = 10000; % number of iterations for inference time test
+    N = 1000; % number of iterations for inference time test
 
 
     addpath([pwd '/onnx_net_forward']);
@@ -54,7 +54,7 @@ try
     fprintf('Measuring inference time...\n');
     for n = [1, 10, 20, 25, 30, 100, 128, 256, 300, 400, 500, 1000]
         if n >= 100
-            n_iter = round(N/30);
+            n_iter = round(N/3);
         else
             n_iter = N;
         end
@@ -82,62 +82,6 @@ try
             n, t1 * 1e6, t2 * 1e6 / n_iter, n_iter);
     end
 
-
-    % assert(false, 'This is a test, please remove this line to continue.');
-
-    n_plots = 20;
-    rand_idxs =  randi([1, size(d.phys, 1)], 1, n_plots);
-
-    if PLOT
-        fprintf('Plotting %d random examples...', n_plots);
-        for i = 1:n_plots
-            rand_i = rand_idxs(i);
-            phys = d.phys(rand_i, :); 
-            r = d.pts(rand_i, :, 1);
-            z = d.pts(rand_i, :, 2);
-
-            % net_forward_mex([pwd 'onnx_net_forward/net.onnx']); % to load the model
-            [Fx, Br, Bz] = net_forward_mex(single(phys), single(r), single(z));
-
-            preds = {Fx, Br, Bz};
-            trues = {d.Fx(rand_i, :), d.Br(rand_i, :), d.Bz(rand_i, :)};
-            labels = {'Fx', 'Br', 'Bz'};
-
-            for k = 1:3
-                ftrue = trues{k};
-                fpred = preds{k};
-                fmax = max([ftrue(:); fpred(:)]);
-                fmin = min([ftrue(:); fpred(:)]);
-                diffmap = 100 * abs(ftrue - fpred) ./ (fmax - fmin);
-                sz = 20;
-                fig = figure('Visible', 'off', 'Position', [100, 100, 1600, 800]);
-                subplot(1,3,1);
-                scatter(r, z, sz, ftrue, 'filled');
-                title([labels{k} ' true']);
-                xlabel('r'); ylabel('z');
-                axis equal; colorbar;
-                caxis([fmin fmax]);
-                subplot(1,3,2);
-                scatter(r, z, sz, fpred, 'filled');
-                title([labels{k} ' pred']);
-                xlabel('r'); ylabel('z');
-                axis equal; colorbar;
-                caxis([fmin fmax]);
-                subplot(1,3,3);
-                scatter(r, z, sz, diffmap, 'filled');
-                title([labels{k} ' rel. error [%]']);
-                xlabel('r'); ylabel('z');
-                axis equal; colorbar;
-                set(gcf, 'Name', labels{k});
-                % save figure
-                saveas(gcf, sprintf('test/matlab_%s_%s.png', lower(labels{k}), num2str(i)));
-                % close figure
-                close(gcf);
-            end
-        end
-        fprintf(' Done.\n');
-    end
-
     % n_ctrl_pts = 24; % number of control points
     N = 100000;
     fprintf('Testing inference time for %d iterations...', N);
@@ -158,6 +102,65 @@ try
         mean(times) * 1e6, std(times) * 1e6, max(times) * 1e6);
     fprintf('Total time -> %.1f [s]\n', ttot);
     fprintf('Frequency -> %.1f [μs] | %.1f [Hz]\n', 1e6*ttot/N, N/ttot);
+    % assert(false, 'This is a test, please remove this line to continue.');
+
+    n_plots = 20;
+    rand_idxs =  randi([1, size(d.phys, 1)], 1, n_plots);
+
+    if PLOT
+        fprintf('Plotting %d random examples', n_plots);
+        for i = 1:n_plots
+            rand_i = rand_idxs(i);
+            phys = d.phys(rand_i, :); 
+            r = d.pts(rand_i, :, 1);
+            z = d.pts(rand_i, :, 2);
+
+            % net_forward_mex([pwd 'onnx_net_forward/net.onnx']); % to load the model
+            [Fx, Br, Bz] = net_forward_mex(single(phys), single(r), single(z));
+
+            preds = {Fx, Br, Bz};
+            trues = {d.Fx(rand_i, :), d.Br(rand_i, :), d.Bz(rand_i, :)};
+            labels = {'Fx', 'Br', 'Bz'};
+            
+            fig = figure('Visible', 'off', 'Position', [100, 100, 1000, 1000]);
+            tiledlayout(3,3, 'Padding', 'none', 'TileSpacing', 'compact'); 
+            for k = 1:3
+                ftrue = trues{k};
+                fpred = preds{k};
+                fmax = max([ftrue(:); fpred(:)]);
+                fmin = min([ftrue(:); fpred(:)]);
+                diffmap = 100 * abs(ftrue - fpred) ./ (fmax - fmin);
+                sz = 20;
+                % subplot(3,3,3*(k-1)+1);
+                nexttile
+                scatter(r, z, sz, ftrue, 'filled');
+                title([labels{k} ' true']);
+                xlabel('r'); ylabel('z');
+                axis equal; colorbar;
+                caxis([fmin fmax]);
+                % subplot(3,3,3*(k-1)+2);
+                nexttile
+                scatter(r, z, sz, fpred, 'filled');
+                title([labels{k} ' pred']);
+                xlabel('r'); ylabel('z');
+                axis equal; colorbar;
+                caxis([fmin fmax]);
+                % subplot(3,3,3*(k-1)+3);
+                nexttile
+                scatter(r, z, sz, diffmap, 'filled');
+                title([labels{k} ' Error [%]']);
+                xlabel('r'); ylabel('z');
+                axis equal; colorbar;
+                set(gcf, 'Name', labels{k});
+            end
+            % save figure
+            saveas(gcf, sprintf('test/matlab_%s.png', num2str(i)));
+            % close figure
+            close(gcf);
+            fprintf('.');
+        end
+        fprintf(' Done.\n');
+    end
 
     if PLOT
         % plot histogram
