@@ -224,6 +224,11 @@ class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
         )
     def forward(self, ph): return self.lcfs(ph)
 
+def aggregate_pts_ph(ps, ph):
+    # simple multiplication
+    assert ps.shape == ph.shape, f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal" 
+    return ps * ph
+
 class FullNet(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
     def __init__(self, input_net:InputNet, pts_enc:PtsEncoder, rt_head:FHead, iy_head:FHead, lcfs_head:LCFSHead):
         super(FullNet, self).__init__()
@@ -252,8 +257,7 @@ class FullNet(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
         ph = ph.unsqueeze(1).expand(-1, pts.shape[1], -1) # (BS, NP, PHYSICS_LS)
         # calculate a positional encoding for the points pts
         ps = self.pts_enc(pts) # encode points       
-        assert ps.shape == ph.shape, f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal"
-        psh = ph * ps # element-wise multiplication
+        psh = aggregate_pts_ph(ps, ph) # aggregate points and physics vector
         # psh = concat_pts_ph(pts, ph) # concatenate pts and ph
         assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
         iy = self.iy_head(psh) # get current density
@@ -286,8 +290,7 @@ class LiuqeRTNet(Module): # Liuqe Real Time surrogate net
         ph = self.input_net(x.view(1, -1)) # get physics vector
         ph = ph.unsqueeze(1).expand(-1, n, -1)
         ps = self.pts_enc(pts) # encode points
-        assert ps.shape == ph.shape, f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal"
-        psh = ph * ps # element-wise multiplication
+        psh = aggregate_pts_ph(ps, ph) # aggregate points and physics vector
         assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
         rt = self.rt_head(psh)
         return rt.view(n, 3) # return flux, Br, Bz as (n, 3) tensor
