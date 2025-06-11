@@ -21,3 +21,4 @@
 - in dataset preparation, add a cloud of points around the LCFS
 - create an animation on a single shot
 - test training in sequence + seq optimized net arch like RNN, LSTM, Transf, Mamba.
+- test with [%] error loss
