@@ -179,8 +179,9 @@ class PtsEncoder(Module): # positional encoding for the input vector
         super(PtsEncoder, self).__init__()
         self.pts_encoder = Sequential(
             Linear(2, 32), ActF(),
-            # Linear(32, 32), ActF(), 
-            Linear(32, PHYSICS_LS), ActF(), 
+            Linear(32, 32), ActF(), 
+            # Linear(32, PHYSICS_LS), ActF(), 
+            Linear(32, PHYSICS_LS//2), ActF(), 
         )
     def forward(self, pts): return self.pts_encoder(pts) # pts: (BS, NP, 2) -> (BS, NP, PHYSICS_LS)
 
@@ -208,7 +209,8 @@ class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
     def __init__(self, nout=1):
         super(FHead, self).__init__()
         self.head = Sequential(
-            Linear(PHYSICS_LS, 64), ActF(),
+            # Linear(PHYSICS_LS, 64), ActF(),
+            Linear(PHYSICS_LS//2, 64), ActF(),
             Linear(64, nout), ActF(),
         )
         self.nout = nout # number of outputs
@@ -224,10 +226,17 @@ class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
         )
     def forward(self, ph): return self.lcfs(ph)
 
-def aggregate_pts_ph(ps, ph):
-    # simple multiplication
-    assert ps.shape == ph.shape, f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal" 
-    return ps * ph
+def aggregate_pts_ph(ps, ph): # ps points, ph physics vector
+    # # simple multiplication
+    # assert ps.shape == ph.shape, f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal" 
+    # return ps * ph
+    # multiply only half of the physics vector with the points
+    assert ps.ndim == ph.ndim, f"ps.ndim = {ps.ndim}, ph.ndim = {ph.ndim}, should be equal"
+    assert ps.shape[:-1] == ph.shape[:-1], f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal except last dimension"
+    assert ph.shape[-1] == PHYSICS_LS, f"ph.shape = {ph.shape}, PHYSICS_LS = {PHYSICS_LS}"
+    assert ps.shape[-1] == PHYSICS_LS//2, f"ps.shape = {ps.shape}, PHYSICS_LS//2 = {PHYSICS_LS//2}"
+    return ps * ph[..., :PHYSICS_LS//2] # multiply only the first half of the physics vector with the points
+
 
 class FullNet(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
     def __init__(self, input_net:InputNet, pts_enc:PtsEncoder, rt_head:FHead, iy_head:FHead, lcfs_head:LCFSHead):
@@ -259,7 +268,8 @@ class FullNet(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
         ps = self.pts_enc(pts) # encode points       
         psh = aggregate_pts_ph(ps, ph) # aggregate points and physics vector
         # psh = concat_pts_ph(pts, ph) # concatenate pts and ph
-        assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
+        assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS//2, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
+        # assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
         iy = self.iy_head(psh) # get current density
         rt = self.rt_head(psh) # get flux, Br, Bz (rt quantities)
         assert iy.dim() == 2 and iy.shape[1] == pts.shape[1], f"iy.dim() = {iy.dim()}, iy.shape[1] = {iy.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
@@ -291,7 +301,8 @@ class LiuqeRTNet(Module): # Liuqe Real Time surrogate net
         ph = ph.unsqueeze(1).expand(-1, n, -1)
         ps = self.pts_enc(pts) # encode points
         psh = aggregate_pts_ph(ps, ph) # aggregate points and physics vector
-        assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
+        assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS//2, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
+        # assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
         rt = self.rt_head(psh)
         return rt.view(n, 3) # return flux, Br, Bz as (n, 3) tensor
 
