@@ -23,3 +23,4 @@
 - test training in sequence + seq optimized net arch like RNN, LSTM, Transf, Mamba. (also useful for
   project with Rigoni)
 - test with [%] error loss
+- train only Fx, Br, Bz just to be sure
