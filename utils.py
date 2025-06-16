@@ -172,6 +172,16 @@ class ActF(Module): # swish
         self.beta = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
     def forward(self, x): return x*torch.sigmoid(self.beta*x)
 
+def percentage_loss(a, b): # percentage loss (a = true, b = predicted)
+    assert a.shape == b.shape, f"a.shape = {a.shape}, b.shape = {b.shape}, should be equal"
+    assert a.dim() >= 2, f"a.dim() = {a.dim()}, should be >= 2"
+    bs = a.shape[0] # batch size
+    span = torch.max(a.view(bs, -1), dim=1).values - torch.min(a.view(bs, -1), dim=1).values # span of the values in each batch
+    assert span.shape == (bs,), f"span.shape = {span.shape}, should be (bs,)"
+    assert torch.all(span > 1e-10), f"span should be positive, but got {span.min():.3e}"
+    err = torch.abs(a - b) / span.view(bs, 1)  # calculate the percentage error
+    return torch.mean(err)  # return the mean error for each batch 
+
 PHYSICS_LS = 128 # physics latent size [ph] 64 <-
 
 class PtsEncoder(Module): # positional encoding for the input vector
