@@ -23,5 +23,5 @@
 - get full sequences, understand liuqe params
 - test training in sequence + seq optimized net arch like RNN, LSTM, Transf, Mamba. (also useful for
   project with Rigoni)
-- test with [%] error loss 
+- test with [%] error loss [DONE, working, similar performance wrt MSE]
 - train only Fx, Br, Bz just to be sure
