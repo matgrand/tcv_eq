@@ -189,7 +189,8 @@ class PtsEncoder(Module): # positional encoding for the input vector
             Linear(2, 16), ActF(),
             # Linear(32, 32), ActF(), 
             # Linear(32, PHYSICS_LS), ActF(), 
-            Linear(16, PHYSICS_LS//2), ActF(), 
+            Linear(16, PHYSICS_LS), ActF(), # full
+            # Linear(16, PHYSICS_LS//2), ActF(),  # first half
         )
     def forward(self, pts): return self.pts_encoder(pts) # pts: (BS, NP, 2) -> (BS, NP, PHYSICS_LS)
 
@@ -217,8 +218,8 @@ class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
     def __init__(self, nout=1):
         super(FHead, self).__init__()
         self.head = Sequential(
-            # Linear(PHYSICS_LS, 64), ActF(),
-            Linear(PHYSICS_LS//2, 64), ActF(),
+            Linear(PHYSICS_LS, 64), ActF(), # full
+            # Linear(PHYSICS_LS//2, 64), ActF(), # first half
             Linear(64, nout), ActF(),
         )
         self.nout = nout # number of outputs
@@ -235,16 +236,21 @@ class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
     def forward(self, ph): return self.lcfs(ph)
 
 def aggregate_pts_ph(ps, ph): # ps points, ph physics vector
-    # # simple multiplication
-    # assert ps.shape == ph.shape, f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal" 
-    # return ps * ph
-    # multiply only half of the physics vector with the points
-    assert ps.ndim == ph.ndim, f"ps.ndim = {ps.ndim}, ph.ndim = {ph.ndim}, should be equal"
-    assert ps.shape[:-1] == ph.shape[:-1], f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal except last dimension"
-    assert ph.shape[-1] == PHYSICS_LS, f"ph.shape = {ph.shape}, PHYSICS_LS = {PHYSICS_LS}"
-    assert ps.shape[-1] == PHYSICS_LS//2, f"ps.shape = {ps.shape}, PHYSICS_LS//2 = {PHYSICS_LS//2}"
-    return ps * ph[..., :PHYSICS_LS//2] # multiply only the first half of the physics vector with the points
+    # simple multiplication
+    assert ps.shape == ph.shape, f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal" 
+    psh =  ps * ph
+    assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
+    return psh # multiply the points with the physics vector
 
+# def aggregate_pts_ph(ps, ph): # ps points, ph physics vector
+#     # multiply only half of the physics vector with the points
+#     assert ps.ndim == ph.ndim, f"ps.ndim = {ps.ndim}, ph.ndim = {ph.ndim}, should be equal"
+#     assert ps.shape[:-1] == ph.shape[:-1], f"ps.shape = {ps.shape}, ph.shape = {ph.shape}, should be equal except last dimension"
+#     assert ph.shape[-1] == PHYSICS_LS, f"ph.shape = {ph.shape}, PHYSICS_LS = {PHYSICS_LS}"
+#     assert ps.shape[-1] == PHYSICS_LS//2, f"ps.shape = {ps.shape}, PHYSICS_LS//2 = {PHYSICS_LS//2}"
+#     psh = ps * ph[..., :PHYSICS_LS//2] # multiply only the first half of the physics vector with the points
+#     assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS//2, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS//2}"
+#     return psh # multiply the points with the physics vector, return (BS, NP, PHYSICS_LS//2)
 
 class FullNet(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
     def __init__(self, input_net:InputNet, pts_enc:PtsEncoder, rt_head:FHead, iy_head:FHead, lcfs_head:LCFSHead):
@@ -275,9 +281,6 @@ class FullNet(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
         # calculate a positional encoding for the points pts
         ps = self.pts_enc(pts) # encode points       
         psh = aggregate_pts_ph(ps, ph) # aggregate points and physics vector
-        # psh = concat_pts_ph(pts, ph) # concatenate pts and ph
-        assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS//2, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
-        # assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
         iy = self.iy_head(psh) # get current density
         rt = self.rt_head(psh) # get flux, Br, Bz (rt quantities)
         assert iy.dim() == 2 and iy.shape[1] == pts.shape[1], f"iy.dim() = {iy.dim()}, iy.shape[1] = {iy.shape[1]}, should be pts.shape[1] = {pts.shape[1]}"
@@ -309,8 +312,6 @@ class LiuqeRTNet(Module): # Liuqe Real Time surrogate net
         ph = ph.unsqueeze(1).expand(-1, n, -1)
         ps = self.pts_enc(pts) # encode points
         psh = aggregate_pts_ph(ps, ph) # aggregate points and physics vector
-        assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS//2, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
-        # assert psh.dim() == 3 and psh.shape[2] == PHYSICS_LS, f"psh.dim() = {psh.dim()}, psh.shape[2] = {psh.shape[2]}, should be PHYSICS_LS = {PHYSICS_LS}"
         rt = self.rt_head(psh)
         return rt.view(n, 3) # return flux, Br, Bz as (n, 3) tensor
 
@@ -823,8 +824,6 @@ def plot_lcfs_net_out(ds:LiuqeDataset, model:LiuqeRTNet, title='test', save_dir=
         if LOCAL: plt.show()
         plt.close()
     return
-
-
 
 if __name__ == '__main__':
     test_network_io()
