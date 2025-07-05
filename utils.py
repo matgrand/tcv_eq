@@ -166,21 +166,11 @@ if not LOCAL: # Redefine the print function to always flush
 def to_tensor(x, device=torch.device(CPU)): return torch.tensor(x, dtype=torch.float32, device=device)
 
 # custom trainable swish activation function
-# class ActF(Module): # swish
-#     def __init__(self): 
-#         super(ActF, self).__init__()
-#         self.beta = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
-#     def forward(self, x): return x*torch.sigmoid(self.beta*x)
-
-class ActF(Module): # ReLU with learnable beta
-    def __init__(self):
+class ActF(Module): # swish
+    def __init__(self): 
         super(ActF, self).__init__()
         self.beta = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
-    def forward(self, x): return F.relu(x) * self.beta  # ReLU activation with learnable scaling factor
-
-# class ActF(Module): # ReLU with learnable beta
-#     def __init__(self): super(ActF, self).__init__()
-#     def forward(self, x): return F.relu(x)  # ReLU activation
+    def forward(self, x): return x*torch.sigmoid(self.beta*x)
 
 def percentage_loss(a, b): # percentage loss (a = true, b = predicted)
     assert a.shape == b.shape, f"a.shape = {a.shape}, b.shape = {b.shape}, should be equal"
