@@ -20,3 +20,5 @@ onnx_net_forward/*
 *.DS_Store
 raw_ds/*
 test_shots/*
+test_shots_net/*
+*.mp4
