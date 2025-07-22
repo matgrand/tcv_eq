@@ -39,4 +39,19 @@ Main data structures:
     ip = mdsdata('tcv_eq("I_PL", "LIUQE.M", "NOEVAL")');
     ```
 
-    to find the names of the variables, use jtraverser -> tcv_shot -> shot -> results -> EQUIL_1 (liuqe.m) -> RESULTS 
+    to find the names of the variables, use jtraverser -> tcv_shot -> shot -> results -> EQUIL_1
+    (liuqe.m) -> RESULTS 
+    
+
+
+
+## Integration into current shape controller
+
+- to understand the points required by the shape controller:
+![alt text](image.png)
+
+- testing shots: "_puoi iniziare a guardare un po' di configurazioni diverse. Posso farti una ricerca nel logbook, ma devo essere in laboratorio perché per qualche motivo da fuori le query SQL non funzionano: Ad esempio potresti prendere un limiter (magari uno yo-yo, provo a cercarlo nel logbook), un sn (magari uno standard, ad esempio 79742), un double-null (ad esempio 86310), un NT (78893 a memoria dovrebbe andare), snowflakes, XPT..._"
+  
+
+
+
