@@ -98,7 +98,6 @@ for i = 1:length(shots)
         assert(all(size(rq) == [129, nt]), 'rq has wrong size');
         assert(all(size(zq) == [129, nt]), 'zq has wrong size');
 
-        fprintf('\tBm0 size: %s, Bm1 size: %s\n', mat2str(size(Bm)), mat2str(size(Bm1)));
         assert(all(size(Bm) == [38, nt]), 'Bm has wrong size');
         assert(all(size(Ff) == [38, nt]), 'Ff has wrong size');
         assert(all(size(Ft) == [1, nt]), 'Ft has wrong size');
