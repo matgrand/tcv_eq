@@ -20,7 +20,7 @@ mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
 
 % get a reference for theta, to make sure they are all the same
 % some old shots have theta in [-pi, pi], the new ones in [0, 2*pi], but more versions are possible
-mdsopen('tcv_shot', END_SHOT);
+mdsopen('tcv_shot', 85804);
 theta0 = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
 mdsclose; % Close the MDSplus connection
 
@@ -35,7 +35,7 @@ disp(shots);
 total_shots = 0;
 fprintf('Shots: %s\n', mat2str(shots));
 fprintf('\nStarting data retrieval loop...\n');
-for i = 1:length(shots)cd ..()
+for i = 1:length(shots)
     start_time = tic; % Start timer for processing each shot
 
     shot = shots(i);
