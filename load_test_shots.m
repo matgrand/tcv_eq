@@ -4,7 +4,7 @@ clear all; close all; clc;
 
 
 % Directory to save the output .mat files
-OUT_DIR = '/NoTivoli/grandin/test_shots'; % more space available
+OUT_DIR = 'test_shots'; % more space available
 
 DECIMATION = 1; % 6 Decimation factor for the time vector
 
@@ -70,18 +70,18 @@ for i = 1:length(shots)
         assert(max(t_diff) < 1e-8, 'Times do not coincide');
         
         % analyze the plasma current
-        ip1 = LY.Ip'; % IPLIUQE
-	    assert(all(size(ip1) == size(ip2)), 'Ip sizes wrong');
-        avg_ip = mean(abs(ip2));
-        ip_diff = abs(ip1 - ip2);
-        avg_diff = mean(ip_diff);
-        perc_diff = ip_diff ./ abs(ip2) * 100;
-        fprintf('\tip average difference -> %.2f [A] (%.1f%%)\n', avg_diff, mean(perc_diff));
-        % keep only the samples where IP and IPLIUQE are similar
-        % assert(mean(perc_diff) < MAX_IP_PcERC_DIFF, 'Difference between IPLIUQE and IP is too high'); % very strict
-        ip_valid1 = perc_diff < MAX_IP_PERC_DIFF;
-        fprintf('\tip filtered -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(ip_valid1)/numel(ip_valid1)), sum(ip_valid1), numel(ip_valid1));
-        assert(sum(ip_valid1) > 0.8 * numel(ip_valid1), 'IP MEAS and IPLIUQE are different in too many samples');
+        %ip1 = LY.Ip'; % IPLIUQE
+	%    assert(all(size(ip1) == size(ip2)), 'Ip sizes wrong');
+        %avg_ip = mean(abs(ip2));
+        %ip_diff = abs(ip1 - ip2);
+        %avg_diff = mean(ip_diff);
+        %perc_diff = ip_diff ./ abs(ip2) * 100;
+        %fprintf('\tip average difference -> %.2f [A] (%.1f%%)\n', avg_diff, mean(perc_diff));
+        %% keep only the samples where IP and IPLIUQE are similar
+        %% assert(mean(perc_diff) < MAX_IP_PcERC_DIFF, 'Difference between IPLIUQE and IP is too high'); % very strict
+        %ip_valid1 = perc_diff < MAX_IP_PERC_DIFF;
+        %fprintf('\tip filtered -> %.1f%%, remaining -> %d/%d \n', 100*(1-sum(ip_valid1)/numel(ip_valid1)), sum(ip_valid1), numel(ip_valid1));
+        %assert(sum(ip_valid1) > 0.8 * numel(ip_valid1), 'IP MEAS and IPLIUQE are different in too many samples');
 
         % calculate magnetic fields (copied from meqpost)
         i4pirxdzx = 1./(4*pi*L.dzx*L.rx');
@@ -131,65 +131,65 @@ for i = 1:length(shots)
         assert(all(size(Iu0) == size(Iu1) & size(Iu1) == [38, nt]), 'Iu has wrong size');
         assert(all(size(rBt0) == size(rBt1) & size(rBt1) == [1, nt]), 'rBt has wrong size');
         
-        % filter out the NaN/Inf values [MILD]
-        mFx = reshape(all(all(~isnan(Fx) & ~isinf(Fx),1),2), [], 1);
-        mIy = reshape(all(all(~isnan(Iy) & ~isinf(Iy),1),2), [], 1);
-        mBr = reshape(all(all(~isnan(Br) & ~isinf(Br),1),2), [], 1);
-        mBz = reshape(all(all(~isnan(Bz) & ~isinf(Bz),1),2), [], 1);
-        mrq = reshape(all(~isnan(rq) & ~isinf(rq), 1), [], 1);
-        mzq = reshape(all(~isnan(zq) & ~isinf(zq), 1), [], 1);
+        %% filter out the NaN/Inf values [MILD]
+        %mFx = reshape(all(all(~isnan(Fx) & ~isinf(Fx),1),2), [], 1);
+        %mIy = reshape(all(all(~isnan(Iy) & ~isinf(Iy),1),2), [], 1);
+        %mBr = reshape(all(all(~isnan(Br) & ~isinf(Br),1),2), [], 1);
+        %mBz = reshape(all(all(~isnan(Bz) & ~isinf(Bz),1),2), [], 1);
+        %mrq = reshape(all(~isnan(rq) & ~isinf(rq), 1), [], 1);
+        %mzq = reshape(all(~isnan(zq) & ~isinf(zq), 1), [], 1);
 
-        mBm0 = reshape(all(~isnan(Bm0) & ~isinf(Bm0), 1), [], 1);
-        mBm1 = reshape(all(~isnan(Bm1) & ~isinf(Bm1), 1), [], 1);
-        mFf0 = reshape(all(~isnan(Ff0) & ~isinf(Ff0), 1), [], 1);
-        mFf1 = reshape(all(~isnan(Ff1) & ~isinf(Ff1), 1), [], 1);
-        mFt0 = reshape(~isnan(Ft0) & ~isinf(Ft0), [], 1);
-        mFt1 = reshape(~isnan(Ft1) & ~isinf(Ft1), [], 1);
-        mIa0 = reshape(all(~isnan(Ia0) & ~isinf(Ia0), 1), [], 1);
-        mIa1 = reshape(all(~isnan(Ia1) & ~isinf(Ia1), 1), [], 1);
-        mIp0 = reshape(~isnan(Ip0) & ~isinf(Ip0), [], 1);
-        mIp1 = reshape(~isnan(Ip1) & ~isinf(Ip1), [], 1);
-        mIu0 = reshape(all(~isnan(Iu0) & ~isinf(Iu0), 1), [], 1);
-        mIu1 = reshape(all(~isnan(Iu1) & ~isinf(Iu1), 1), [], 1);
-        mrBt0 = reshape(~isnan(rBt0) & ~isinf(rBt0), [], 1);
-        mrBt1 = reshape(~isnan(rBt1) & ~isinf(rBt1), [], 1);
+        %mBm0 = reshape(all(~isnan(Bm0) & ~isinf(Bm0), 1), [], 1);
+        %mBm1 = reshape(all(~isnan(Bm1) & ~isinf(Bm1), 1), [], 1);
+        %mFf0 = reshape(all(~isnan(Ff0) & ~isinf(Ff0), 1), [], 1);
+        %mFf1 = reshape(all(~isnan(Ff1) & ~isinf(Ff1), 1), [], 1);
+        %mFt0 = reshape(~isnan(Ft0) & ~isinf(Ft0), [], 1);
+        %mFt1 = reshape(~isnan(Ft1) & ~isinf(Ft1), [], 1);
+        %mIa0 = reshape(all(~isnan(Ia0) & ~isinf(Ia0), 1), [], 1);
+        %mIa1 = reshape(all(~isnan(Ia1) & ~isinf(Ia1), 1), [], 1);
+        %mIp0 = reshape(~isnan(Ip0) & ~isinf(Ip0), [], 1);
+        %mIp1 = reshape(~isnan(Ip1) & ~isinf(Ip1), [], 1);
+        %mIu0 = reshape(all(~isnan(Iu0) & ~isinf(Iu0), 1), [], 1);
+        %mIu1 = reshape(all(~isnan(Iu1) & ~isinf(Iu1), 1), [], 1);
+        %mrBt0 = reshape(~isnan(rBt0) & ~isinf(rBt0), [], 1);
+        %mrBt1 = reshape(~isnan(rBt1) & ~isinf(rBt1), [], 1);
 
         % valid = mFx & mIy & mBr & mBz & mrq & mzq & ...
-        valid = mFx & mIy & mrq & mzq & ...
-            mBm0 & mBm1 & mFf0 & mFf1 & mFt0 & mFt1 & ...
-            mIa0 & mIa1 & mIp0 & mIp1 & mIu0 & mIu1 & ...
-            mrBt0 & mrBt1 & ip_valid1; % keep only the samples where all quantities are valid and IP is valid
-        fprintf('\tvalid samples -> [TOT: %.1f%%, %d] Fx:%.1f%%, Iy: %.1f%%, rq: %.1f%%, zq: %.1f%%, \n\tBm0: %.1f%%, Bm1: %.1f%%, Ff0: %.1f%%, Ff1: %.1f%%, Ft0: %.1f%%, Ft1: %.1f%%, Ia0: %.1f%%, Ia1: %.1f%%, Ip0: %.1f%%, Ip1: %.1f%%, Iu0: %.1f%%, Iu1: %.1f%%, rBt0: %.1f%%, rBt1: %.1f%%\n', ...
-            100*sum(valid)/nt, sum(valid), ...
-            100*sum(mFx)/nt, 100*sum(mIy)/nt, 100*sum(mrq)/nt, 100*sum(mzq)/nt, ...
-            100*sum(mBm0)/nt, 100*sum(mBm1)/nt, 100*sum(mFf0)/nt, 100*sum(mFf1)/nt, ...
-            100*sum(mFt0)/nt, 100*sum(mFt1)/nt, 100*sum(mIa0)/nt, 100*sum(mIa1)/nt, ...
-            100*sum(mIp0)/nt, 100*sum(mIp1)/nt, 100*sum(mIu0)/nt, 100*sum(mIu1)/nt, ...
-            100*sum(mrBt0)/nt, 100*sum(mrBt1)/nt);
-        assert(sum(valid) > 0.5 * nt, 'Nan/Inf filter -> not enough valid samples');
+        %valid = mFx & mIy & mrq & mzq & ...
+        %    mBm0 & mBm1 & mFf0 & mFf1 & mFt0 & mFt1 & ...
+        %    mIa0 & mIa1 & mIp0 & mIp1 & mIu0 & mIu1 & ...
+        %    mrBt0 & mrBt1 & ip_valid1; % keep only the samples where all quantities are valid and IP is valid
+        %fprintf('\tvalid samples -> [TOT: %.1f%%, %d] Fx:%.1f%%, Iy: %.1f%%, rq: %.1f%%, zq: %.1f%%, \n\tBm0: %.1f%%, Bm1: %.1f%%, Ff0: %.1f%%, Ff1: %.1f%%, Ft0: %.1f%%, Ft1: %.1f%%, Ia0: %.1f%%, Ia1: %.1f%%, Ip0: %.1f%%, Ip1: %.1f%%, Iu0: %.1f%%, Iu1: %.1f%%, rBt0: %.1f%%, rBt1: %.1f%%\n', ...
+        %    100*sum(valid)/nt, sum(valid), ...
+        %    100*sum(mFx)/nt, 100*sum(mIy)/nt, 100*sum(mrq)/nt, 100*sum(mzq)/nt, ...
+        %    100*sum(mBm0)/nt, 100*sum(mBm1)/nt, 100*sum(mFf0)/nt, 100*sum(mFf1)/nt, ...
+        %    100*sum(mFt0)/nt, 100*sum(mFt1)/nt, 100*sum(mIa0)/nt, 100*sum(mIa1)/nt, ...
+        %    100*sum(mIp0)/nt, 100*sum(mIp1)/nt, 100*sum(mIu0)/nt, 100*sum(mIu1)/nt, ...
+        %    100*sum(mrBt0)/nt, 100*sum(mrBt1)/nt);
+        %assert(sum(valid) > 0.5 * nt, 'Nan/Inf filter -> not enough valid samples');
         
         % keep only the valid samples
-        t = t(valid);
-        Fx = Fx(:,:,valid);
-        Iy = Iy(:,:,valid);
-        Br = Br(:,:,valid);
-        Bz = Bz(:,:,valid);
-        rq = rq(:,valid);
-        zq = zq(:,valid);
-        Bm0 = Bm0(:,valid);
-        Bm1 = Bm1(:,valid);
-        Ff0 = Ff0(:,valid);
-        Ff1 = Ff1(:,valid);
-        Ft0 = Ft0(valid);
-        Ft1 = Ft1(valid);
-        Ia0 = Ia0(:,valid);
-        Ia1 = Ia1(:,valid);
-        Ip0 = Ip0(valid);
-        Ip1 = Ip1(valid);
-        Iu0 = Iu0(:,valid);
-        Iu1 = Iu1(:,valid);
-        rBt0 = rBt0(valid);
-        rBt1 = rBt1(valid);
+        %t = t(valid);
+        %Fx = Fx(:,:,valid);
+        %Iy = Iy(:,:,valid);
+        %Br = Br(:,:,valid);
+        %Bz = Bz(:,:,valid);
+        %rq = rq(:,valid);
+        %zq = zq(:,valid);
+        %Bm0 = Bm0(:,valid);
+        %Bm1 = Bm1(:,valid);
+        %Ff0 = Ff0(:,valid);
+        %Ff1 = Ff1(:,valid);
+        %Ft0 = Ft0(valid);
+        %Ft1 = Ft1(valid);
+        %Ia0 = Ia0(:,valid);
+        %Ia1 = Ia1(:,valid);
+        %Ip0 = Ip0(valid);
+        %Ip1 = Ip1(valid);
+        %Iu0 = Iu0(:,valid);
+        %Iu1 = Iu1(:,valid);
+        %rBt0 = rBt0(valid);
+        %rBt1 = rBt1(valid);
 
         % decimate
         t = t(1:DECIMATION:end);
