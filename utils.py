@@ -367,7 +367,7 @@ def convert_to_onnx_dyn(net:LiuqeRTNet, save_dir=[SAVE_DIR]):
     dummy_r = torch.randn(n, device=CPU)  # Dummy points for inference
     dummy_z = torch.randn(n, device=CPU)  # Dummy points for inference
     for d in save_dir:
-        onnx_net_path = f'{d}/net.onnx'
+        onnx_net_path = f'{d}/net_dyn.onnx'
         # Export to ONNX
         torch.onnx.export(
             net,
@@ -388,7 +388,7 @@ def convert_to_onnx_static(net:LiuqeRTNet, npts=N_CTRL_PTS, save_dir=[SAVE_DIR])
     dummy_r = torch.randn(npts, device=CPU)  # Dummy points for inference
     dummy_z = torch.randn(npts, device=CPU)  # Dummy points for inference
     for d in save_dir:
-        onnx_net_path = f'{d}/net.onnx'
+        onnx_net_path = f'{d}/net_static.onnx'
         # Export to ONNX
         onnx_model = torch.onnx.export(
             net, 
