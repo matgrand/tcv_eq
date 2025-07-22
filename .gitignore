@@ -19,3 +19,4 @@ onnx_net_forward/*
 .vscode/
 *.DS_Store
 raw_ds/*
+test_shots/*
