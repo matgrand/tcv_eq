@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 project(net_forward)
 
-
 set(ONNXRUNTIME_DIR "" CACHE PATH "Path to the ONNX Runtime installation")
 set(ONNXRUNTIME_INCLUDE_DIRS "" CACHE PATH "Path to the ONNX Runtime include directory")
 set(ONNX_NET_FORWARD_DIR "" CACHE PATH "Output directory for net_forward mex executable")
@@ -40,9 +39,18 @@ target_include_directories(net_forward_mex PRIVATE
     ${ONNXRUNTIME_INCLUDE_DIRS}
 )
 
-# Set RPATH for the MEX file to find ONNX Runtime libraries
-if(UNIX)
-    SET_TARGET_PROPERTIES(net_forward_mex PROPERTIES
+# RPATH settings for library resolution
+if(APPLE)
+    # macOS: Add RPATH to locate libMatlabEngine.dylib and ONNX Runtime
+    set(MATLAB_ENGINE_LIB_DIR "${Matlab_ROOT_DIR}/extern/lib/maca64/macosarm64")
+    message(STATUS "macOS detected. Adding RPATH to: ${MATLAB_ENGINE_LIB_DIR}")
+    target_link_options(net_forward_mex PRIVATE
+        "-Wl,-rpath,@loader_path/lib"
+        "-Wl,-rpath,${MATLAB_ENGINE_LIB_DIR}"
+    )
+elseif(UNIX)
+    # Linux: Use $ORIGIN for relative library loading
+    set_target_properties(net_forward_mex PROPERTIES
         INSTALL_RPATH "$ORIGIN/lib"
         BUILD_WITH_INSTALL_RPATH TRUE
     )
