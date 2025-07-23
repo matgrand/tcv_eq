@@ -19,6 +19,12 @@ function run_net_on_shot(shot_number, save_dir)
         phys = pack_inputs(d.Bm, d.Ff, d.Ft, d.Ia, d.Ip, d.Iu, d.rBt);
         fprintf('Packed inputs size: %s\n', mat2str(size(phys)));
 
+        % points of the LCFS 
+        rq = single(d.rq);
+        zq = single(d.zq);
+        nq = size(rq, 1); % number of points on the LCFS
+        % fprintf('LCFS points: %d\n', nq);
+
         nt = size(phys,2); % number of time points
 
         %load tcv grid
@@ -35,10 +41,21 @@ function run_net_on_shot(shot_number, save_dir)
         Fx = zeros(65*28, nt); % preallocate Fx
         Br = zeros(65*28, nt); % preallocate Br
         Bz = zeros(65*28, nt); % preallocate Bz
+        Fxq = zeros(nq, nt); % preallocate Fxq
+        Brq = zeros(nq, nt); % preallocate Brq
+        Bzq = zeros(nq, nt); % preallocate Bzq
 
+        start = tic; % start timer
         for i = 1:nt % loop over time points
             [Fx(:,i), Br(:,i), Bz(:,i)] = net_forward_mex(phys(:, i), r, z);
+            [Fxq(:,i), Brq(:,i), Bzq(:,i)] = net_forward_mex(phys(:, i), rq(:, i), zq(:, i));
+            % avg_norm_Fxq = mean(vecnorm(Fxq(:,i)));
+            % avg_norm_Brq = mean(vecnorm(Brq(:,i)));
+            % avg_norm_Bzq = mean(vecnorm(Bzq(:,i)));
+            % fprintf('Time %d: avg(norm(Fxq)) = %.4f, avg(norm(Brq)) = %.4f, avg(norm(Bzq)) = %.4f\n', i, avg_norm_Fxq, avg_norm_Brq, avg_norm_Bzq);
         end
+        elapsed_time = toc(start); % measure elapsed time
+        fprintf('Elapsed time for shot %d: %.2f seconds\n', shot_number, elapsed_time);
 
         % reshape results to match the grid size
         Fx = reshape(Fx, 65, 28, nt);
@@ -48,10 +65,11 @@ function run_net_on_shot(shot_number, save_dir)
         assert(all(size(Fx) == size(d.Fx)), 'Fx has wrong size');
         assert(all(size(Br) == size(d.Br)), 'Br has wrong size');
         assert(all(size(Bz) == size(d.Bz)), 'Bz has wrong size');
+        
 
         % save results in a .mat file
         save_file = fullfile(save_dir, sprintf('%d_net.mat', shot_number));
-        save(save_file, 'Fx', 'Br', 'Bz');
+        save(save_file, 'Fx', 'Br', 'Bz', 'Fxq', 'Brq', 'Bzq');
         fprintf('Saved results to: %s\n', save_file);
 
     catch ME
