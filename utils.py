@@ -732,19 +732,20 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test", save_dir=
             plot_vessel(ax) # plot vessel
         nraws = 2
         ncols = 8 if on_grid else 6 # number of columns
+        α_sep = 0.5
         for j, ((v, vp), l, n) in enumerate(zip(vals, limits, names)):
             plt.subplot(nraws, ncols, j*(ncols//2)+1), plt.title(f"{n} Actual")
             plt.scatter(p[iv,0], p[iv,1], c=v[iv], s=ms, vmin=l[0], vmax=l[1])
-            if show_lcfs: plt.plot(sep[:NLCFS], sep[NLCFS:], lw=lw, color=col) # plot LCFS
+            if show_lcfs: plt.plot(sep[:NLCFS], sep[NLCFS:], '--', lw=1, color=col, alpha=α_sep) # plot LCFS
             prep_plot(plt.gca()), plt.colorbar()
             plt.subplot(nraws, ncols, j*(ncols//2) + 2), plt.title(f"{n} Predicted")
             plt.scatter(p[iv,0], p[iv,1], c=vp[iv], s=ms, vmin=l[0], vmax=l[1])
-            if show_lcfs: plt.plot(sepp[:NLCFS], sepp[NLCFS:], lw=lw, color=col)
+            if show_lcfs: plt.plot(sepp[:NLCFS], sepp[NLCFS:], '--', lw=1, color=col, alpha=α_sep)
             prep_plot(plt.gca()), plt.colorbar()
             plt.subplot(nraws, ncols, j*(ncols//2) + ncols//2), plt.title(f"{n} Error %")
             ep = 100*np.abs(v[iv]-vp[iv])/(l[1]-l[0]) # error in %
             plt.scatter(p[iv,0], p[iv,1], c=ep, s=ms, vmin=0, vmax=np.max(ep))
-            if show_lcfs: plt.plot(sep[:NLCFS], sep[NLCFS:], lw=lw, color=col)
+            if show_lcfs: plt.plot(sep[:NLCFS], sep[NLCFS:], '--', lw=1, color=col, alpha=α_sep)
             prep_plot(plt.gca()), plt.colorbar()
             if on_grid: # plot contours if on grid
                 plt.subplot(nraws, ncols, j*(ncols//2) + 3), plt.title(f"{n} Contours")
