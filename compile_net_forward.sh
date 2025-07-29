@@ -30,6 +30,10 @@ echo "ONNX full version name: $ONNXRUNTIME_NAME"
 echo "ONNX full path: $ONNXRUNTIME_DIR"
 echo "---------------------------------------------------------------------------------"
 
+MATLABROOT="/usr/local/MATLAB/R2019a"
+echo "MATLAB version: $MATLABROOT"
+echo "---------------------------------------------------------------------------------"
+
 # Output directory
 export ONNX_NET_FORWARD_DIR="$(pwd)/onnx_net_forward"
 echo "onnx_net_forward directory: $ONNX_NET_FORWARD_DIR"
@@ -51,7 +55,9 @@ rm -rf build && mkdir build && cd build
 cmake .. \
     -DONNXRUNTIME_DIR="$ONNXRUNTIME_DIR" \
     -DONNXRUNTIME_INCLUDE_DIRS="$ONNXRUNTIME_DIR/include" \
-    -DONNX_NET_FORWARD_DIR="$ONNX_NET_FORWARD_DIR"
+    -DONNX_NET_FORWARD_DIR="$ONNX_NET_FORWARD_DIR"\
+    -DMATLAB_ROOT="$MATLABROOT" \
+    -DMATLAB_MEX_LIBRARY="$MATLABROOT/bin/glnxa64/libmex.so" \
 make
 cd ..
 rm -rf build
