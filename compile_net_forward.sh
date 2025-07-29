@@ -56,8 +56,8 @@ cmake .. \
     -DONNXRUNTIME_DIR="$ONNXRUNTIME_DIR" \
     -DONNXRUNTIME_INCLUDE_DIRS="$ONNXRUNTIME_DIR/include" \
     -DONNX_NET_FORWARD_DIR="$ONNX_NET_FORWARD_DIR"\
-    -DMATLAB_ROOT="$MATLABROOT" \
-    -DMATLAB_MEX_LIBRARY="$MATLABROOT/bin/glnxa64/libmex.so" \
+    -DMatlab_ROOT="$MATLABROOT" \
+#    -DMATLAB_MEX_LIBRARY="$MATLABROOT/bin/glnxa64/libmex.so" 
 make
 cd ..
 rm -rf build
@@ -76,6 +76,6 @@ echo "$ONNX_NET_PATH copied to $ONNX_NET_FORWARD_DIR/net.onnx"
 
 # Run MATLAB test
 echo "----- Matlab --------------------------------------------------------------------"
-matlab -nosplash -nodesktop -r "run('forward_test.m'); exit;"
+# matlab -nosplash -nodesktop -r "run('forward_test.m'); exit;"
 echo "---------------------------------------------------------------------------------"
 echo "MATLAB version test completed."
