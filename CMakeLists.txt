@@ -16,22 +16,36 @@ endif()
 if(NOT ONNX_NET_FORWARD_DIR)
     message(FATAL_ERROR "ONNX_NET_FORWARD_DIR is required but not set.")
 endif()
+if(NOT Matlab_ROOT)
+    message(FATAL_ERROR "Matlab_ROOT is required but not set.")
+endif()
 
 message(STATUS "ONNXRUNTIME_DIR: ${ONNXRUNTIME_DIR}")
 message(STATUS "ONNXRUNTIME_INCLUDE_DIRS: ${ONNXRUNTIME_INCLUDE_DIRS}")
 message(STATUS "ONNX_NET_FORWARD_DIR: ${ONNX_NET_FORWARD_DIR}")
 message(STATUS "MATLAB_ROOT: ${Matlab_ROOT}")
 
-# Find required packages
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
-# find_package(Matlab REQUIRED MX_LIBRARY HINTS "${Matlab_ROOT}/extern/lib/glnxa64")
-find_package(Matlab REQUIRED COMPONENTS MEX MX 	Matlab_MX_LIBRARY HINTS "${Matlab_ROOT}/extern/lib/glnxa64")
+# --- START OF CHANGES ---
+
+# Manually find MATLAB libraries and includes for older systems
+set(Matlab_INCLUDE_DIRS "${Matlab_ROOT}/extern/include")
+find_library(Matlab_MEX_LIBRARY mex HINTS "${Matlab_ROOT}/bin/glnxa64")
+find_library(Matlab_MX_LIBRARY mx HINTS "${Matlab_ROOT}/bin/glnxa64")
+
+# Check if libraries were found
+if(NOT Matlab_MEX_LIBRARY OR NOT Matlab_MX_LIBRARY)
+    message(FATAL_ERROR "Could not find MATLAB mex or mx libraries in ${Matlab_ROOT}/bin/glnxa64")
+endif()
+
+# Use C++11 for compatibility with older compilers like GCC 5.x
+set(CMAKE_CXX_STANDARD 11)
+
+# --- END OF CHANGES ---
+
 find_library(ONNXRUNTIME_LIB onnxruntime HINTS ${ONNXRUNTIME_DIR}/lib)
 
 # Check dependencies
 message(STATUS "Matlab libraries: ${Matlab_MX_LIBRARY}, ${Matlab_MEX_LIBRARY}, ${Matlab_INCLUDE_DIRS}")
-
-set(CMAKE_CXX_STANDARD 17)
 
 # Add MEX file target for MATLAB
 matlab_add_mex(
@@ -41,7 +55,7 @@ matlab_add_mex(
 )
 
 # Set include directories for the MEX file
-target_include_directories(net_forward_mex PRIVATE 
+target_include_directories(net_forward_mex PRIVATE
     ${Matlab_INCLUDE_DIRS}
     ${ONNXRUNTIME_INCLUDE_DIRS}
 )
