@@ -22,3 +22,7 @@ raw_ds/*
 test_shots/*
 test_shots_net/*
 *.mp4
+*.asv
+*.m~
+*.fig
+*.mat
