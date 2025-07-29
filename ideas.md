@@ -25,3 +25,12 @@
   project with Rigoni)
 - test with [%] error loss [DONE, working, similar performance wrt MSE]
 - train only Fx, Br, Bz just to be sure
+
+
+## discussion with Adriano & Francesco ideas 
+- use matlab r2019a
+- estimate the gaps, more for the paper
+- grow rate vertical stability (ask about the routine)
+- map the (flux maps?) with PCA to get a uniform distribution in the training
+- training in pre-shot? o finetuning
+- similarity search degli spari con gli embeddings?
