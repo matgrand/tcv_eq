@@ -6,7 +6,7 @@
 #include <stdexcept>  // For std::runtime_error (though Ort::Exception is primary)
 #include <mex.h>      // For MATLAB MEX functions
 #include <matrix.h>   // For mxArray, mxGetPr, etc.
-#include <filesystem> // For std::filesystem::path
+// #include <filesystem> // <-- REMOVED: Incompatible with GCC 5.3.1 (C++17 feature)
 // #include <fstream>   // For std::ifstream (if needed for file operations)
 #include <unistd.h> // For readlink (to get executable path)
 #include <limits.h> // For PATH_MAX (to define buffer size for readlink)
@@ -37,10 +37,12 @@ static void cleanup_session() {
 }
 
 // Loads the ONNX session once
-void load_session_once(std::filesystem::path model_path) {
+// Replaced std::filesystem::path with const std::string& for C++11 compatibility
+void load_session_once(const std::string& model_path) {
     if (!session_loaded) {
         try {
-            mexPrintf("Loading ONNX model from: %s ...", model_path.string().c_str());
+            // Changed model_path.string().c_str() to model_path.c_str()
+            mexPrintf("Loading ONNX model from: %s ...", model_path.c_str());
 
             // Optional: configure session_options here (e.g., for execution providers)
             session_options.SetIntraOpNumThreads(1); // Set number of threads for intra-op parallelism
@@ -48,7 +50,8 @@ void load_session_once(std::filesystem::path model_path) {
             session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL); // default and best ORT_ENABLE_ALL
             
             // Create the ONNX Runtime session
-            ort_session = new Ort::Session(ort_env, model_path.string().c_str(), session_options);
+            // Changed model_path.string().c_str() to model_path.c_str()
+            ort_session = new Ort::Session(ort_env, model_path.c_str(), session_options);
             
             session_loaded = true;
             mexPrintf(" Success.\n");
@@ -77,8 +80,6 @@ void load_session_once(std::filesystem::path model_path) {
 
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-    // TODO: impleent this as -> if read "-model" interpret next argument as model path
-    std::filesystem::path model_path = net_default_path;
     // Check number of input arguments
     if (nrhs < 1 && session_loaded) {
         mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumInputs", "Model already loaded: 3 inputs required: (phys, r, z) or a single string argument for model path.");
@@ -92,9 +93,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         if (mxGetString(prhs[0], model_path_buf, sizeof(model_path_buf)) != 0) {
             mexErrMsgIdAndTxt("MATLAB:net_forward:modelPathTooLong", "Model path string is too long.");
         }
-        std::filesystem::path model_path = model_path_buf;
+        // Replaced std::filesystem::path with std::string
+        std::string model_path_from_arg = model_path_buf;
         mexPrintf("Using model path: %s\n", model_path_buf);
-        load_session_once(model_path); // Load the session with the provided model path
+        load_session_once(model_path_from_arg); // Load the session with the provided model path
         return; // Exit after loading the session
     } else {
         if (nrhs != 3) { // If not a single string input, expect three inputs
@@ -156,7 +158,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
     // Process output
     if (output_tensors.size() != 1) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumOutputs", "Expected 3 output tensors, but got %zu.", output_tensors.size());
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidNumOutputs", "Expected 1 output tensor, but got %zu.", output_tensors.size());
     }
 
     // Ort::Value& fx_ref = output_tensors[0];
@@ -210,7 +212,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     //     mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'Bz' must have shape (n_pts, ) but got [%zu].", bz_shape);
     // }
     if (rt_shape.size() != 2 || rt_shape[0] != n_pts || rt_shape[1] != 3) {
-        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'rt' must have shape (n_pts, 3) but got [%zu, %zu].", rt_shape[0], rt_shape[1]);
+        mexErrMsgIdAndTxt("MATLAB:net_forward:invalidOutputShape", "Output tensor 'rt' must have shape (n_pts, 3) but got [%lld, %lld].", rt_shape[0], rt_shape[1]);
     }
 
     // Get pointer to ONNX output tensor data
