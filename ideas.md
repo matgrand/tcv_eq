@@ -34,3 +34,4 @@
 - map the (flux maps?) with PCA to get a uniform distribution in the training
 - training in pre-shot? o finetuning
 - similarity search degli spari con gli embeddings?
+  
