@@ -68,8 +68,8 @@ echo "Compilation completed."
 
 # Copy ONNX net file
 # ONNX_NET_PATH="$(pwd)/data/best_old/net.onnx" # <- adjust if needed
-# ONNX_NET_PATH="$(pwd)/data/local/net.onnx" # <- adjust if needed
-ONNX_NET_PATH="$(pwd)/data/best/net.onnx" # <- adjust if needed
+ONNX_NET_PATH="$(pwd)/data/local/net.onnx" # <- adjust if needed
+# ONNX_NET_PATH="$(pwd)/data/best/net.onnx" # <- adjust if needed
 if [ ! -f "$ONNX_NET_PATH" ]; then
     echo "Error: net.onnx file not found at $ONNX_NET_PATH"
     exit 1

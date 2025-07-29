@@ -165,20 +165,12 @@ if not LOCAL: # Redefine the print function to always flush
 ## torch stuff
 def to_tensor(x, device=torch.device(CPU)): return torch.tensor(x, dtype=torch.float32, device=device)
 
-# # custom trainable swish activation function
-# class ActF(Module): # swish
-#     def __init__(self): 
-#         super(ActF, self).__init__()
-#         self.beta = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
-#     def forward(self, x): return x*torch.sigmoid(self.beta*x)
-
-class ActF(Module): # tanh trainable
+# custom trainable swish activation function
+class ActF(Module): # swish
     def __init__(self): 
         super(ActF, self).__init__()
         self.beta = torch.nn.Parameter(torch.tensor(1.0), requires_grad=True)
-    def forward(self, x): return x*torch.tanh(self.beta*x)
-
-# ActF = Tanh # tanh activation function (fixed)
+    def forward(self, x): return x*torch.sigmoid(self.beta*x)
 
 def percentage_loss(a, b): # percentage loss (a = true, b = predicted)
     assert a.shape == b.shape, f"a.shape = {a.shape}, b.shape = {b.shape}, should be equal"
@@ -384,6 +376,7 @@ def convert_to_onnx_dyn(net:LiuqeRTNet, save_dir=[SAVE_DIR]):
             input_names=[PHYS, 'r', 'z'],  # Input names
             output_names=[RT],
             dynamic_axes={"r": {0: "n"}, "z": {0: "n"}, RT: {0: "n"}},
+            opset_version=15,  # 15 for onnx 1.11, onnx 1.11 bc GNU 5.3.1
         )
         assert os.path.exists(onnx_net_path), f"ONNX model not saved to {onnx_net_path}"
         print(f'ONNX model saved to {onnx_net_path}')
@@ -404,8 +397,9 @@ def convert_to_onnx_static(net:LiuqeRTNet, npts=N_CTRL_PTS, save_dir=[SAVE_DIR])
             dynamo=True,
             input_names=[PHYS, 'r', 'z'],  # Input names
             output_names=[RT],
+            opset_version=15,  # 15 for onnx 1.11, onnx 1.11 bc GNU 5.3.1
         )
-        onnx_model.optimize()
+        # onnx_model.optimize()
         onnx_model.save(onnx_net_path)
         assert os.path.exists(onnx_net_path), f"ONNX model not saved to {onnx_net_path}"
         print(f'ONNX model saved to {onnx_net_path}')
