@@ -13,8 +13,11 @@ echo "Detected OS: $OS_TYPE"
 echo "Detected ARCH: $ARCH_TYPE"
 echo "---------------------------------------------------------------------------------"
 
-# Choose the correct ONNX Runtime version and binary
-ONNXRUNTIME_VERSION="1.22.0"
+# --- START OF CHANGE ---
+# Downgraded to a version compatible with older C++11 compilers like GCC 5.x
+ONNXRUNTIME_VERSION="1.10.0"
+# --- END OF CHANGE ---
+
 if [[ "$OS_TYPE" == "Linux" && "$ARCH_TYPE" == "x86_64" ]]; then
     ONNXRUNTIME_NAME="onnxruntime-linux-x64-$ONNXRUNTIME_VERSION"
 elif [[ "$OS_TYPE" == "Darwin" && "$ARCH_TYPE" == "arm64" ]]; then
@@ -42,6 +45,7 @@ rm -rf "$ONNX_NET_FORWARD_DIR" && mkdir "$ONNX_NET_FORWARD_DIR"
 # Download ONNX Runtime if not already there
 if [ ! -d "$ONNXRUNTIME_DIR" ]; then
     echo "Downloading ONNX Runtime..."
+    rm -rf onnxruntime-linux-x64-* # Clean up other versions
     wget "https://github.com/microsoft/onnxruntime/releases/download/v$ONNXRUNTIME_VERSION/$ONNXRUNTIME_NAME.tgz"
     tar -xzf "$ONNXRUNTIME_NAME.tgz"
     rm "$ONNXRUNTIME_NAME.tgz"
@@ -56,8 +60,7 @@ cmake .. \
     -DONNXRUNTIME_DIR="$ONNXRUNTIME_DIR" \
     -DONNXRUNTIME_INCLUDE_DIRS="$ONNXRUNTIME_DIR/include" \
     -DONNX_NET_FORWARD_DIR="$ONNX_NET_FORWARD_DIR"\
-    -DMatlab_ROOT="$MATLABROOT" \
-#    -DMATLAB_MEX_LIBRARY="$MATLABROOT/bin/glnxa64/libmex.so" 
+    -DMatlab_ROOT="$MATLABROOT"
 make
 cd ..
 rm -rf build
