@@ -39,8 +39,14 @@ echo "ONNX full version name: $ONNXRUNTIME_NAME"
 echo "ONNX full path: $ONNXRUNTIME_DIR"
 echo "---------------------------------------------------------------------------------"
 
-MATLABROOT="/usr/local/MATLAB/R2019a" # lac8
-# MATLABROOT="/Applications/MATLAB_R2024b.app" # macOS
+if [[ "$OS_TYPE" == "Linux" ]]; then
+    MATLABROOT="/usr/local/MATLAB/R2019a" # lac8
+elif [[ "$OS_TYPE" == "Darwin" ]]; then
+    MATLABROOT="/Applications/MATLAB_R2024b.app" # macOS
+else
+    echo "Unsupported OS for MATLABROOT: $OS_TYPE"
+    exit 1
+fi
 echo "MATLAB version: $MATLABROOT"
 echo "---------------------------------------------------------------------------------"
 

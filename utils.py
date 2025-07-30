@@ -427,9 +427,15 @@ class LiuqeDataset(Dataset):
     def __init__(self, ds_path, verbose=True):
         d = load_ds(ds_path)
         x_mean_std = to_tensor(d.pop("x_mean_std")) # mean and std for inputs
-        self.fg = d.pop(FG) 
+        print(f"x_mean_std: {x_mean_std.shape}, {x_mean_std.dtype}, {x_mean_std.device}\n{x_mean_std}")
+        self.fg = d.pop(FG) # pop the full grid 
         print(f"Dataset loaded from {ds_path}, keys: {d.keys()}")
         self.data = {k:to_tensor(v) for k,v in d.items()} # convert to tensors
+
+        # TMP WORKAROUND: MASK A SECTION OF PHYS INPUTS from 97 -> 135, set it to 0
+        self.data[PHYS][:, 97:136] = 0.0 # set the section to 0, this is a workaround for the missing inputs in the dataset
+        x_mean_std[0, 97:136] = 0.0 # set the mean to 0 for the masked section
+
         # move to DEV (doable bc the dataset is fairly small, check memory usage)
         tot_memory_ds = sum([x.element_size()*x.nelement() for x in self.data.values()]) # total memory in bytes
         gpu_free_mem = torch.cuda.mem_get_info()[0] if DEV == CUDA else np.inf
