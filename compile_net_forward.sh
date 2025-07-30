@@ -39,8 +39,8 @@ echo "ONNX full version name: $ONNXRUNTIME_NAME"
 echo "ONNX full path: $ONNXRUNTIME_DIR"
 echo "---------------------------------------------------------------------------------"
 
-# MATLABROOT="/usr/local/MATLAB/R2019a" # lac8
-MATLABROOT="/Applications/MATLAB_R2024b.app" # macOS
+MATLABROOT="/usr/local/MATLAB/R2019a" # lac8
+# MATLABROOT="/Applications/MATLAB_R2024b.app" # macOS
 echo "MATLAB version: $MATLABROOT"
 echo "---------------------------------------------------------------------------------"
 
