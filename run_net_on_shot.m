@@ -9,22 +9,23 @@ function run_net_on_shot(shot_number, save_dir)
         % first call to load the model
         net_forward_mex(model_path);
 
-
         % load shot
         shot_file_path = fullfile('test_shots', sprintf('%d.mat', shot_number));
 
         d = load(shot_file_path);
         fprintf('Loaded shot data from: %s\n', shot_file_path);
 
-        % phys = pack_inputs(d.Bm, d.Ff, d.Ft, d.Ia, d.Ip, d.Iu, d.rBt);
-        phys = pack_inputs(d.Bm, d.Ff, 0*d.Ft, d.Ia, d.Ip, 0*d.Iu, 0*d.rBt); % set Iu to 0 for testing
+        phys = pack_inputs(d.Bm, d.Ff, d.Ft, d.Ia, d.Ip, d.Iu, d.rBt);
+        % phys = pack_inputs(d.Bm, d.Ff, 0*d.Ft, d.Ia, d.Ip, 0*d.Iu, 0*d.rBt); % set Iu to 0 for testing
         fprintf('Packed inputs size: %s\n', mat2str(size(phys)));
 
-        % points of the LCFS 
-        rq = single(d.rq);
-        zq = single(d.zq);
-        nq = size(rq, 1); % number of points on the LCFS
-        % fprintf('LCFS points: %d\n', nq);
+        % control points
+        rc = [0.7038, 0.6722, 0.6516, 0.7108, 0.9376, 1.0843, 1.0931, 0.9414, 0.8023, 0.6240];
+        zc = [-0.1195, 0.1285, 0.3775, 0.6159, 0.6127, 0.4150, 0.1691, -0.0246, -0.7500, -0.1229];
+        rq = single(rc);
+        zq = single(zc);
+        nq = length(rq); % number of control points
+        fprintf('Control points: %d\n', nq);
 
         nt = size(phys,2); % number of time points
 
@@ -39,21 +40,17 @@ function run_net_on_shot(shot_number, save_dir)
         r = single(r(:));
         z = single(z(:));
 
-        Fx = zeros(65*28, nt); % preallocate Fx
-        Br = zeros(65*28, nt); % preallocate Br
-        Bz = zeros(65*28, nt); % preallocate Bz
-        Fxq = zeros(nq, nt); % preallocate Fxq
-        Brq = zeros(nq, nt); % preallocate Brq
-        Bzq = zeros(nq, nt); % preallocate Bzq
+        Fxg = zeros(65*28, nt); % preallocate Fx
+        Brg = zeros(65*28, nt); % preallocate Br
+        Bzg = zeros(65*28, nt); % preallocate Bz
+        Fxc = zeros(nq, nt); % preallocate Fxc
+        Brc = zeros(nq, nt); % preallocate Brc
+        Bzc = zeros(nq, nt); % preallocate Bzc
 
         start = tic; % start timer
-        for i = 1:nt % loop over time points
-            [Fx(:,i), Br(:,i), Bz(:,i)] = net_forward_mex(phys(:, i), r, z);
-            [Fxq(:,i), Brq(:,i), Bzq(:,i)] = net_forward_mex(phys(:, i), rq(:, i), zq(:, i));
-            % avg_norm_Fxq = mean(vecnorm(Fxq(:,i)));
-            % avg_norm_Brq = mean(vecnorm(Brq(:,i)));
-            % avg_norm_Bzq = mean(vecnorm(Bzq(:,i)));
-            % fprintf('Time %d: avg(norm(Fxq)) = %.4f, avg(norm(Brq)) = %.4f, avg(norm(Bzq)) = %.4f\n', i, avg_norm_Fxq, avg_norm_Brq, avg_norm_Bzq);
+        for i = 1:nt % loop over time points -> network inferece
+            [Fxg(:,i), Brg(:,i), Bzg(:,i)] = net_forward_mex(phys(:, i), r, z);
+            [Fxc(:,i), Brc(:,i), Bzc(:,i)] = net_forward_mex(phys(:, i), rq, zq);
         end
         elapsed_time = toc(start); % measure elapsed time
         fprintf('Elapsed time for shot %d: %.2f seconds\n', shot_number, elapsed_time);
@@ -63,14 +60,13 @@ function run_net_on_shot(shot_number, save_dir)
         Br = reshape(Br, 65, 28, nt);
         Bz = reshape(Bz, 65, 28, nt);
 
-        assert(all(size(Fx) == size(d.Fx)), 'Fx has wrong size');
-        assert(all(size(Br) == size(d.Br)), 'Br has wrong size');
-        assert(all(size(Bz) == size(d.Bz)), 'Bz has wrong size');
-        
+        assert(all(size(Fxg) == size(d.Fx)), 'Fx has wrong size');
+        assert(all(size(Brg) == size(d.Br)), 'Br has wrong size');
+        assert(all(size(Bzg) == size(d.Bz)), 'Bz has wrong size');
 
         % save results in a .mat file
         save_file = fullfile(save_dir, sprintf('%d_net.mat', shot_number));
-        save(save_file, 'Fx', 'Br', 'Bz', 'Fxq', 'Brq', 'Bzq');
+        save(save_file, 'Fxg', 'Brg', 'Bzg', 'Fxc', 'Brc', 'Bzc');
         fprintf('Saved results to: %s\n', save_file);
 
     catch ME
