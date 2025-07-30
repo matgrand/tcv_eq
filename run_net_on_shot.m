@@ -29,8 +29,8 @@ function run_net_on_shot(shot_number, save_dir)
         % dummy interpolation points
         nq = 25;
         thetaq = linspace(0,2*pi,nq+1); thetaq = thetaq(1:end-1)';
-        rq = 0.88 + 0.15*cos(thetaq);
-        zq = 0.20 + 0.45*sin(thetaq);
+        rq = single(0.88 + 0.15*cos(thetaq));
+        zq = single(0.20 + 0.45*sin(thetaq));
 %         rq = single(repmat(rq,1,nt));
 %         zq = single(repmat(zq,1,nt));        
         % fprintf('LCFS points: %d\n', nq);
@@ -54,9 +54,9 @@ function run_net_on_shot(shot_number, save_dir)
         r = single(r(:));
         z = single(z(:));
 
-        Fx = zeros(65*28, nt); % preallocate Fx
-        Br = zeros(65*28, nt); % preallocate Br
-        Bz = zeros(65*28, nt); % preallocate Bz
+        Fxg = zeros(65*28, nt); % preallocate Fx
+        Brg = zeros(65*28, nt); % preallocate Br
+        Bzg = zeros(65*28, nt); % preallocate Bz
         Fxq = zeros(nq, nt); % preallocate Fxq
         Brq = zeros(nq, nt); % preallocate Brq
         Bzq = zeros(nq, nt); % preallocate Bzq        
@@ -91,7 +91,7 @@ function run_net_on_shot(shot_number, save_dir)
 
         % save results in a .mat file
         save_file = fullfile(save_dir, sprintf('%d_net.mat', shot_number));
-        save(save_file, 'Fxg', 'Brg', 'Bzg', 'Fxc', 'Brc', 'Bzc');
+        save(save_file, 'Fxg', 'Brg', 'Bzg', 'Fxq', 'Brq', 'Bzq');
         fprintf('Saved results to: %s\n', save_file);
 
         % plot
