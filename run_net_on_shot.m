@@ -67,7 +67,6 @@ function run_net_on_shot(shot_number, save_dir)
         assert(all(size(Br) == size(d.Br)), 'Br has wrong size');
         assert(all(size(Bz) == size(d.Bz)), 'Bz has wrong size');
         
-
         % save results in a .mat file
         save_file = fullfile(save_dir, sprintf('%d_net.mat', shot_number));
         save(save_file, 'Fx', 'Br', 'Bz', 'Fxq', 'Brq', 'Bzq');

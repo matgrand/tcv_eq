@@ -2,7 +2,6 @@ clear all; close all; clc;
 
 % TODO consider adding vessel currents: I_VESSEL
 
-
 % Directory to save the output .mat files
 OUT_DIR = 'test_shots'; % more space available
 

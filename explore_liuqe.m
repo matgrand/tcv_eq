@@ -3,11 +3,7 @@ clear all; close all; clc;
 
 shot = 86256;
 
-
-
 mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
-
-
 mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
 % % to calculate liuqe and get the info on LCFS
@@ -15,7 +11,6 @@ mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
 % % to get mag fields Brx, Bzx, Btx
 % [L,LX,LY] = liuqe(shot, 1, 'ifield', true);
-
 
 % to get liuqe from mdsplus database, without recalculating
 [L, LY] = mds2meq(shot, 'LIUQE.M');
@@ -25,13 +20,12 @@ times = LY.t;
 % %decimate the data
 % times = times(1:10:end);
 
-% to get only the inputs, basically the same as RT, (caveat maybe some filtering on magentics)
+% to get only the inputs, basically the same as RT
+% (caveat maybe some filtering on magnetics)
 [L, LX] = liuqe(shot, times);
 
-
-
-% calculatin Br, Bz, Bt fields, copying functions from source code of meqpost (because mds2meq does
-% not allow to run meqpost)
+% calculating Br, Bz, Bt fields, copying functions from source code of
+% meqpost (because mds2meq does not allow to run meqpost)
 
 i4pirdz = 1./(4*pi*L.dzx*L.rx');
 i4pirdr = 1./(4*pi*L.drx*L.rx');
@@ -57,7 +51,7 @@ quiver(rr, zz, br, bz, 'k');
 title('Brx (x) and Bzx (y) vector field');
 axis equal;
 
-%plot Fx
+% plot Fx
 figure;
 f = LY.Fx(:,:,nt);
 scatter(rr(:), zz(:), cs, f(:), 'filled');
