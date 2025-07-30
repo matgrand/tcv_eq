@@ -16,7 +16,8 @@ function run_net_on_shot(shot_number, save_dir)
         d = load(shot_file_path);
         fprintf('Loaded shot data from: %s\n', shot_file_path);
 
-        phys = pack_inputs(d.Bm, d.Ff, d.Ft, d.Ia, d.Ip, d.Iu, d.rBt);
+        % phys = pack_inputs(d.Bm, d.Ff, d.Ft, d.Ia, d.Ip, d.Iu, d.rBt);
+        phys = pack_inputs(d.Bm, d.Ff, 0*d.Ft, d.Ia, d.Ip, 0*d.Iu, 0*d.rBt); % set Iu to 0 for testing
         fprintf('Packed inputs size: %s\n', mat2str(size(phys)));
 
         % points of the LCFS 

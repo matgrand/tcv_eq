@@ -42,6 +42,8 @@ try
     fprintf('phys size: %d, r size: %d, z size: %d\n', size(phys, 2), size(r, 2), size(z, 2));
 
     [Fx, Br, Bz] = net_forward_mex(single(phys), single(r), single(z));
+    fprintf('Output types: Fx [%s], Br [%s], Bz [%s]\n', ...
+        class(Fx), class(Br), class(Bz));
     % print first 5 elements of results
     fprintf('fx_pred -> [ %s ]\n', num2str(Fx(1:min(8,end)), '%+.4f '));
     fprintf('fx_true -> [ %s ]\n', num2str(d.Fx(rand_i, 1:min(8,end)), '%+.4f '));
@@ -104,9 +106,8 @@ try
     fprintf('Frequency -> %.1f [μs] | %.1f [Hz]\n', 1e6*ttot/N, N/ttot);
     % assert(false, 'This is a test, please remove this line to continue.');
 
-    n_plots = 20;
+    n_plots = 5;
     rand_idxs =  randi([1, size(d.phys, 1)], 1, n_plots);
-
     if PLOT
         fprintf('Plotting %d random examples', n_plots);
         for i = 1:n_plots
@@ -123,7 +124,7 @@ try
             labels = {'Fx', 'Br', 'Bz'};
             
             fig = figure('Visible', 'off', 'Position', [100, 100, 1000, 1000]);
-            tiledlayout(3,3, 'Padding', 'none', 'TileSpacing', 'compact'); 
+            
             for k = 1:3
                 ftrue = trues{k};
                 fpred = preds{k};
@@ -131,26 +132,30 @@ try
                 fmin = min([ftrue(:); fpred(:)]);
                 diffmap = 100 * abs(ftrue - fpred) ./ (fmax - fmin);
                 sz = 20;
-                % subplot(3,3,3*(k-1)+1);
-                nexttile
+
+                % Plot true value
+                subplot(3,3,3*(k-1)+1);
                 scatter(r, z, sz, ftrue, 'filled');
                 title([labels{k} ' true']);
                 xlabel('r'); ylabel('z');
                 axis equal; colorbar;
                 caxis([fmin fmax]);
-                % subplot(3,3,3*(k-1)+2);
-                nexttile
+
+                % Plot predicted value
+                subplot(3,3,3*(k-1)+2);
                 scatter(r, z, sz, fpred, 'filled');
                 title([labels{k} ' pred']);
                 xlabel('r'); ylabel('z');
                 axis equal; colorbar;
                 caxis([fmin fmax]);
-                % subplot(3,3,3*(k-1)+3);
-                nexttile
+
+                % Plot error map
+                subplot(3,3,3*(k-1)+3);
                 scatter(r, z, sz, diffmap, 'filled');
                 title([labels{k} ' Error [%]']);
                 xlabel('r'); ylabel('z');
                 axis equal; colorbar;
+                
                 set(gcf, 'Name', labels{k});
             end
             % save figure
@@ -160,20 +165,18 @@ try
             fprintf('.');
         end
         fprintf(' Done.\n');
-    end
 
-    if PLOT
-        % plot histogram
-        figure('Visible', 'on', 'Position', [100, 100, 800, 600]);
-        histogram(times * 1e6, 100);
-        title('Inference time histogram');
-        xlabel('Time [μs]');
-        ylabel('Count');
-        ylim([0 100]);
-        grid on;
-        % save figure
-        saveas(gcf, 'test/matlab_inference_time.png');
-        close(gcf);
+        % % plot histogram
+        % figure('Visible', 'on', 'Position', [100, 100, 800, 600]);
+        % histogram(times * 1e6, 100);
+        % title('Inference time histogram');
+        % xlabel('Time [μs]');
+        % ylabel('Count');
+        % ylim([0 100]);
+        % grid on;
+        % % save figure
+        % saveas(gcf, 'test/matlab_inference_time.png');
+        % close(gcf);
     end
 
 catch ME
