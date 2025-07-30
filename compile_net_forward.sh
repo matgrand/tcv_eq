@@ -1,7 +1,15 @@
 #!/bin/bash
 
-# when running on macOS, run this script like this:
-# export PATH="/Applications/MATLAB_R2024b.app/bin:$PATH" && bash compile_net_forward.sh
+# modifications requried for lac8
+# To make the build work on an old Fedora server and macOS, we unified the system 
+# around the server's limitations. We downgraded the ONNX Runtime library to v1.10.0 
+# in the compile_net_forward.sh script to match the C++11-compatible GCC 5.3.1 compiler. 
+# In CMakeLists.txt, we replaced the modern, newer find_package(Matlab) with a 
+# robust manual find_library method that works for both platforms. We then 
+# modified the net_forward.cpp code to remove the C++17 <filesystem> header, 
+# using std::string instead. 
+# Finally, the net.onnx model itself had to be re-exported with Opset 15 to be 
+# compatible with the older ONNX library, resolving the last runtime error in MATLAB.
 
 clear
 
@@ -13,10 +21,8 @@ echo "Detected OS: $OS_TYPE"
 echo "Detected ARCH: $ARCH_TYPE"
 echo "---------------------------------------------------------------------------------"
 
-# --- START OF CHANGE ---
 # Downgraded to a version compatible with older C++11 compilers like GCC 5.x
-ONNXRUNTIME_VERSION="1.10.0"
-# --- END OF CHANGE ---
+ONNXRUNTIME_VERSION="1.10.0" # 1.22.0 is the latest version, but it requires C++17
 
 if [[ "$OS_TYPE" == "Linux" && "$ARCH_TYPE" == "x86_64" ]]; then
     ONNXRUNTIME_NAME="onnxruntime-linux-x64-$ONNXRUNTIME_VERSION"
@@ -33,8 +39,8 @@ echo "ONNX full version name: $ONNXRUNTIME_NAME"
 echo "ONNX full path: $ONNXRUNTIME_DIR"
 echo "---------------------------------------------------------------------------------"
 
-MATLABROOT="/usr/local/MATLAB/R2019a" # lac8
-# MATLABROOT="/Applications/MATLAB_R2024b.app" # macOS
+# MATLABROOT="/usr/local/MATLAB/R2019a" # lac8
+MATLABROOT="/Applications/MATLAB_R2024b.app" # macOS
 echo "MATLAB version: $MATLABROOT"
 echo "---------------------------------------------------------------------------------"
 
