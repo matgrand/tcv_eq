@@ -1,6 +1,5 @@
 clear all; close all; clc;
 
-
 shot = 86256;
 
 mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server

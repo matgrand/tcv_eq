@@ -16,17 +16,25 @@ function run_net_on_shot(shot_number, save_dir)
         d = load(shot_file_path);
         fprintf('Loaded shot data from: %s\n', shot_file_path);
 
-        % phys = pack_inputs(d.Bm, d.Ff, d.Ft, d.Ia, d.Ip, d.Iu, d.rBt);
-        phys = pack_inputs(d.Bm, d.Ff, 0*d.Ft, d.Ia, d.Ip, 0*d.Iu, 0*d.rBt); % set Iu to 0 for testing
+        phys = pack_inputs(d.Bm, d.Ff, d.Ft, d.Ia, d.Ip, d.Iu, d.rBt);
+        % phys = pack_inputs(d.Bm, d.Ff, 0*d.Ft, d.Ia, d.Ip, 0*d.Iu, 0*d.rBt); % set Iu to 0 for testing
         fprintf('Packed inputs size: %s\n', mat2str(size(phys)));
-
-        % points of the LCFS 
-        rq = single(d.rq);
-        zq = single(d.zq);
-        nq = size(rq, 1); % number of points on the LCFS
-        % fprintf('LCFS points: %d\n', nq);
-
+        
         nt = size(phys,2); % number of time points
+        
+        % points of the LCFS 
+%         rq = single(d.rq);
+%         zq = single(d.zq);
+%         nq = size(rq, 1); % number of points on the LCFS
+
+        % dummy interpolation points
+        nq = 25;
+        thetaq = linspace(0,2*pi,nq+1); thetaq = thetaq(1:end-1)';
+        rq = 0.88 + 0.15*cos(thetaq);
+        zq = 0.20 + 0.45*sin(thetaq);
+        rq = single(repmat(rq,1,nt));
+        zq = single(repmat(zq,1,nt));        
+        % fprintf('LCFS points: %d\n', nq);
 
         %load tcv grid
         g = load('tcv_params/grid.mat');
@@ -44,7 +52,10 @@ function run_net_on_shot(shot_number, save_dir)
         Bz = zeros(65*28, nt); % preallocate Bz
         Fxq = zeros(nq, nt); % preallocate Fxq
         Brq = zeros(nq, nt); % preallocate Brq
-        Bzq = zeros(nq, nt); % preallocate Bzq
+        Bzq = zeros(nq, nt); % preallocate Bzq        
+        Fxq_true = zeros(nq, nt); % preallocate Fxq
+        Brq_true = zeros(nq, nt); % preallocate Brq
+        Bzq_true = zeros(nq, nt); % preallocate Bzq
 
         start = tic; % start timer
         for i = 1:nt % loop over time points
@@ -54,6 +65,10 @@ function run_net_on_shot(shot_number, save_dir)
             % avg_norm_Brq = mean(vecnorm(Brq(:,i)));
             % avg_norm_Bzq = mean(vecnorm(Bzq(:,i)));
             % fprintf('Time %d: avg(norm(Fxq)) = %.4f, avg(norm(Brq)) = %.4f, avg(norm(Bzq)) = %.4f\n', i, avg_norm_Fxq, avg_norm_Brq, avg_norm_Bzq);
+            
+            drx = gr(2)-gr(1); dzx = gz(2) - gz(1);
+            inp.n = 9; qpM = qintc(inp,drx,dzx); % qintmex consolidation
+           [Fxq_true(:,i), Brq_true(:,i), Bzq_true(:,i)] = qintmex(gr,gz,squeeze(d.Fx(:,:,i)),double(rq(:,i)),double(zq(:,i)),qpM);
         end
         elapsed_time = toc(start); % measure elapsed time
         fprintf('Elapsed time for shot %d: %.2f seconds\n', shot_number, elapsed_time);
@@ -72,6 +87,12 @@ function run_net_on_shot(shot_number, save_dir)
         save(save_file, 'Fx', 'Br', 'Bz', 'Fxq', 'Brq', 'Bzq');
         fprintf('Saved results to: %s\n', save_file);
 
+        % plot
+        for i = 1 : 50 : nt
+          bar([Fxq(:,i), Fxq_true(:,i)])
+          legend('net','true')
+          pause(1e-2)
+        end
     catch ME
         fprintf('Error: %s\n', ME.message);
         fprintf('Stack trace:\n');

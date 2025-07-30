@@ -22,11 +22,11 @@ theta0 = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")');
 mdsclose; % Close the MDSplus connection
 
 shots = [
-    79742, % single null
-    % 86310, % double null
-    % 78893, % negative triangularity
-    % 83848, % ?
-    78071, % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
+    79742 % single null
+    86310 % double null
+    78893 % negative triangularity
+    83848 % ?
+    78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
 ];
 disp('Shots to process:');
 disp(shots);
@@ -52,10 +52,10 @@ for i = 1:length(shots)
         [t2, ip2] = tcvget('IP', t); % calculated using magnetics at liuqe times
 
         % % last closed flux surface (LCFS) (unfortunately it's not in mds2meq outputs (yet))
-        % rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
-        % zq = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
-        % theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
-        % % check that theta is the same as theta0, first size, then values
+%         rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
+%         zq = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
+%         theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
+        % check that theta is the same as theta0, first size, then values
 	    % assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
         % assert(all(abs(theta0 - theta) < 1e-6), 'theta and theta0 are different');
 
