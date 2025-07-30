@@ -24,9 +24,9 @@ mdsclose; % Close the MDSplus connection
 
 shots = [
     79742, % single null
-    86310, % double null
-    78893, % negative triangularity
-    83848, % ?
+    % 86310, % double null
+    % 78893, % negative triangularity
+    % 83848, % ?
     78071, % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
 ];
 disp('Shots to process:');
