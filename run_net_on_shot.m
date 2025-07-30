@@ -61,8 +61,8 @@ function run_net_on_shot(shot_number, save_dir)
         Brq = zeros(nq, nt); % preallocate Brq
         Bzq = zeros(nq, nt); % preallocate Bzq        
         Fxq_true = zeros(nq, nt); % preallocate Fxq
-        Brq_true = zeros(nq, nt); % preallocate Brq
-        Bzq_true = zeros(nq, nt); % preallocate Bzq
+%         Brq_true = zeros(nq, nt); % preallocate Brq
+%         Bzq_true = zeros(nq, nt); % preallocate Bzq
 
         start = tic; % start timer
         for i = 1:nt % loop over time points
@@ -73,9 +73,10 @@ function run_net_on_shot(shot_number, save_dir)
             % avg_norm_Bzq = mean(vecnorm(Bzq(:,i)));
             % fprintf('Time %d: avg(norm(Fxq)) = %.4f, avg(norm(Brq)) = %.4f, avg(norm(Bzq)) = %.4f\n', i, avg_norm_Fxq, avg_norm_Brq, avg_norm_Bzq);
             
-            drx = gr(2)-gr(1); dzx = gz(2) - gz(1);
-            inp.n = 9; qpM = qintc(inp,drx,dzx); % qintmex consolidation
-           [Fxq_true(:,i), Brq_true(:,i), Bzq_true(:,i)] = qintmex(gr,gz,squeeze(d.Fx(:,:,i)),double(rq),double(zq),qpM);
+%             drx = gr(2)-gr(1); dzx = gz(2) - gz(1);
+%             inp.n = 9; qpM = qintc(inp,drx,dzx); % qintmex consolidation
+%            [Fxq_true(:,i), Brq_true(:,i), Bzq_true(:,i)] = qintmex(gr,gz,squeeze(d.Fx(:,:,i)),double(rq),double(zq),qpM);
+           Fxq_true(:,i) = interp2(gr,gz,squeeze(d.Fx(:,:,i)),double(rq),double(zq));
         end
         elapsed_time = toc(start); % measure elapsed time
         fprintf('Elapsed time for shot %d: %.2f seconds\n', shot_number, elapsed_time);
