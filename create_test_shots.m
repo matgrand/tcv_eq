@@ -22,11 +22,19 @@ theta0 = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")');
 mdsclose; % Close the MDSplus connection
 
 shots = [
+<<<<<<< HEAD
     79742 % single null
     86310 % double null
     78893 % negative triangularity
     83848 % ?
     78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
+=======
+    79742, % single null
+    86310, % double null
+    % 78893, % negative triangularity
+    % 83848, % ?
+    78071, % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
+>>>>>>> 0000e0ac8736a9034bed9ddf0f7af8e1fbd769cc
 ];
 disp('Shots to process:');
 disp(shots);
@@ -51,11 +59,11 @@ for i = 1:length(shots)
         t = LY.t'; % time vector
         [t2, ip2] = tcvget('IP', t); % calculated using magnetics at liuqe times
 
-        % % last closed flux surface (LCFS) (unfortunately it's not in mds2meq outputs (yet))
-%         rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
-%         zq = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
-%         theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
-        % check that theta is the same as theta0, first size, then values
+        % last closed flux surface (LCFS) (unfortunately it's not in mds2meq outputs (yet))
+        rq = mdsdata('tcv_eq("R_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS r coordinate
+        zq = mdsdata('tcv_eq("Z_EDGE", "LIUQE.M", "NOEVAL")'); % LCFS z coordinate
+        % theta = mdsdata('tcv_eq("THETA", "LIUQE.M", "NOEVAL")'); 
+        % % check that theta is the same as theta0, first size, then values
 	    % assert(all(size(theta) == size(theta0)), 'theta and theta0 have different sizes');
         % assert(all(abs(theta0 - theta) < 1e-6), 'theta and theta0 are different');
 
@@ -78,8 +86,8 @@ for i = 1:length(shots)
         Iy = LY.Iy; % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
         Br = Brx;
         Bz = Bzx;
-        % rq = rq; % LCFS r coordinate
-        % zq = zq; % LCFS z coordinate
+        rq = rq; % LCFS r coordinate
+        zq = zq; % LCFS z coordinate
 
         % Inputs
         Bm = LX.Bm; 
@@ -95,8 +103,8 @@ for i = 1:length(shots)
         assert(all(size(Iy) == [63, 26, nt]), 'Iy has wrong size');
         assert(all(size(Br) == [65, 28, nt]), 'Brx has wrong size');
         assert(all(size(Bz) == [65, 28, nt]), 'Bzx has wrong size');
-        % assert(all(size(rq) == [129, nt]), 'rq has wrong size');
-        % assert(all(size(zq) == [129, nt]), 'zq has wrong size');
+        assert(all(size(rq) == [129, nt]), 'rq has wrong size');
+        assert(all(size(zq) == [129, nt]), 'zq has wrong size');
 
         assert(all(size(Bm) == [38, nt]), 'Bm has wrong size');
         assert(all(size(Ff) == [38, nt]), 'Ff has wrong size');
@@ -107,17 +115,17 @@ for i = 1:length(shots)
         assert(all(size(rBt) == [1, nt]), 'rBt has wrong size');
 
         % print final sizes
-        fprintf('\tFinal sizes -> Fx:%s, Iy:%s, Br:%s, Bz:%s, \n\tBm:%s, Ff:%s, Ft:%s, Ia:%s, Ip:%s, Iu:%s, rBt:%s\n', ...
+        fprintf('\tFinal sizes -> Fx:%s, Iy:%s, Br:%s, Bz:%s, \n\tBm:%s, Ff:%s, Ft:%s, Ia:%s, Ip:%s, Iu:%s, rBt:%s, rq:%s, zq:%s\n', ...
             mat2str(size(Fx)), mat2str(size(Iy)), mat2str(size(Br)), mat2str(size(Bz)), ...
             mat2str(size(Bm)), mat2str(size(Ff)), mat2str(size(Ft)), mat2str(size(Ia)), ...
-            mat2str(size(Ip)), mat2str(size(Iu)), mat2str(size(rBt)));
+            mat2str(size(Ip)), mat2str(size(Iu)), mat2str(size(rBt)), mat2str(size(rq)), mat2str(size(zq)));
         mdsclose; % Close the MDSplus connection
         total_shots = total_shots + 1;
 
         % save data into a .mat file
         save_file = fullfile(OUT_DIR, sprintf('%d.mat', shot));
         save(save_file, 't', 'Fx', 'Iy', 'Br', 'Bz', ...
-            'Bm', 'Ff', 'Ft', 'Ia', 'Ip', 'Iu', 'rBt');
+            'Bm', 'Ff', 'Ft', 'Ia', 'Ip', 'Iu', 'rBt', 'rq', 'zq');
         fprintf('\x1b[32m\tData saved to: %s\x1b[0m\n', save_file);
         
         shot_processing_times(i) = toc(start_time);

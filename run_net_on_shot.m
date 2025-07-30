@@ -9,7 +9,6 @@ function run_net_on_shot(shot_number, save_dir)
         % first call to load the model
         net_forward_mex(model_path);
 
-
         % load shot
         shot_file_path = fullfile('test_shots', sprintf('%d.mat', shot_number));
 
@@ -32,9 +31,17 @@ function run_net_on_shot(shot_number, save_dir)
         thetaq = linspace(0,2*pi,nq+1); thetaq = thetaq(1:end-1)';
         rq = 0.88 + 0.15*cos(thetaq);
         zq = 0.20 + 0.45*sin(thetaq);
-        rq = single(repmat(rq,1,nt));
-        zq = single(repmat(zq,1,nt));        
+%         rq = single(repmat(rq,1,nt));
+%         zq = single(repmat(zq,1,nt));        
         % fprintf('LCFS points: %d\n', nq);
+
+%         % fixed control points
+%         rc = [0.7038, 0.6722, 0.6516, 0.7108, 0.9376, 1.0843, 1.0931, 0.9414, 0.8023, 0.6240];
+%         zc = [-0.1195, 0.1285, 0.3775, 0.6159, 0.6127, 0.4150, 0.1691, -0.0246, -0.7500, -0.1229];
+%         rq = single(rc);
+%         zq = single(zc);
+%         nq = length(rq); % number of control points
+        fprintf('Control points: %d\n', nq);
 
         %load tcv grid
         g = load('tcv_params/grid.mat');
@@ -59,8 +66,8 @@ function run_net_on_shot(shot_number, save_dir)
 
         start = tic; % start timer
         for i = 1:nt % loop over time points
-            [Fx(:,i), Br(:,i), Bz(:,i)] = net_forward_mex(phys(:, i), r, z);
-            [Fxq(:,i), Brq(:,i), Bzq(:,i)] = net_forward_mex(phys(:, i), rq(:, i), zq(:, i));
+            [Fxg(:,i), Brg(:,i), Bzg(:,i)] = net_forward_mex(phys(:, i), r, z);
+            [Fxq(:,i), Brq(:,i), Bzq(:,i)] = net_forward_mex(phys(:, i), rq, zq);
             % avg_norm_Fxq = mean(vecnorm(Fxq(:,i)));
             % avg_norm_Brq = mean(vecnorm(Brq(:,i)));
             % avg_norm_Bzq = mean(vecnorm(Bzq(:,i)));
@@ -68,23 +75,23 @@ function run_net_on_shot(shot_number, save_dir)
             
             drx = gr(2)-gr(1); dzx = gz(2) - gz(1);
             inp.n = 9; qpM = qintc(inp,drx,dzx); % qintmex consolidation
-           [Fxq_true(:,i), Brq_true(:,i), Bzq_true(:,i)] = qintmex(gr,gz,squeeze(d.Fx(:,:,i)),double(rq(:,i)),double(zq(:,i)),qpM);
+           [Fxq_true(:,i), Brq_true(:,i), Bzq_true(:,i)] = qintmex(gr,gz,squeeze(d.Fx(:,:,i)),double(rq),double(zq),qpM);
         end
         elapsed_time = toc(start); % measure elapsed time
         fprintf('Elapsed time for shot %d: %.2f seconds\n', shot_number, elapsed_time);
 
         % reshape results to match the grid size
-        Fx = reshape(Fx, 65, 28, nt);
-        Br = reshape(Br, 65, 28, nt);
-        Bz = reshape(Bz, 65, 28, nt);
+        Fxg = reshape(Fxg, 65, 28, nt);
+        Brg = reshape(Brg, 65, 28, nt);
+        Bzg = reshape(Bzg, 65, 28, nt);
 
-        assert(all(size(Fx) == size(d.Fx)), 'Fx has wrong size');
-        assert(all(size(Br) == size(d.Br)), 'Br has wrong size');
-        assert(all(size(Bz) == size(d.Bz)), 'Bz has wrong size');
-        
+        assert(all(size(Fxg) == size(d.Fx)), 'Fx has wrong size');
+        assert(all(size(Brg) == size(d.Br)), 'Br has wrong size');
+        assert(all(size(Bzg) == size(d.Bz)), 'Bz has wrong size');
+
         % save results in a .mat file
         save_file = fullfile(save_dir, sprintf('%d_net.mat', shot_number));
-        save(save_file, 'Fx', 'Br', 'Bz', 'Fxq', 'Brq', 'Bzq');
+        save(save_file, 'Fxg', 'Brg', 'Bzg', 'Fxc', 'Brc', 'Bzc');
         fprintf('Saved results to: %s\n', save_file);
 
         % plot
