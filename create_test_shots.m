@@ -27,6 +27,7 @@ shots = [
     86310, % double null
     78893, % negative triangularity
     83848, % ?
+    78071, % standard, test ctrl pts
 ];
 disp('Shots to process:');
 disp(shots);
