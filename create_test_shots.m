@@ -117,7 +117,7 @@ for i = 1:length(shots)
 
         % save data into a .mat file
         save_file = fullfile(OUT_DIR, sprintf('%d.mat', shot));
-        save(save_file, 't', 'Fx', 'Iy', 'Br', 'Bz', 'rq', 'zq', ...
+        save(save_file, 't', 'Fx', 'Iy', 'Br', 'Bz', ...
             'Bm', 'Ff', 'Ft', 'Ia', 'Ip', 'Iu', 'rBt');
         fprintf('\x1b[32m\tData saved to: %s\x1b[0m\n', save_file);
         
