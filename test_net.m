@@ -66,10 +66,6 @@ for si = 1:length(shots)
     % LIUQE/true values
     t = t(tidxs); % time vector
     FxLg = Fx(:,:,tidxs); % Fx on grid
-    
-    size(FxLg) % check size
-    FxLg = squeeze(FxLg); % remove singleton dimensions
-    size(FxLg) % check size
 
     % preallocate
     FxNg = zeros(65*28, nt); % preallocate Fx on grid
@@ -92,15 +88,67 @@ for si = 1:length(shots)
     Fxg_abs_err = abs(FxLg - FxNg); % absolute error
     Fxq_abs_err = abs(FxLq - FxNq); % absolute error on control points
     Fx_range = [min(FxLg, [], 1); max(FxLg, [], 1)]; % [2, nt]: min and max for each time step
+    assert(all(Fx_range(1, :) >= 0), 'Fx has negative values'); % check if Fx is non-negative
+    assert(all(size(Fx_range) == [2, nt]), 'Fx_range has wrong size');
     Fxg_perc_err = 100 * Fxg_abs_err ./ Fx_range(2, :); % percentage error on grid
     Fxq_perc_err = 100 * Fxq_abs_err ./ Fx_range(2, :); % percentage error on control points
-
-    fprintf('Fx on grid: \n abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.4f%%, std %.4f%%, max %.4f%%\n', ...
+    
+    
+    fprintf('Avg range value: %.4f', mean(Fx_range(2, :)));
+    fprintf('Fx on grid: \n abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.2f%%, std %.2f%%, max %.2f%%\n', ...
         mean(Fxg_abs_err(:)), std(Fxg_abs_err(:)), max(Fxg_abs_err(:)), ...
         mean(Fxg_perc_err(:)), std(Fxg_perc_err(:)), max(Fxg_perc_err(:)));
-    fprintf('Fx on control points: \n abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.4f%%, std %.4f%%, max %.4f%%\n', ...
+    fprintf('Fx on control points: \n abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.2f%%, std %.2f%%, max %.2f%%\n', ...
         mean(Fxq_abs_err(:)), std(Fxq_abs_err(:)), max(Fxq_abs_err(:)), ...
         mean(Fxq_perc_err(:)), std(Fxq_perc_err(:)), max(Fxq_perc_err(:))); 
+
+    % plot (grid)
+    figure('Name', sprintf('Shot %d Fx Comparison', shot), 'Position', [100, 100, 1800, 800]);
+    for row = 1:2
+        for col = 1:4
+            subplot(2,4,(row-1)*4+col);
+            switch col
+                case 1
+                    data = FxLg(:,1); title_str = 'FxLg (True)';
+                case 2
+                    data = FxNg(:,1); title_str = 'FxNg (Net)';
+                case 3
+                    data = Fxg_abs_err(:,1); title_str = 'Abs Error';
+                case 4
+                    data = Fxg_perc_err(:,1); title_str = 'Perc Error (%)';
+            end
+            if row == 1
+                scatter(rg, zg, 30, data, 'filled');
+                colorbar;
+            else
+                contourf(reshape(rg,28,65)', reshape(zg,28,65)', reshape(data,65,28));
+                colorbar;
+            end
+            axis equal tight;
+            title(title_str);
+            xlabel('R [m]'); ylabel('Z [m]');
+        end
+    end
+    sgtitle(sprintf('Shot %d, t=%.3f s', shot, t(1)));
+    
+    % plot (control points)
+    figure('Name', sprintf('Shot %d Fx Control Points', shot), 'Position', [100, 100, 1200, 300*nq]);
+    for k = 1:nq
+        subplot(nq,2,2*(k-1)+1);
+        plot(t, FxLq(k,:), 'b-', 'LineWidth', 2); hold on;
+        plot(t, FxNq(k,:), 'r--', 'LineWidth', 2);
+        legend('LIUQE', 'Net');
+        title(sprintf('Ctrl Pt %d: Fx', k));
+        xlabel('Time [s]'); ylabel('Fx [Wb]');
+        grid on;
+
+        subplot(nq,2,2*(k-1)+2);
+        plot(t, FxLq(k,:) - FxNq(k,:), 'k-', 'LineWidth', 2);
+        title(sprintf('Ctrl Pt %d: Error', k));
+        xlabel('Time [s]'); ylabel('Error [Wb]');
+        grid on;
+    end
+    sgtitle(sprintf('Shot %d Fx at Control Points', shot));
 
 end % end shots loop
 
