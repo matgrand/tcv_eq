@@ -97,10 +97,10 @@ for si = 1:length(shots)
 
 
     fprintf('Avg range value: %.4f', mean(Fx_range(2, :)));
-    fprintf('Fx on grid: \n abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.2f%%, std %.2f%%, max %.2f%%\n', ...
+    fprintf('Fx on grid: \n  abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.2f%%, std %.2f%%, max %.2f%%\n', ...
         mean(Fxg_abs_err(:)), std(Fxg_abs_err(:)), max(Fxg_abs_err(:)), ...
         mean(Fxg_perc_err(:)), std(Fxg_perc_err(:)), max(Fxg_perc_err(:)));
-    fprintf('Fx on control points: \n abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.2f%%, std %.2f%%, max %.2f%%\n', ...
+    fprintf('Fx on control points: \n  abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.2f%%, std %.2f%%, max %.2f%%\n', ...
         mean(Fxq_abs_err(:)), std(Fxq_abs_err(:)), max(Fxq_abs_err(:)), ...
         mean(Fxq_perc_err(:)), std(Fxq_perc_err(:)), max(Fxq_perc_err(:))); 
 
@@ -137,7 +137,7 @@ for si = 1:length(shots)
     % plot (control points)
     figure('Name', sprintf('Shot %d Fx Control Points', shot), 'Position', [10, 100, 1800, 800]);
     for k = 1:nq
-        subplot(nq,2,2*(k-1)+1);
+        subplot(nq,3,3*(k-1)+1);
         plot(t, FxLq(k,:), 'b-', 'LineWidth', 2); hold on;
         plot(t, FxNq(k,:), 'r--', 'LineWidth', 2);
         legend('LIUQE', 'Net');
@@ -145,10 +145,16 @@ for si = 1:length(shots)
         xlabel('Time [s]'); ylabel('Fx [Wb]');
         grid on;
 
-        subplot(nq,2,2*(k-1)+2);
-        plot(t, Fxg_perc_err(k,:), 'k-', 'LineWidth', 2);
-        title(sprintf('Ctrl Pt %d: Error', k));
+        subplot(nq,3,3*(k-1)+2);
+        plot(t, Fxq_abs_err(k,:), 'k-', 'LineWidth', 2);
+        title(sprintf('Ctrl Pt %d: Abs Error', k));
         xlabel('Time [s]'); ylabel('Error [Wb]');
+        grid on;
+
+        subplot(nq,3,3*(k-1)+3);
+        plot(t, Fxg_perc_err(k,:), 'k-', 'LineWidth', 2);
+        title(sprintf('Ctrl Pt %d: Error (%)', k));
+        xlabel('Time [s]'); ylabel('Error [%]');
         grid on;
     end
     sgtitle(sprintf('Shot %d Fx at Control Points', shot));

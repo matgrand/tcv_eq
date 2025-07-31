@@ -367,19 +367,30 @@ def convert_to_onnx_dyn(net:LiuqeRTNet, save_dir=[SAVE_DIR]):
     dummy_r = torch.randn(n, device=CPU)  # Dummy points for inference
     dummy_z = torch.randn(n, device=CPU)  # Dummy points for inference
     for d in save_dir:
-        onnx_net_path = f'{d}/net_dyn.onnx'
+        onnx_net_path1 = f'{d}/net_dyn.onnx'
+        onnx_net_path2 = f'{d}/net_dyn_ops17.onnx'
         # Export to ONNX
         torch.onnx.export(
             net,
             args=(dummy_phys, dummy_r, dummy_z),  # Dummy inputs for the network
-            f=onnx_net_path,
+            f=onnx_net_path1,
             input_names=[PHYS, 'r', 'z'],  # Input names
             output_names=[RT],
             dynamic_axes={"r": {0: "n"}, "z": {0: "n"}, RT: {0: "n"}},
             opset_version=15,  # 15 for onnx 1.11, onnx 1.11 bc GNU 5.3.1
         )
-        assert os.path.exists(onnx_net_path), f"ONNX model not saved to {onnx_net_path}"
-        print(f'ONNX model saved to {onnx_net_path}')
+        torch.onnx.export(
+            net,
+            args=(dummy_phys, dummy_r, dummy_z),  # Dummy inputs for the network
+            f=onnx_net_path2,
+            input_names=[PHYS, 'r', 'z'],  # Input names
+            output_names=[RT],
+            dynamic_axes={"r": {0: "n"}, "z": {0: "n"}, RT: {0: "n"}},
+            opset_version=17, 
+        )
+        assert os.path.exists(onnx_net_path1), f"ONNX model not saved to {onnx_net_path1}"
+        assert os.path.exists(onnx_net_path2), f"ONNX model not saved to {onnx_net_path2}"
+        print(f'ONNX models saved to {onnx_net_path1} and {onnx_net_path2}')
     return
 
 def convert_to_onnx_static(net:LiuqeRTNet, npts=N_CTRL_PTS, save_dir=[SAVE_DIR]):
