@@ -143,7 +143,7 @@ for si = 1:length(shots)
         grid on;
 
         subplot(nq,2,2*(k-1)+2);
-        plot(t, FxLq(k,:) - FxNq(k,:), 'k-', 'LineWidth', 2);
+        plot(t, Fxg_perc_err(k,:), 'k-', 'LineWidth', 2);
         title(sprintf('Ctrl Pt %d: Error', k));
         xlabel('Time [s]'); ylabel('Error [Wb]');
         grid on;
