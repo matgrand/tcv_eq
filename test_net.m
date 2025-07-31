@@ -5,9 +5,9 @@ OUT_DIR = 'test_shots'; % more space available
 TIME_INTERV = [0.6, 0.8]; % time interval
 DEC = 1; % decimation factor
 
-if ~exist(OUT_DIR, 'dir') mkdir(OUT_DIR); fprintf('Output directory created: %s\n', OUT_DIR);
-else delete(fullfile(OUT_DIR, '*')); fprintf('Output directory already exists. Old files deleted: %s\n', OUT_DIR);
-end % Create output directory if it doesn't exist
+% if ~exist(OUT_DIR, 'dir') mkdir(OUT_DIR); fprintf('Output directory created: %s\n', OUT_DIR);
+% else delete(fullfile(OUT_DIR, '*')); fprintf('Output directory already exists. Old files deleted: %s\n', OUT_DIR);
+% end % Create output directory if it doesn't exist
 
 mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
 
@@ -86,8 +86,14 @@ for si = 1:length(shots)
     
     % stats on the results
     fprintf('Stats for shot %d:\n', shot);
+    FxLg = reshape(FxLg, [], nt); % reshape FxLg to [65*28, nt]
+    Fxg_abs_err = abs(FxLg - FxNg); % absolute error
+    Fxq_abs_err = abs(FxLq - FxNq); % absolute error on control points
 
-
+    fprintf('Fx on grid: \n avg: %.4f \n std: %.4f \n max: %.4f \n', ...
+        mean(Fxg_abs_err(:)), std(Fxg_abs_err(:)), max(Fxg_abs_err(:)));
+    fprintf('Fx on control points: \n avg: %.4f \n std: %.4f \n max: %.4f \n', ...
+        mean(Fxq_abs_err(:)), std(Fxq_abs_err(:)), max(Fxq_abs_err(:)));
 
 end % end shots loop
 
