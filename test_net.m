@@ -53,17 +53,17 @@ for si = 1:length(shots)
     % NOTE2: L = liuqe, N = net, g = grid, q = ctrl pts
 
     shot = shots(si);
-    s = load_shot_mg(shot); % load shot data
+    [t, Fx, Br, Bz, Bm, Ff, Ft, Ia, Ip, Iu, rBt] = load_shot_mg(shot, OUT_DIR); % load shot data
 
-    tidxs = find(s.t >= TIME_INTERV(1) & s.t <= TIME_INTERV(2)); % find time indices
+    tidxs = find(t >= TIME_INTERV(1) & t <= TIME_INTERV(2)); % find time indices
     tidxs = tidxs(1:DEC:end); % decimate the time samples
     nt = numel(tidxs); % number of time samples
     assert(nt >= 1, 'No time samples in the specified interval');
     fprintf('Time samples: %d\n', nt);
 
     % LIUQE/true values
-    t = s.t(tidxs); % time vector
-    FxLg = s.Fx(:,:,tidxs); % Fx on grid
+    t = t(tidxs); % time vector
+    FxLg = Fx(:,:,tidxs); % Fx on grid
     
     size(FxLg) % check size
     FxLg = squeeze(FxLg); % remove singleton dimensions
@@ -75,7 +75,7 @@ for si = 1:length(shots)
     FxNq = zeros(nq, nt); % preallocate Fx on control points
     
     % run net inference + interpolate
-    phys = [s.Bm; s.Ff; s.Ft; s.Ia; s.Ip; s.Iu; s.rBt]; % net inputs
+    phys = [Bm; Ff; Ft; Ia; Ip; Iu; rBt]; % net inputs
     phys = phys(:, tidxs);
 
     for i = 1:nt % loop over time points
@@ -98,19 +98,16 @@ fprintf('Output files saved in: %s\n', OUT_DIR);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% FUNCTIONS
 
-%vars for functions
-MIN_TIME_SAMPLES = 10; % Minimum number of time samples to keep the shot
-MAX_IP_PERC_DIFF = 2.5; % Maximum percentage difference between IPLIUQE and IP
-
-
 % load shot
-function [t, Fx, Br, Bz, Bm, Ff, Ft, Ia, Ip, Iu, rBt] = load_shot_mg(shot)
+function [t, Fx, Br, Bz, Bm, Ff, Ft, Ia, Ip, Iu, rBt] = load_shot_mg(shot, OUT_DIR)
     save_file = fullfile(OUT_DIR, sprintf('%d_cache.mat', shot));
 
     if exist(save_file, 'file') % use cached data if available
         load(save_file, 't', 'Fx', 'Iy', 'Br', 'Bz', 'Bm', 'Ff', 'Ft', 'Ia', 'Ip', 'Iu', 'rBt');
         fprintf('Loaded cached data for shot %d from: %s\n', shot, save_file);
     else
+        MIN_TIME_SAMPLES = 10; % Minimum number of time samples to keep the shot
+        MAX_IP_PERC_DIFF = 2.5; % Maximum percentage difference between IPLIUQE and IP
         mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
         %% Load liuqe data
@@ -137,8 +134,6 @@ function [t, Fx, Br, Bz, Bm, Ff, Ft, Ia, Ip, Iu, rBt] = load_shot_mg(shot)
         Iy = LY.Iy; % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
         Br = Brx;
         Bz = Bzx;
-        rq = rq; % LCFS r coordinate
-        zq = zq; % LCFS z coordinate
 
         % Inputs
         Bm = LX.Bm; 
@@ -154,8 +149,6 @@ function [t, Fx, Br, Bz, Bm, Ff, Ft, Ia, Ip, Iu, rBt] = load_shot_mg(shot)
         assert(all(size(Iy) == [63, 26, nt]), 'Iy has wrong size');
         assert(all(size(Br) == [65, 28, nt]), 'Brx has wrong size');
         assert(all(size(Bz) == [65, 28, nt]), 'Bzx has wrong size');
-        assert(all(size(rq) == [129, nt]), 'rq has wrong size');
-        assert(all(size(zq) == [129, nt]), 'zq has wrong size');
         assert(all(size(Bm) == [38, nt]), 'Bm has wrong size');
         assert(all(size(Ff) == [38, nt]), 'Ff has wrong size');
         assert(all(size(Ft) == [1, nt]), 'Ft has wrong size');
