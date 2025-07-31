@@ -1,8 +1,10 @@
+%% init
 clear all; close all; clc;
+
 % Directory to save the output .mat files
 OUT_DIR = 'test_shots'; % more space available
 
-TIME_INTERV = [0.6, 0.8]; % time interval
+TIME_INTERV = [0.4, 0.9]; % time interval
 DEC = 1; % decimation factor
 
 % if ~exist(OUT_DIR, 'dir') mkdir(OUT_DIR); fprintf('Output directory created: %s\n', OUT_DIR);
@@ -89,11 +91,16 @@ for si = 1:length(shots)
     FxLg = reshape(FxLg, [], nt); % reshape FxLg to [65*28, nt]
     Fxg_abs_err = abs(FxLg - FxNg); % absolute error
     Fxq_abs_err = abs(FxLq - FxNq); % absolute error on control points
+    Fx_range = [min(FxLg, [], 1); max(FxLg, [], 1)]; % [2, nt]: min and max for each time step
+    Fxg_perc_err = 100 * Fxg_abs_err ./ Fx_range(2, :); % percentage error on grid
+    Fxq_perc_err = 100 * Fxq_abs_err ./ Fx_range(2, :); % percentage error on control points
 
-    fprintf('Fx on grid: \n avg: %.4f \n std: %.4f \n max: %.4f \n', ...
-        mean(Fxg_abs_err(:)), std(Fxg_abs_err(:)), max(Fxg_abs_err(:)));
-    fprintf('Fx on control points: \n avg: %.4f \n std: %.4f \n max: %.4f \n', ...
-        mean(Fxq_abs_err(:)), std(Fxq_abs_err(:)), max(Fxq_abs_err(:)));
+    fprintf('Fx on grid: \n abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.4f%%, std %.4f%%, max %.4f%%\n', ...
+        mean(Fxg_abs_err(:)), std(Fxg_abs_err(:)), max(Fxg_abs_err(:)), ...
+        mean(Fxg_perc_err(:)), std(Fxg_perc_err(:)), max(Fxg_perc_err(:)));
+    fprintf('Fx on control points: \n abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.4f%%, std %.4f%%, max %.4f%%\n', ...
+        mean(Fxq_abs_err(:)), std(Fxq_abs_err(:)), max(Fxq_abs_err(:)), ...
+        mean(Fxq_perc_err(:)), std(Fxq_perc_err(:)), max(Fxq_perc_err(:))); 
 
 end % end shots loop
 
