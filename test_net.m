@@ -79,8 +79,8 @@ for si = 1:length(shots)
     phys = phys(:, tidxs);
 
     for i = 1:nt % loop over time points
-        [FxNg(:, i), _, _] = net_forward(phys(:, i), rg, zg); % inference on grid
-        [FxNq(:, i), _, _] = net_forward(phys(:, i), rq, zq); % inference on control points
+        [FxNg(:, i), ~, ~] = net_forward(phys(:, i), rg, zg); % inference on grid
+        [FxNq(:, i), ~, ~] = net_forward(phys(:, i), rq, zq); % inference on control points
         FxLq(:, i) = interp2(gr, gz, squeeze(FxLg(:,:,i)), rq, zq);
     end % end time loop
     
