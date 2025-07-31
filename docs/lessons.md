@@ -54,4 +54,5 @@ Main data structures:
   
 
 
-
+## Hybrid
+- to run shape controller: first `create_test_shots`, then `main_shape_ctrl`
