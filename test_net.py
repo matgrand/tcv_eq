@@ -6,17 +6,26 @@ OUT_DIR = 'test_shots'; #% more space available
 TIME_INTERV = [0.4, 0.9]; #% time interval
 DEC = 1; #% decimation factor
 
-# ONNX_NET_PATH = 'onnx_net_forward/net.onnx'
-# ONNX_NET_PATH = 'data/best_old/net.onnx'
-ONNX_NET_PATH = 'data/best/net.onnx'
+# ONNX_NET_PATH = 'onnx_net_forward/net.onnx' #bad opset 15
+# ONNX_NET_PATH = 'data/best_old/net.onnx'  
+# ONNX_NET_PATH = 'data/best/net.onnx'
 # ONNX_NET_PATH = 'data/2988088/net.onnx'
+# ONNX_NET_PATH = 'data/2777016/net.onnx'
+# ONNX_NET_PATH = 'data/3009496/net.onnx' 
+ONNX_NET_PATH = 'data/3009431/net.onnx' 
+
+# ONNX_NET_PATH1 = 'data/local/net_dyn.onnx'
+# ONNX_NET_PATH2 = 'data/local/net_dyn_ops17.onnx'
+# ONNX_NET_PATH1 = 'data/3009496/net.onnx'
+# ONNX_NET_PATH2 = 'data/3009496/net_dyn_ops17.onnx'
+
 
 
 shots = [
-    79742, # single null
-    86310, # double null
-    78893, # negative triangularity
-    83848, # ?
+    # 79742, # single null
+    # 86310, # double null
+    # 78893, # negative triangularity
+    # 83848, # ?
     78071  # standard, test ctrl pts (t=0.571) (warn: theta is wrong)
 ]
 
@@ -51,6 +60,21 @@ def net_forward(phys, r, z):
     Fx, Br, Bz = outputs[:, 0], outputs[:, 1], outputs[:, 2]
     return Fx, Br, Bz
 
+# ## Pytorch version
+# PT_NET_DIR = 'data/3009431/'
+# x_mean_std = to_tensor(np.load(f'{PT_NET_DIR}/x_mean_std.npz')['x_mean_std'])
+# m = FullNet(InputNet(x_mean_std), PtsEncoder(), FHead(3), FHead(1), LCFSHead())
+# m = m.to(CPU) # move to CPU
+# m.load_state_dict(torch.load(model_path(FX, save_dir=PT_NET_DIR), weights_only=True, map_location=torch.device(CPU))) # load pretrained model
+# net = LiuqeRTNet(m.input_net, m.pts_enc, m.rt_head) # create LiuqeRTNet
+# def net_forward(phys, r, z):
+#     phys = torch.tensor(phys, dtype=torch.float32)
+#     r = torch.tensor(r, dtype=torch.float32)
+#     z = torch.tensor(z, dtype=torch.float32)
+#     with torch.no_grad():
+#         outputs = net(phys, r, z)
+#     Fx, Br, Bz = outputs[:, 0].numpy(), outputs[:, 1].numpy(), outputs[:, 2].numpy()
+#     return Fx, Br, Bz
 
 # dummy control points
 
@@ -91,7 +115,7 @@ for shot in shots:
     FxNq = np.zeros((nq, nt))
 
     # Net inputs
-    phys = np.vstack([Bm, Ff, Ft, Ia, Ip, Iu, rBt])
+    phys = np.vstack([Bm, Ff, Ft, Ia, Ip, 0.0*Iu, rBt])
     phys = phys[:, tidxs]
 
     for i in range(nt):

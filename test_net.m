@@ -17,17 +17,21 @@ catch
 end
 
 shots = [
-    79742 % single null
-    86310 % double null
-    78893 % negative triangularity
-    83848 % ?
+    % 79742 % single null
+    % 86310 % double null
+    % 78893 % negative triangularity
+    % 83848 % ?
     78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
 ];
 
 %% net stuff
 % load the ONNX model
 addpath([pwd '/onnx_net_forward']);
-model_path = [pwd '/onnx_net_forward/net.onnx'];
+addpath(genpath([pwd '/data']));
+% ONNX_NET_PATH = 'data/best/net.onnx'; 
+ONNX_NET_PATH = 'data/3009431/net.onnx';
+
+model_path = [pwd '/' ONNX_NET_PATH];
 net_forward_mex(model_path); % first call to load the model
 
 % dummy control points
@@ -76,7 +80,7 @@ for si = 1:length(shots)
     FxNq = zeros(nq, nt); % preallocate Fx on control points
     
     % run net inference + interpolate
-    phys = [Bm; Ff; Ft; Ia; Ip; Iu; rBt]; % net inputs
+    phys = [Bm; Ff; Ft; Ia; Ip; 0*Iu; rBt]; % net inputs
     phys = phys(:, tidxs);
 
     for i = 1:nt % loop over time points
