@@ -427,7 +427,6 @@ class LiuqeDataset(Dataset):
     def __init__(self, ds_path, verbose=True):
         d = load_ds(ds_path)
         x_mean_std = to_tensor(d.pop("x_mean_std")) # mean and std for inputs
-        print(f"x_mean_std: {x_mean_std.shape}, {x_mean_std.dtype}, {x_mean_std.device}\n{x_mean_std}")
         self.fg = d.pop(FG) # pop the full grid 
         print(f"Dataset loaded from {ds_path}, keys: {d.keys()}")
         self.data = {k:to_tensor(v) for k,v in d.items()} # convert to tensors
