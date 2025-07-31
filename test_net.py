@@ -146,7 +146,7 @@ for shot in shots:
     # Plot (grid)
     import matplotlib.pyplot as plt
     grid_t_idx = 0
-    plt.figure(figsize=(18, 8), num=f'Shot {shot} Fx Comparison')
+    plt.figure(figsize=(18, 10), num=f'Shot {shot} Fx Comparison')
     for row in range(2):
         for col in range(4):
             plt.subplot(2, 4, row * 4 + col + 1)
@@ -177,7 +177,7 @@ for shot in shots:
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
     # Plot (control points)
-    plt.figure(figsize=(18, 8), num=f'Shot {shot} Fx Control Points')
+    plt.figure(figsize=(18, 10), num=f'Shot {shot} Fx Control Points')
     for k in range(nq):
         plt.subplot(nq, 3, 3 * k + 1)
         plt.plot(t, FxLq[k, :], label='LIUQE')
