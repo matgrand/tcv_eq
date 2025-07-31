@@ -103,25 +103,26 @@ for si = 1:length(shots)
         mean(Fxq_perc_err(:)), std(Fxq_perc_err(:)), max(Fxq_perc_err(:))); 
 
     % plot (grid)
+    grid_t_idx = 1; % plot only the first time step for the grid
     figure('Name', sprintf('Shot %d Fx Comparison', shot), 'Position', [100, 100, 1800, 800]);
     for row = 1:2
         for col = 1:4
             subplot(2,4,(row-1)*4+col);
             switch col
                 case 1
-                    data = FxLg(:,1); title_str = 'FxLg (True)';
+                    data = FxLg(:,grid_t_idx); title_str = 'FxLg (True)';
                 case 2
-                    data = FxNg(:,1); title_str = 'FxNg (Net)';
+                    data = FxNg(:,grid_t_idx); title_str = 'FxNg (Net)';
                 case 3
-                    data = Fxg_abs_err(:,1); title_str = 'Abs Error';
+                    data = Fxg_abs_err(:,grid_t_idx); title_str = 'Abs Error';
                 case 4
-                    data = Fxg_perc_err(:,1); title_str = 'Perc Error (%)';
+                    data = Fxg_perc_err(:,grid_t_idx); title_str = 'Perc Error (%)';
             end
             if row == 1
                 scatter(rg, zg, 30, data, 'filled');
                 colorbar;
             else
-                contourf(reshape(rg,28,65)', reshape(zg,28,65)', reshape(data,65,28));
+                contourf(reshape(rg,65,28), reshape(zg,65,28), reshape(data,65,28));
                 colorbar;
             end
             axis equal tight;
@@ -132,7 +133,7 @@ for si = 1:length(shots)
     sgtitle(sprintf('Shot %d, t=%.3f s', shot, t(1)));
     
     % plot (control points)
-    figure('Name', sprintf('Shot %d Fx Control Points', shot), 'Position', [100, 100, 1200, 300*nq]);
+    figure('Name', sprintf('Shot %d Fx Control Points', shot), 'Position', [100, 100, 1200, 100*nq]);
     for k = 1:nq
         subplot(nq,2,2*(k-1)+1);
         plot(t, FxLq(k,:), 'b-', 'LineWidth', 2); hold on;
