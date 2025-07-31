@@ -1,8 +1,6 @@
 function run_net_on_shot(shot_number, save_dir)
     fprintf('Running network on shot %d, saving in %s\n', shot_number, save_dir);
     try
-        n_ctrl_pts = 25; % number of control points
-
         addpath([pwd '/onnx_net_forward']);
         model_path = [pwd '/onnx_net_forward/net.onnx'];
 
@@ -27,13 +25,10 @@ function run_net_on_shot(shot_number, save_dir)
 %         nq = size(rq, 1); % number of points on the LCFS
 
         % dummy interpolation points
-        nq = 25;
+        nq = 5; % number of control points
         thetaq = linspace(0,2*pi,nq+1); thetaq = thetaq(1:end-1)';
         rq = single(0.88 + 0.15*cos(thetaq));
         zq = single(0.20 + 0.45*sin(thetaq));
-%         rq = single(repmat(rq,1,nt));
-%         zq = single(repmat(zq,1,nt));        
-        % fprintf('LCFS points: %d\n', nq);
 
 %         % fixed control points
 %         rc = [0.7038, 0.6722, 0.6516, 0.7108, 0.9376, 1.0843, 1.0931, 0.9414, 0.8023, 0.6240];
@@ -54,53 +49,52 @@ function run_net_on_shot(shot_number, save_dir)
         r = single(r(:));
         z = single(z(:));
 
-        Fxg = zeros(65*28, nt); % preallocate Fx
-        Brg = zeros(65*28, nt); % preallocate Br
-        Bzg = zeros(65*28, nt); % preallocate Bz
-        Fxq = zeros(nq, nt); % preallocate Fxq
-        Brq = zeros(nq, nt); % preallocate Brq
-        Bzq = zeros(nq, nt); % preallocate Bzq        
-        Fxq_true = zeros(nq, nt); % preallocate Fxq
-%         Brq_true = zeros(nq, nt); % preallocate Brq
-%         Bzq_true = zeros(nq, nt); % preallocate Bzq
+        FxgN = zeros(65*28, nt); % preallocate Fx
+        BrgN = zeros(65*28, nt); % preallocate Br
+        BzgN = zeros(65*28, nt); % preallocate Bz
+        FxqN = zeros(nq, nt); % preallocate Fxq
+        BrqN = zeros(nq, nt); % preallocate Brq
+        BzqN = zeros(nq, nt); % preallocate Bzq        
+        FxqL = zeros(nq, nt); % preallocate Fxq Liuqe interpolated
+        BrqL = zeros(nq, nt); % preallocate Brq
+        BzqL = zeros(nq, nt); % preallocate Bzq
 
         start = tic; % start timer
         for i = 1:nt % loop over time points
-            [Fxg(:,i), Brg(:,i), Bzg(:,i)] = net_forward_mex(phys(:, i), r, z);
-            [Fxq(:,i), Brq(:,i), Bzq(:,i)] = net_forward_mex(phys(:, i), rq, zq);
-            % avg_norm_Fxq = mean(vecnorm(Fxq(:,i)));
-            % avg_norm_Brq = mean(vecnorm(Brq(:,i)));
-            % avg_norm_Bzq = mean(vecnorm(Bzq(:,i)));
+            [FxgN(:,i), BrgN(:,i), BzgN(:,i)] = net_forward_mex(phys(:, i), r, z);
+            [FxqN(:,i), BrqN(:,i), BzqN(:,i)] = net_forward_mex(phys(:, i), rq, zq);
             % fprintf('Time %d: avg(norm(Fxq)) = %.4f, avg(norm(Brq)) = %.4f, avg(norm(Bzq)) = %.4f\n', i, avg_norm_Fxq, avg_norm_Brq, avg_norm_Bzq);
             
 %             drx = gr(2)-gr(1); dzx = gz(2) - gz(1);
 %             inp.n = 9; qpM = qintc(inp,drx,dzx); % qintmex consolidation
-%            [Fxq_true(:,i), Brq_true(:,i), Bzq_true(:,i)] = qintmex(gr,gz,squeeze(d.Fx(:,:,i)),double(rq),double(zq),qpM);
-           Fxq_true(:,i) = interp2(gr,gz,squeeze(d.Fx(:,:,i)),double(rq),double(zq));
+%            [FxqL(:,i), BrqL(:,i), BzqL(:,i)] = qintmex(gr,gz,squeeze(d.Fx(:,:,i)),double(rq),double(zq),qpM);
+           FxqL(:,i) = interp2(gr,gz,squeeze(d.Fx(:,:,i)),double(rq),double(zq));
+           BrqL(:,i) = interp2(gr,gz,squeeze(d.Br(:,:,i)),double(rq),double(zq));
+           BzqL(:,i) = interp2(gr,gz,squeeze(d.Bz(:,:,i)),double(rq),double(zq));
         end
         elapsed_time = toc(start); % measure elapsed time
         fprintf('Elapsed time for shot %d: %.2f seconds\n', shot_number, elapsed_time);
 
         % reshape results to match the grid size
-        Fxg = reshape(Fxg, 65, 28, nt);
-        Brg = reshape(Brg, 65, 28, nt);
-        Bzg = reshape(Bzg, 65, 28, nt);
+        FxgN = reshape(FxgN, 65, 28, nt);
+        BrgN = reshape(BrgN, 65, 28, nt);
+        BzgN = reshape(BzgN, 65, 28, nt);
 
-        assert(all(size(Fxg) == size(d.Fx)), 'Fx has wrong size');
-        assert(all(size(Brg) == size(d.Br)), 'Br has wrong size');
-        assert(all(size(Bzg) == size(d.Bz)), 'Bz has wrong size');
+        assert(all(size(FxgN) == size(d.Fx)), 'Fx has wrong size');
+        assert(all(size(BrgN) == size(d.Br)), 'Br has wrong size');
+        assert(all(size(BzgN) == size(d.Bz)), 'Bz has wrong size');
 
         % save results in a .mat file
         save_file = fullfile(save_dir, sprintf('%d_net.mat', shot_number));
-        save(save_file, 'Fxg', 'Brg', 'Bzg', 'Fxq', 'Brq', 'Bzq');
+        save(save_file, 'FxgN', 'BrgN', 'BzgN', 'FxqN', 'BrqN', 'BzqN', 'FxqL', 'BrqL', 'BzqL');
         fprintf('Saved results to: %s\n', save_file);
 
-        % plot
-        for i = 1 : 50 : nt
-          bar([Fxq(:,i), Fxq_true(:,i)])
-          legend('net','true')
-          pause(1e-2)
-        end
+%         % plot
+%         for i = 1 : 50 : nt
+%           bar([Fxq(:,i), FxqL(:,i)])
+%           legend('net','true')
+%           pause(1e-2)
+%         end
     catch ME
         fprintf('Error: %s\n', ME.message);
         fprintf('Stack trace:\n');
