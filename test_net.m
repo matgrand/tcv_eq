@@ -103,7 +103,7 @@ for si = 1:length(shots)
 
     % plot (grid)
     grid_t_idx = 1; % plot only the first time step for the grid
-    figure('Name', sprintf('Shot %d Fx Comparison', shot), 'Position', [20, 20, 1800, 1000]);
+    figure('Name', sprintf('Shot %d Fx Comparison', shot), 'Position', [10, 100, 1800, 800]);
     for row = 1:2
         for col = 1:4
             subplot(2,4,(row-1)*4+col);
@@ -132,7 +132,7 @@ for si = 1:length(shots)
     sgtitle(sprintf('Shot %d, t=%.3f s', shot, t(1)));
     
     % plot (control points)
-    figure('Name', sprintf('Shot %d Fx Control Points', shot), 'Position', [20, 20, 1800, 1000]);
+    figure('Name', sprintf('Shot %d Fx Control Points', shot), 'Position', [10, 100, 1800, 800]);
     for k = 1:nq
         subplot(nq,2,2*(k-1)+1);
         plot(t, FxLq(k,:), 'b-', 'LineWidth', 2); hold on;
