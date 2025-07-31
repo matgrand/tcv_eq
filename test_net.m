@@ -11,7 +11,10 @@ DEC = 1; % decimation factor
 % else delete(fullfile(OUT_DIR, '*')); fprintf('Output directory already exists. Old files deleted: %s\n', OUT_DIR);
 % end % Create output directory if it doesn't exist
 
-mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
+try
+    mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
+catch 
+end
 
 shots = [
     79742 % single null
@@ -152,7 +155,10 @@ for si = 1:length(shots)
 
 end % end shots loop
 
-mdsdisconnect; % Disconnect from MDSplus
+try 
+    mdsdisconnect; % Disconnect from MDSplus
+catch
+end
 fprintf('\nProcessing complete for all shots.\n');
 fprintf('Output files saved in: %s\n', OUT_DIR);
 
