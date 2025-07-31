@@ -1,0 +1,201 @@
+clear all; close all; clc;
+% Directory to save the output .mat files
+OUT_DIR = 'test_shots'; % more space available
+
+TIME_INTERV = [0.6, 0.8]; % time interval
+DEC = 1; % decimation factor
+
+if ~exist(OUT_DIR, 'dir') mkdir(OUT_DIR); fprintf('Output directory created: %s\n', OUT_DIR);
+else delete(fullfile(OUT_DIR, '*')); fprintf('Output directory already exists. Old files deleted: %s\n', OUT_DIR);
+end % Create output directory if it doesn't exist
+
+mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
+
+shots = [
+    79742 % single null
+    86310 % double null
+    78893 % negative triangularity
+    83848 % ?
+    78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
+];
+
+%% net stuff
+% load the ONNX model
+addpath([pwd '/onnx_net_forward']);
+model_path = [pwd '/onnx_net_forward/net.onnx'];
+net_forward_mex(model_path); % first call to load the model
+
+% dummy control points
+nq = 5; % number of control points
+thetaq = linspace(0,2*pi,nq+1); thetaq = thetaq(1:end-1)';
+rq = 0.88 + 0.15*cos(thetaq);
+zq = 0.20 + 0.45*sin(thetaq);
+
+% % fixed control points
+% rq = [0.7038, 0.6722, 0.6516, 0.7108, 0.9376, 1.0843, 1.0931, 0.9414, 0.8023, 0.6240];
+% zq = [-0.1195, 0.1285, 0.3775, 0.6159, 0.6127, 0.4150, 0.1691, -0.0246, -0.7500, -0.1229];
+% nq = length(rq); % number of control points
+
+fprintf('Control points: %d\n', nq);
+
+%load tcv grid
+tcv_grid = load('tcv_params/grid.mat');
+gr = tcv_grid.r; gz = tcv_grid.z;
+[rg, zg] = meshgrid(gr, gz); % create meshgrid
+rg = rg(:); zg = zg(:); % flatten 
+
+%% loop over the shots
+fprintf('Shots: %s\n', mat2str(shots));
+fprintf('\nStarting tests...\n');
+
+for si = 1:length(shots)
+    % NOTE: for now, do only Fx. Br and Bz later
+    % NOTE2: L = liuqe, N = net, g = grid, q = ctrl pts
+
+    shot = shots(si);
+    s = load_shot_mg(shot); % load shot data
+
+    tidxs = find(s.t >= TIME_INTERV(1) & s.t <= TIME_INTERV(2)); % find time indices
+    tidxs = tidxs(1:DEC:end); % decimate the time samples
+    nt = numel(tidxs); % number of time samples
+    assert(nt >= 1, 'No time samples in the specified interval');
+    fprintf('Time samples: %d\n', nt);
+
+    % LIUQE/true values
+    t = s.t(tidxs); % time vector
+    FxLg = s.Fx(:,:,tidxs); % Fx on grid
+    
+    size(FxLg) % check size
+    FxLg = squeeze(FxLg); % remove singleton dimensions
+    size(FxLg) % check size
+
+    % preallocate
+    FxNg = zeros(65*28, nt); % preallocate Fx on grid
+    FxLq = zeros(nq, nt); % preallocate Fx on control points
+    FxNq = zeros(nq, nt); % preallocate Fx on control points
+    
+    % run net inference + interpolate
+    phys = [s.Bm; s.Ff; s.Ft; s.Ia; s.Ip; s.Iu; s.rBt]; % net inputs
+    phys = phys(:, tidxs);
+
+    for i = 1:nt % loop over time points
+        [FxNg(:, i), _, _] = net_forward(phys(:, i), rg, zg); % inference on grid
+        [FxNq(:, i), _, _] = net_forward(phys(:, i), rq, zq); % inference on control points
+        FxLq(:, i) = interp2(gr, gz, squeeze(FxLg(:,:,i)), rq, zq);
+    end % end time loop
+    
+    % stats on the results
+    fprintf('Stats for shot %d:\n', shot);
+
+
+
+end % end shots loop
+
+mdsdisconnect; % Disconnect from MDSplus
+fprintf('\nProcessing complete for all shots.\n');
+fprintf('Output files saved in: %s\n', OUT_DIR);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% FUNCTIONS
+
+%vars for functions
+MIN_TIME_SAMPLES = 10; % Minimum number of time samples to keep the shot
+MAX_IP_PERC_DIFF = 2.5; % Maximum percentage difference between IPLIUQE and IP
+
+
+% load shot
+function [t, Fx, Br, Bz, Bm, Ff, Ft, Ia, Ip, Iu, rBt] = load_shot_mg(shot)
+    save_file = fullfile(OUT_DIR, sprintf('%d_cache.mat', shot));
+
+    if exist(save_file, 'file') % use cached data if available
+        load(save_file, 't', 'Fx', 'Iy', 'Br', 'Bz', 'Bm', 'Ff', 'Ft', 'Ia', 'Ip', 'Iu', 'rBt');
+        fprintf('Loaded cached data for shot %d from: %s\n', shot, save_file);
+    else
+        mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
+
+        %% Load liuqe data
+        [L, LY] = mds2meq(shot, 'LIUQE.M'); % get liuqe outputs from mdsplus
+        [L, LX] = liuqe(shot, LY.t); % get liuqe inputs 
+        
+        t = LY.t'; % time vector
+        [t2, ip2] = tcvget('IP', t); % calculated using magnetics at liuqe times
+
+        % analyze the time vector
+        assert(max(abs(t2 - t)) < 1e-8, 'Time vectors do not coincide');
+        assert(numel(t) > 1, sprintf('Time vector has insufficient elements: t:%s', mat2str(size(t))));
+        assert(max(abs(t - t2)) < 1e-8, 'Times do not coincide');
+        nt = numel(t); % number of time samples
+        
+        % calculate magnetic fields (copied from meqpost)
+        i4pirxdzx = 1./(4*pi*L.dzx*L.rx');
+        i4pirxdrx = 1./(4*pi*L.drx*L.rx');
+        [Brx,Bzx] = meqBrBz(LY.Fx,i4pirxdzx,i4pirxdrx,L.nzx,L.nrx);
+
+        %% extract quantities
+        % Ouputs
+        Fx = LY.Fx; % Plasma poloidal flux map | `(rx,zx,t)` | `[Wb]` |
+        Iy = LY.Iy; % Plasma current density map | `(ry,zy,t)` | `[A/m^2]` |
+        Br = Brx;
+        Bz = Bzx;
+        rq = rq; % LCFS r coordinate
+        zq = zq; % LCFS z coordinate
+
+        % Inputs
+        Bm = LX.Bm; 
+        Ff = LX.Ff;
+        Ft = LX.Ft;
+        Ia = LX.Ia; 
+        Ip = LX.Ip;
+        Iu = LX.Iu;
+        rBt = LX.rBt; 
+
+        % check the dimensions
+        assert(all(size(Fx) == [65, 28, nt]), 'Fx has wrong size');
+        assert(all(size(Iy) == [63, 26, nt]), 'Iy has wrong size');
+        assert(all(size(Br) == [65, 28, nt]), 'Brx has wrong size');
+        assert(all(size(Bz) == [65, 28, nt]), 'Bzx has wrong size');
+        assert(all(size(rq) == [129, nt]), 'rq has wrong size');
+        assert(all(size(zq) == [129, nt]), 'zq has wrong size');
+        assert(all(size(Bm) == [38, nt]), 'Bm has wrong size');
+        assert(all(size(Ff) == [38, nt]), 'Ff has wrong size');
+        assert(all(size(Ft) == [1, nt]), 'Ft has wrong size');
+        assert(all(size(Ia) == [19, nt]), 'Ia has wrong size');
+        assert(all(size(Ip) == [1, nt]), 'Ip has wrong size');
+        assert(all(size(Iu) == [38, nt]), 'Iu has wrong size');
+        assert(all(size(rBt) == [1, nt]), 'rBt has wrong size');
+        mdsclose; % Close the MDSplus connection
+
+        % save data into a .mat file
+        save(save_file, 't', 'Fx', 'Iy', 'Br', 'Bz', ...
+            'Bm', 'Ff', 'Ft', 'Ia', 'Ip', 'Iu', 'rBt');
+        fprintf('Saved data for shot %d to: %s\n', shot, save_file);
+    end
+
+end % load_shot_mg
+
+% network inference
+function [Fx, Br, Bz] = net_forward(phys, r, z)
+    [Fx, Br, Bz] = net_forward_mex(single(phys), single(r), single(z));
+    Fx = double(Fx); Br = double(Br); Bz = double(Bz); % convert to double
+end
+
+% calc Br, z, copied from meqpost
+function [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
+    % [Br,Bz] = meqBrBz(Fx,i4pirdz,i4pirdr,nz,nr)
+    % Compute Br,Bz fields
+    % General version that also accepts time-varying Fx
+
+    [Br,Bz] = deal(zeros(nz,nr,size(Fx,3))); % init
+    % Br = -1/(2*pi*R)* dF/dz
+    % Central differences dF/dz[i] =  F[i-1] - F[i+1]/(2*dz)
+    Br(2:end-1,:,:) = -i4pirdz.* (Fx(3:end,:,:) - Fx(1:end-2,:,:));
+    % At grid boundary i, use: dF/dz[i] = (-F(i+2) + 4*F(i+1) - 3*F(i))/(2*dz)
+    Br(end,:  ,:) = -i4pirdz          .* (+Fx(end-2,:,:) - 4*Fx(end-1,:,:) + 3*Fx(end,:,:));
+    Br(1  ,:  ,:) = -i4pirdz          .* (-Fx(    3,:,:) + 4*Fx(    2,:,:) - 3*Fx(  1,:,:));
+
+    % Bz = 1/(2*pi*R)* dF/dr
+    Bz(:,2:end-1,:) =  i4pirdr(2:end-1) .* (+Fx(:,  3:end,:) - Fx(:,1:end-2,:));
+    % Same as for Br
+    Bz(:,end    ,:) =  i4pirdr(end)     .* (+Fx(:,end-2,:) - 4*Fx(:,end-1,:) + 3*Fx(:,end,:));
+    Bz(:,1      ,:) =  i4pirdr(1)       .* (-Fx(:,    3,:) + 4*Fx(:,    2,:) - 3*Fx(:,  1,:));
+end    
