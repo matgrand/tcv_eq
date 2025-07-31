@@ -88,12 +88,11 @@ for si = 1:length(shots)
     Fxg_abs_err = abs(FxLg - FxNg); % absolute error
     Fxq_abs_err = abs(FxLq - FxNq); % absolute error on control points
     Fx_range = [min(FxLg, [], 1); max(FxLg, [], 1)]; % [2, nt]: min and max for each time step
-    assert(all(Fx_range(1, :) >= 0), 'Fx has negative values'); % check if Fx is non-negative
     assert(all(size(Fx_range) == [2, nt]), 'Fx_range has wrong size');
-    Fxg_perc_err = 100 * Fxg_abs_err ./ Fx_range(2, :); % percentage error on grid
-    Fxq_perc_err = 100 * Fxq_abs_err ./ Fx_range(2, :); % percentage error on control points
-    
-    
+    Fxg_perc_err = 100 * Fxg_abs_err ./ (Fx_range(2, :) - Fx_range(1, :)); % percentage error on grid
+    Fxq_perc_err = 100 * Fxq_abs_err ./ (Fx_range(2, :) - Fx_range(1, :)); % percentage error on control points
+
+
     fprintf('Avg range value: %.4f', mean(Fx_range(2, :)));
     fprintf('Fx on grid: \n abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.2f%%, std %.2f%%, max %.2f%%\n', ...
         mean(Fxg_abs_err(:)), std(Fxg_abs_err(:)), max(Fxg_abs_err(:)), ...
