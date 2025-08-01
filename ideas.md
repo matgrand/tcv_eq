@@ -35,3 +35,6 @@
 - training in pre-shot? o finetuning
 - similarity search degli spari con gli embeddings?
   
+
+## More ideas
+- test a train with only the most important physics inputs

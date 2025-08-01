@@ -186,11 +186,11 @@ class PtsEncoder(Module): # positional encoding for the input vector
     def __init__(self):
         super(PtsEncoder, self).__init__()
         self.pts_encoder = Sequential(
-            Linear(2, 16), ActF(),
-            # Linear(32, 32), ActF(), 
-            # Linear(32, PHYSICS_LS), ActF(), 
-            Linear(16, PHYSICS_LS), ActF(), # full
-            # Linear(16, PHYSICS_LS//2), ActF(),  # first half
+            # Linear(2, 16), ActF(),
+            # Linear(16, PHYSICS_LS), ActF(), # full
+            Linear(2, 32), ActF(),
+            Linear(32, 32), ActF(), 
+            Linear(32, PHYSICS_LS), ActF(), 
         )
     def forward(self, pts): return self.pts_encoder(pts) # pts: (BS, NP, 2) -> (BS, NP, PHYSICS_LS)
 
@@ -202,7 +202,8 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
         self.input_net = Sequential(
             Linear(NIN, 128), ActF(), # (NIN, 64) <-
             Linear(128, 64), ActF(), # (64, 64) <-
-            Linear(64, PHYSICS_LS), Tanh(), 
+            # Linear(64, PHYSICS_LS), Tanh(), 
+            Linear(64, PHYSICS_LS), ActF(), 
         )
     def forward(self, x): 
         assert x.shape[1] == NIN, f"x.shape[1] = {x.shape[1]}, NIN = {NIN}"
@@ -219,7 +220,6 @@ class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
         super(FHead, self).__init__()
         self.head = Sequential(
             Linear(PHYSICS_LS, 64), ActF(), # full
-            # Linear(PHYSICS_LS//2, 64), ActF(), # first half
             Linear(64, nout), ActF(),
         )
         self.nout = nout # number of outputs
@@ -442,9 +442,9 @@ class LiuqeDataset(Dataset):
         print(f"Dataset loaded from {ds_path}, keys: {d.keys()}")
         self.data = {k:to_tensor(v) for k,v in d.items()} # convert to tensors
 
-        # TMP WORKAROUND: MASK A SECTION OF PHYS INPUTS (Iu) from 97 -> 135, set it to 0
-        self.data[PHYS][:, 97:136] = 0.0 # set the section to 0, this is a workaround for the missing inputs in the dataset
-        x_mean_std[0, 97:136] = 0.0 # set the mean to 0 for the masked section
+        # # TMP WORKAROUND: MASK A SECTION OF PHYS INPUTS (Iu) from 97 -> 135, set it to 0
+        # self.data[PHYS][:, 97:136] = 0.0 # set the section to 0, this is a workaround for the missing inputs in the dataset
+        # x_mean_std[0, 97:136] = 0.0 # set the mean to 0 for the masked section
 
         # move to DEV (doable bc the dataset is fairly small, check memory usage)
         tot_memory_ds = sum([x.element_size()*x.nelement() for x in self.data.values()]) # total memory in bytes
