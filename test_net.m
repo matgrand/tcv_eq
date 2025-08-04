@@ -1,4 +1,5 @@
 
+
 %% init
 clear all; close all; clc;
 
@@ -32,7 +33,7 @@ test_io_directly = true;
 addpath([pwd '/onnx_net_forward']);
 addpath(genpath([pwd '/data']));
 % ONNX_NET_PATH = 'data/best/net.onnx'; 
-ONNX_NET_PATH = 'data/3009431/net.onnx';
+ONNX_NET_PATH = 'data/3011842/net.onnx'; % seems best, no 0*Iu required
 
 model_path = [pwd '/' ONNX_NET_PATH];
 net_forward_mex(model_path); % first call to load the model
@@ -181,38 +182,28 @@ if test_io_directly
     phys = net_input_log(1:136, :);      % (136, nt)
     ri   = net_input_log(137:161, :);    % (25, nt)
     zi   = net_input_log(162:186, :);    % (25, nt)
-
     nt = size(phys, 2); % number of time samples
-    for i = 1:nt
-        ph = phys(:, i); % physics inputs for time i
-        r = ri(:, i); % r1 control points for time i
-        z = zi(:, i); % z1 control points for time i
-        fprintf('ph: %s\n', mat2str(size(ph)));
-        fprintf('r: %s\n', mat2str(size(r)));
-        fprintf('z: %s\n', mat2str(size(z)));
-
+    net_output = zeros(25, 3, nt); % preallocate output (25 control points, 3 outputs, nt time samples)
+    for i = 1:nt-1
         [Fx, Br, Bz] = net_forward(phys(:, i), ri(:, i), zi(:, i)); % inference on control points
         Fx_lac8 = net_output_log(:,1,i)'; % output from lac8
         Br_lac8 = net_output_log(:,2,i)'; % output from lac8
         Bz_lac8 = net_output_log(:,3,i)'; % output from lac8
-
-        fprintf('Fx_lac8 size: %s\n', mat2str(size(Fx_lac8)));
-        fprintf('Br_lac8 size: %s\n', mat2str(size(Br_lac8)));
-        fprintf('Bz_lac8 size: %s\n', mat2str(size(Bz_lac8)));
-
-        fprintf('Fx size: %s\n', mat2str(size(Fx)));
-        fprintf('Br size: %s\n', mat2str(size(Br)));
-        fprintf('Bz size: %s\n', mat2str(size(Bz)));
-
+        net_output(:, 1, i) = Fx; % store Fx
+        net_output(:, 2, i) = Br; % store Br
+        net_output(:, 3, i) = Bz; % store Bz
         eFx = abs(Fx - Fx_lac8);
         eBr = abs(Br - Br_lac8);
         eBz = abs(Bz - Bz_lac8);
-
-        assert(max(eFx) < 1e-6, sprintf('Fx error too high at time %d: %.6f', i, max(eFx)));
-        assert(max(eBr) < 1e-6, sprintf('Br error too high at time %d: %.6f', i, max(eBr)));
-        assert(max(eBz) < 1e-6, sprintf('Bz error too high at time %d: %.6f', i, max(eBz)));
-
+        assert(max(eFx) < 1e-6, sprintf('Fx error too high at time %d: %.8f', i, max(eFx)));
+        assert(max(eBr) < 1e-6, sprintf('Br error too high at time %d: %.8f', i, max(eBr)));
+        assert(max(eBz) < 1e-6, sprintf('Bz error too high at time %d: %.8f', i, max(eBz)));
     end
+    % print average errors +. std
+    overall_errors = abs(net_output(:, :, :) - net_output_log(:, :, :)); % overall errors
+    fprintf('Average error: %.8f, std: %.8f\n', ...
+        mean(overall_errors(:)), std(overall_errors(:)));
+    fprintf('All tests passed: net_forward matches the output from lac8.\n');
 end
 
 
