@@ -4,7 +4,7 @@
 - train only one branch at a time to prove it works [GOOD]
 - add pre and post resclaing layers [ONLY PRE is fine]
 - somehow estimate xpoints when there are any 
-- bring it further, estimate everything (every fuking output (normalized)) with a support network
+- bring it further, estimate everything (every output (normalized)) with a support network
   (single layer) [KIND OF DONE, working]
 - to make batched position inference, just assemble a network with multiple copies of the trained
   one [DONE, maybe more elegant with convolutional layers]
