@@ -230,9 +230,8 @@ class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
         self.head = Sequential(
             # Linear(PHYSICS_LS, 64), ActF(), # full
             # Linear(64, nout), ActF(),
-            Linear(PHYSICS_LS, 128), ActF(), # full
-            Linear(128, 64), ActF(),
-            Linear(64, nout), ActF(), # full
+            Linear(PHYSICS_LS, 256), ActF(), # full
+            Linear(256, nout), ActF(), # full
         )
         self.nout = nout # number of outputs
     def forward(self, v): return self.head(v) if self.nout > 1 else self.head(v).squeeze(-1)
