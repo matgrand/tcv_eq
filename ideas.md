@@ -37,4 +37,8 @@
   
 
 ## More ideas
-- test a train with only the most important physics inputs
+- [ ] test a train with only the most important physics inputs
+- [ ] Analyze interpolation errors, specifically close to the grid edges (the padding?) (use finer grid?)
+- [ ] (related to previous one) split the netowork in 2? 1 for inner zone, and 1 for the one closer to the grid boundary (or closer to the sensors?)
+- Do I need a cleaner dataset to reach those precisions/accuracies?
+- [ ] Test a training with absolute error (not MSE)
