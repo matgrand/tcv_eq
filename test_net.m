@@ -1,3 +1,4 @@
+
 %% init
 clear all; close all; clc;
 
@@ -21,8 +22,10 @@ shots = [
     % 86310 % double null
     % 78893 % negative triangularity
     % 83848 % ?
-    78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
+    % 78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
 ];
+
+test_io_directly = true;
 
 %% net stuff
 % load the ONNX model
@@ -170,7 +173,48 @@ try
 catch
 end
 fprintf('\nProcessing complete for all shots.\n');
-fprintf('Output files saved in: %s\n', OUT_DIR);
+
+if test_io_directly
+    % generated on lac8
+    net_input_log = load('test_shots/net_input_log.mat').net_input_log;
+    net_output_log = load('test_shots/net_output_log.mat').net_output_log;
+    phys = net_input_log(1:136, :);      % (136, nt)
+    ri   = net_input_log(137:161, :);    % (25, nt)
+    zi   = net_input_log(162:186, :);    % (25, nt)
+
+    nt = size(phys, 2); % number of time samples
+    for i = 1:nt
+        ph = phys(:, i); % physics inputs for time i
+        r = ri(:, i); % r1 control points for time i
+        z = zi(:, i); % z1 control points for time i
+        fprintf('ph: %s\n', mat2str(size(ph)));
+        fprintf('r: %s\n', mat2str(size(r)));
+        fprintf('z: %s\n', mat2str(size(z)));
+
+        [Fx, Br, Bz] = net_forward(phys(:, i), ri(:, i), zi(:, i)); % inference on control points
+        Fx_lac8 = net_output_log(:,1,i)'; % output from lac8
+        Br_lac8 = net_output_log(:,2,i)'; % output from lac8
+        Bz_lac8 = net_output_log(:,3,i)'; % output from lac8
+
+        fprintf('Fx_lac8 size: %s\n', mat2str(size(Fx_lac8)));
+        fprintf('Br_lac8 size: %s\n', mat2str(size(Br_lac8)));
+        fprintf('Bz_lac8 size: %s\n', mat2str(size(Bz_lac8)));
+
+        fprintf('Fx size: %s\n', mat2str(size(Fx)));
+        fprintf('Br size: %s\n', mat2str(size(Br)));
+        fprintf('Bz size: %s\n', mat2str(size(Bz)));
+
+        eFx = abs(Fx - Fx_lac8);
+        eBr = abs(Br - Br_lac8);
+        eBz = abs(Bz - Bz_lac8);
+
+        assert(max(eFx) < 1e-6, sprintf('Fx error too high at time %d: %.6f', i, max(eFx)));
+        assert(max(eBr) < 1e-6, sprintf('Br error too high at time %d: %.6f', i, max(eBr)));
+        assert(max(eBz) < 1e-6, sprintf('Bz error too high at time %d: %.6f', i, max(eBz)));
+
+    end
+end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% FUNCTIONS
