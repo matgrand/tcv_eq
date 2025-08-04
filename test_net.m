@@ -201,7 +201,7 @@ if test_io_directly
     end
     % print average errors +. std
     overall_errors = abs(net_output(:, :, :) - net_output_log(:, :, :)); % overall errors
-    fprintf('Average error: %.8f, std: %.8f\n', ...
+    fprintf('Average error: %.5e, std: %.5e\n', ...
         mean(overall_errors(:)), std(overall_errors(:)));
     fprintf('All tests passed: net_forward matches the output from lac8.\n');
 end
