@@ -23,7 +23,7 @@ shots = [
     % 86310 % double null
     % 78893 % negative triangularity
     % 83848 % ?
-    % 78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
+    78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
 ];
 
 test_io_directly = true;
@@ -195,15 +195,15 @@ if test_io_directly
         eFx = max(abs(Fx - Fx_lac8));
         eBr = max(abs(Br - Br_lac8));
         eBz = max(abs(Bz - Bz_lac8));
-        if eFx >= 1e-6, fprintf('Fx error too high at time %d: %.8f\n', i, eFx); end
-        if eBr >= 1e-6, fprintf('Br error too high at time %d: %.8f\n', i, eBr); end
-        if eBz >= 1e-6, fprintf('Bz error too high at time %d: %.8f\n', i, eBz); end
+        if eFx >= 1e-6, fprintf('Fx error too high at time %d: %.8f\n', i, eFx); break; end
+        if eBr >= 1e-6, fprintf('Br error too high at time %d: %.8f\n', i, eBr); break; end
+        if eBz >= 1e-6, fprintf('Bz error too high at time %d: %.8f\n', i, eBz); break; end
     end
     % print average errors +. std
     overall_errors = abs(net_output(:, :, :) - net_output_log(:, :, :)); % overall errors
     fprintf('Average error: %.5e, std: %.5e\n', ...
         mean(overall_errors(:)), std(overall_errors(:)));
-    fprintf('All tests passed: net_forward matches the output from lac8.\n');
+    fprintf('Test finished.\n');
 end
 
 
