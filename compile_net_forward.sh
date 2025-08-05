@@ -40,7 +40,8 @@ echo "ONNX full path: $ONNXRUNTIME_DIR"
 echo "---------------------------------------------------------------------------------"
 
 if [[ "$OS_TYPE" == "Linux" ]]; then
-    MATLABROOT="/usr/local/MATLAB/R2019a" # lac8
+    # MATLABROOT="/usr/local/MATLAB/R2019a" # lac8 2019a
+    MATLABROOT="/usr/local/MATLAB/R2021a" # lac8 2021a
 elif [[ "$OS_TYPE" == "Darwin" ]]; then
     MATLABROOT="/Applications/MATLAB_R2024b.app" # macOS
 else

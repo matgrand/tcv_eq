@@ -752,7 +752,7 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test", save_dir=
         mbr, Mbr = np.min([br[iv], brp[iv]]), np.max([br[iv], brp[iv]])
         mbz, Mbz = np.min([bz[iv], bzp[iv]]), np.max([bz[iv], bzp[iv]])
         lw, col, ms = 1.5, 'gray', 4
-        limits = [(mfx, Mfx), (miy, Miy), (mbr, Mbr), (mbz, Mbz)]
+        limits = [(mfx, Mfx), (miy, Miy), (mbr, Mbr), (mbz, Mbz)] # variable limits
         vals = [(fx, fxp), (iy, iyp), (br, brp), (bz, bzp)]
         names = ["Fx", "Iy", "Br", "Bz"]
         def prep_plot(ax):
@@ -779,7 +779,8 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test", save_dir=
             prep_plot(plt.gca()), plt.colorbar()
             plt.subplot(nraws, ncols, j*(ncols//2) + ncols//2), plt.title(f"{n} Error %")
             ep = 100*np.abs(v[iv]-vp[iv])/(l[1]-l[0]) # error in %
-            plt.scatter(p[iv,0], p[iv,1], c=ep, s=ms, vmin=0, vmax=np.max(ep))
+            # plt.scatter(p[iv,0], p[iv,1], c=ep, s=ms, vmin=0, vmax=np.max(ep)) # variable bar
+            plt.scatter(p[iv,0], p[iv,1], c=ep, s=ms, vmin=0, vmax=np.max(ep) if n == IY else 0.5) # fixed bar
             if show_lcfs: plt.plot(sep[:NLCFS], sep[NLCFS:], '--w', lw=1, alpha=α_sep)
             prep_plot(plt.gca()), plt.colorbar()
             if on_grid: # plot contours if on grid

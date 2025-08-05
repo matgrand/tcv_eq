@@ -95,7 +95,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         }
         // Replaced std::filesystem::path with std::string
         std::string model_path_from_arg = model_path_buf;
-        mexPrintf("Using model path: %s\n", model_path_buf);
+        mexPrintf("Trying to load model path: %s\n", model_path_buf);
         load_session_once(model_path_from_arg); // Load the session with the provided model path
         return; // Exit after loading the session
     } else {
