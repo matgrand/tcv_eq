@@ -32,11 +32,9 @@ test_io_directly = true;
 % load the ONNX model
 addpath([pwd '/onnx_net_forward']);
 addpath(genpath([pwd '/data']));
-% ONNX_NET_PATH = 'data/best/net.onnx'; 
-ONNX_NET_PATH = 'data/3011842/net.onnx'; % seems best, no 0*Iu required
-
-model_path = [pwd '/' ONNX_NET_PATH];
-net_forward_mex(model_path); % first call to load the model
+% ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3011842/net.onnx'; % seems best, no 0*Iu required
+ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3048577/net.onnx'; 
+net_forward_mex(ONNX_NET_PATH); % first call to load the model
 
 % dummy control points
 nq = 5; % number of control points
