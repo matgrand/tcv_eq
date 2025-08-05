@@ -190,13 +190,13 @@ class PtsEncoder(Module): # positional encoding for the input vector
             # Linear(2, 16), ActF(),
             # Linear(16, PHYSICS_LS), ActF(), # full
 
-            # Linear(2, 32), ActF(),
-            # Linear(32, 32), ActF(), 
-            # Linear(32, PHYSICS_LS), ActF(), 
+            Linear(2, 32), ActF(),
+            Linear(32, 32), ActF(), 
+            Linear(32, PHYSICS_LS), ActF(), 
 
-            Linear(2, 128), ActF(),
-            Linear(128, 128), ActF(),
-            Linear(128, PHYSICS_LS), ActF(),  # full
+            # Linear(2, 128), ActF(),
+            # Linear(128, 128), ActF(),
+            # Linear(128, PHYSICS_LS), ActF(),  # full
 
         )
     def forward(self, pts): return self.pts_encoder(pts) # pts: (BS, NP, 2) -> (BS, NP, PHYSICS_LS)
@@ -207,13 +207,14 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
         assert x_mean_std.shape == (2, NIN), f"x_mean_std.shape = {x_mean_std.shape}, NIN = {NIN}"
         self.x_mean_std = x_mean_std
         self.input_net = Sequential(
-            # Linear(NIN, 128), ActF(), # (NIN, 64) <-
-            # Linear(128, 64), ActF(), # (64, 64) <-
+            Linear(NIN, 128), ActF(), # (NIN, 64) <-
+            Linear(128, 64), ActF(), # (64, 64) <-
             # Linear(64, PHYSICS_LS), Tanh(), 
+            Linear(64, PHYSICS_LS), ActF(), 
 
-            Linear(NIN, 256), ActF(), # (NIN, 256) <-
-            Linear(256, 128), ActF(), # (256, 128) <-
-            Linear(128, PHYSICS_LS), Tanh(), # (128, PHYSICS_LS) <-
+            # Linear(NIN, 256), ActF(), # (NIN, 256) <-
+            # Linear(256, 128), ActF(), # (256, 128) <-
+            # Linear(128, PHYSICS_LS), Tanh(), # (128, PHYSICS_LS) <-
         )
     def forward(self, x): 
         assert x.shape[1] == NIN, f"x.shape[1] = {x.shape[1]}, NIN = {NIN}"
@@ -229,11 +230,10 @@ class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
     def __init__(self, nout=1):
         super(FHead, self).__init__()
         self.head = Sequential(
-            # Linear(PHYSICS_LS, 64), ActF(), # full
-            # Linear(64, nout), ActF(),
-
-            Linear(PHYSICS_LS, 256), ActF(), # full
-            Linear(256, nout), ActF(), # full
+            Linear(PHYSICS_LS, 64), ActF(), # full
+            Linear(64, nout), ActF(),
+            # Linear(PHYSICS_LS, 256), ActF(), # full
+            # Linear(256, nout), ActF(), # full
         )
         self.nout = nout # number of outputs
     def forward(self, v): return self.head(v) if self.nout > 1 else self.head(v).squeeze(-1)
@@ -242,13 +242,13 @@ class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
     def __init__(self):
         super(LCFSHead, self).__init__()
         self.lcfs = Sequential(
-            # Linear(PHYSICS_LS, 64), ActF(),
-            # Linear(64, 32), ActF(),
-            # Linear(32, NLCFS*2), ActF(),
+            Linear(PHYSICS_LS, 64), ActF(),
+            Linear(64, 32), ActF(),
+            Linear(32, NLCFS*2), ActF(),
 
-            Linear(PHYSICS_LS, 128), ActF(),
-            Linear(128, 64), ActF(),
-            Linear(64, NLCFS*2), ActF(),  # output is (NLCFS*2) for r and z coordinates
+            # Linear(PHYSICS_LS, 128), ActF(),
+            # Linear(128, 64), ActF(),
+            # Linear(64, NLCFS*2), ActF(),  # output is (NLCFS*2) for r and z coordinates
         )
     def forward(self, ph): return self.lcfs(ph)
 
