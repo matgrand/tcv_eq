@@ -35,6 +35,23 @@
 - training in pre-shot? o finetuning
 - similarity search degli spari con gli embeddings?
   
+### Notes on tests with Cosmas
+- Test with Cosmas controller
+- 9 modes, and 5 modes, 5 better
+- shot 87044
+- 1000ms starting from 1 -> 1.1 [s]
+- Net is vertically stable, nice, goes into a slight limiter configuration (with 9)
+- one mode is not going fully to 0
+- the response of the netowork to the controller might not be correct, it's not reacting to
+  controller changes
+- worse than lih
+- improve lih with a better current distributions estimate
+- with 5 modes is better -> broad shape is "fine", some mistakes in the finer details. -> I think
+  it's a problem of accuracy
+- estimate the response of the plasma to a variaiton in the coils current, even as a loss.
+- see influence of slight position variations (expect linear behaviour) 
+- [ ] investigate the my_pc/lac8 value difference. 
+- BIG - since the control points dont change during a shot, u dont need to recalculate them
 
 ## More ideas
 - [ ] test a train with only the most important physics inputs

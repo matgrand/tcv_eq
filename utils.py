@@ -181,7 +181,8 @@ def percentage_loss(a, b): # percentage loss (a = true, b = predicted)
     return torch.mean(err)  # return the mean error for each batch 
 
 # PHYSICS_LS = 64 # 128 physics latent size [ph] 64 <-
-PHYSICS_LS = 256 # try to go big
+# PHYSICS_LS = 256 # try to go big
+PHYSICS_LS = 128 
 
 class PtsEncoder(Module): # positional encoding for the input vector
     def __init__(self):
@@ -209,8 +210,8 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
         self.input_net = Sequential(
             Linear(NIN, 128), ActF(), # (NIN, 64) <-
             Linear(128, 64), ActF(), # (64, 64) <-
-            # Linear(64, PHYSICS_LS), Tanh(), 
-            Linear(64, PHYSICS_LS), ActF(), 
+            Linear(64, PHYSICS_LS), Tanh(), 
+            # Linear(64, PHYSICS_LS), ActF(), 
 
             # Linear(NIN, 256), ActF(), # (NIN, 256) <-
             # Linear(256, 128), ActF(), # (256, 128) <-
