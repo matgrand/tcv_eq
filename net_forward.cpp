@@ -78,6 +78,44 @@ void load_session_once(const std::string& model_path) {
     }
 }
 
+void load_session(const std::string& model_path) {
+    try {
+        // Changed model_path.string().c_str() to model_path.c_str()
+        mexPrintf("Loading ONNX model from: %s ...", model_path.c_str());
+
+        // Optional: configure session_options here (e.g., for execution providers)
+        session_options.SetIntraOpNumThreads(1); // Set number of threads for intra-op parallelism
+        // session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL); // default is ORT_SEQUENTIAL, ORT_PARALLEL slower
+        session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL); // default and best ORT_ENABLE_ALL
+        
+        // Create the ONNX Runtime session
+        // Changed model_path.string().c_str() to model_path.c_str()
+        ort_session = new Ort::Session(ort_env, model_path.c_str(), session_options);
+        
+        session_loaded = true;
+        mexPrintf(" Success.\n");
+
+        // Register cleanup function with MATLAB to be called when MEX is cleared or MATLAB exits
+        // This should only be done once.
+        static bool cleanup_registered = false;
+        if (!cleanup_registered) {
+            mexAtExit(cleanup_session);
+            cleanup_registered = true;
+        }
+
+    } catch (const Ort::Exception& e) {
+        delete ort_session; // Clean up if 'new Ort::Session' succeeded but a subsequent Ort call failed
+        ort_session = nullptr;
+        std::string err_msg = "Failed to load ONNX model: " + std::string(e.what()) + " (ErrorCode: " + std::to_string(e.GetOrtErrorCode()) + ")";
+        mexErrMsgIdAndTxt("MATLAB:net_forward:sessionLoadFailed", err_msg.c_str());
+    } catch (const std::exception& e) { // Catch other potential errors during setup
+        delete ort_session; // If new succeeded but std::string op failed etc.
+        ort_session = nullptr;
+        std::string err_msg = "A standard error occurred during ONNX session loading: " + std::string(e.what());
+        mexErrMsgIdAndTxt("MATLAB:net_forward:sessionLoadFailedStdEx", err_msg.c_str());
+    }
+}
+
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     // Check number of input arguments
