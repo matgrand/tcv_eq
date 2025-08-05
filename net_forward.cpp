@@ -134,7 +134,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         // Replaced std::filesystem::path with std::string
         std::string model_path_from_arg = model_path_buf;
         mexPrintf("Trying to load model path: %s\n", model_path_buf);
-        load_session_once(model_path_from_arg); // Load the session with the provided model path
+        // load_session_once(model_path_from_arg); // Load the session with the provided model path
+        load_session(model_path_from_arg); 
         return; // Exit after loading the session
     } else {
         if (nrhs != 3) { // If not a single string input, expect three inputs
@@ -146,7 +147,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     }
     
     // Ensure ONNX session is loaded (this also registers mexAtExit if it's the first successful load)
-    load_session_once(net_default_path); 
+    // load_session_once(net_default_path); 
 
     // Get input dimensions and data pointer
     size_t phys_size = mxGetNumberOfElements(prhs[0]);
