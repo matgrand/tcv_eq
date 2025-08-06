@@ -221,10 +221,14 @@ function [t, Fx, Br, Bz, Bm, Ff, Ft, Ia, Ip, Iu, rBt] = load_shot_mg(shot, OUT_D
         mdsopen('tcv_shot', shot); % Open the MDSplus connection to the TCV database
 
         %% Load liuqe data
-        [L, LY] = mds2meq(shot, 'LIUQE.M'); % get liuqe outputs from mdsplus
-        [L, LX] = liuqe(shot, LY.t); % get liuqe inputs 
-        
+        try 
+            [L, LY] = mds2meq(shot, 'LIUQE.M'); % get liuqe outputs from mdsplus
+            [L, LX] = liuqe(shot, LY.t); % get liuqe inputs 
+        catch ME
+            [L, LX, LY] = liuqe(shot);
+        end
         t = LY.t'; % time vector
+
         [t2, ip2] = tcvget('IP', t); % calculated using magnetics at liuqe times
 
         % analyze the time vector
