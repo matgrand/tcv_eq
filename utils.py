@@ -706,7 +706,7 @@ def _fill_between_polygons(ax, inner_poly, outer_poly, **kwargs):
     ax.add_patch(patch)
     return patch
 
-def plot_vessel(ax=None, lw=1.5, alpha=1.0):
+def plot_vessel(ax=None, lw=1.5, alpha=0.3):
     if ax is None: ax = plt.gca()
     ax.plot(VESS[:,0], VESS[:,1], color='white', lw=lw, alpha=alpha) # most inner
     ax.plot(VESSI[:,0], VESSI[:,1], color='white', lw=lw, alpha=alpha) # inner
