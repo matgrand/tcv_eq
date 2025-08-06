@@ -11,6 +11,7 @@ cd $HOME/repos/tcv_eq
 
 echo "Latest commit:"
 git log -1 --pretty=format:"[%h] %s"
+echo
 echo "Running dataset preparation script..."
 
 srun jupyter nbconvert prepare_dataset.ipynb --to python && python prepare_dataset.py && rm -rf prepare_dataset.py

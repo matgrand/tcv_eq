@@ -11,7 +11,7 @@ try
     % 25 -> 20 / 20+-10 / tot 27 static [much faster]
     clear; close all;
     % PLOT = false;
-    PLOT = true; % set to true to plot results
+    PLOT = false; % set to true to plot results
     n_ctrl_pts = 25; % number of control points
     N = 1000; % number of iterations for inference time test
 
@@ -19,7 +19,9 @@ try
     addpath([pwd '/onnx_net_forward']);
     % model_path = [pwd '/onnx_net_forward/net.onnx'];
     % model_path = [pwd '/data/3011842/net.onnx'];
-    model_path = [pwd '/data/3048577/net.onnx']; % 256 EMB SIZE
+    % model_path = [pwd '/data/3048577/net.onnx']; % 256 EMB SIZE
+    % model_path = [pwd '/data/3048577/net.onnx']; % 256 EMB SIZE
+    model_path = [pwd '/data/local/net.onnx']; % 256 EMB SIZE
 
     % first call to load the model
     net_forward_mex(model_path);
