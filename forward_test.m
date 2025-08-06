@@ -17,7 +17,9 @@ try
 
 
     addpath([pwd '/onnx_net_forward']);
-    model_path = [pwd '/onnx_net_forward/net.onnx'];
+    % model_path = [pwd '/onnx_net_forward/net.onnx'];
+    % model_path = [pwd '/data/3011842/net.onnx'];
+    model_path = [pwd '/data/3048577/net.onnx']; % 256 EMB SIZE
 
     % first call to load the model
     net_forward_mex(model_path);
@@ -54,7 +56,7 @@ try
 
     % use timeit to measure inference time
     fprintf('Measuring inference time...\n');
-    for n = [1, 10, 20, 25, 30, 100, 128, 256, 300, 400, 500, 1000]
+    for n = [1, 10, 20, 25, 30, 100, 128, 256]
         if n >= 100
             n_iter = round(N/3);
         else
@@ -139,7 +141,7 @@ try
                 title([labels{k} ' true']);
                 xlabel('r'); ylabel('z');
                 axis equal; colorbar;
-                caxis([fmin fmax]);
+                clim([fmin fmax]);
 
                 % Plot predicted value
                 subplot(3,3,3*(k-1)+2);
@@ -147,7 +149,7 @@ try
                 title([labels{k} ' pred']);
                 xlabel('r'); ylabel('z');
                 axis equal; colorbar;
-                caxis([fmin fmax]);
+                clim([fmin fmax]);
 
                 % Plot error map
                 subplot(3,3,3*(k-1)+3);

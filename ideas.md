@@ -60,3 +60,8 @@
 - Do I need a cleaner dataset to reach those precisions/accuracies?
 - [v] Test a training with absolute error (not MSE) [WORKS]
 - [ ] Test SoftPlus activation
+
+
+### Dataset mods
+- [ ] make the r,z borders wider (limit of the grid)
+- [ ] Br, Bz calculated from finer grid

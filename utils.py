@@ -45,6 +45,8 @@ SAVE_DIR = f"data/{JOBID}"
 
 N_CTRL_PTS = 25 # number of control points to estimate
 
+PINN = True # if True, use PINN, otherwise use standard model
+
 ##################################################################################################################################
 ## Dataset inputs/outputs (see create_ds.m)
 USE_REAL_INPUTS = True # if True, use real inputs, otherwise use random inputs
@@ -232,7 +234,8 @@ class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
         super(FHead, self).__init__()
         self.head = Sequential(
             Linear(PHYSICS_LS, 64), ActF(), # full
-            Linear(64, nout), ActF(),
+            Linear(64, 32), ActF(),
+            Linear(32, nout), ActF(),
             # Linear(PHYSICS_LS, 256), ActF(), # full
             # Linear(256, nout), ActF(), # full
         )
@@ -739,13 +742,9 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test", save_dir=
         if on_grid: 
             p = torch.stack([torch.tensor(RRD.reshape(-1), dtype=torch.float32), torch.tensor(ZZD.reshape(-1), dtype=torch.float32)], dim=1)  # shape (n, 2)
             fx, iy, br, bz = [to_tensor(v.reshape(-1)) for v in ds.fg[i]] # reshape to (n,)
-        # x, p, fx, iy, br, bz, sep = x.reshape(1,-1), r.reshape(1,NGR), z.reshape(1,NGZ), y1.reshape(1,1,NGZ,NGR), y2.reshape(1,1,NGZ,NGR), y3.reshape(1,2*NLCFS)
         rtp, iyp, sepp = model(x.unsqueeze(0), p.unsqueeze(0))
         fxp, brp, bzp = rtp[:,:,0], rtp[:,:,1], rtp[:,:,2]
         fxp, iyp, brp, bzp, sepp = map(lambda t: t.squeeze(0), [fxp, iyp, brp, bzp, sepp]) # remove batch dimension
-        # gso, gsop = calc_gso_batch(y1, r, z), calc_gso_batch(yp1, r, z)
-        # gso, gsop = gso.detach().numpy().reshape(NGZ,NGR), gsop.detach().numpy().reshape(NGZ,NGR)        
-        # rr, zz = np.meshgrid(r.detach().cpu().numpy(), z.detach().cpu().numpy())
         p, fx, iy, br, bz, fxp, iyp, brp, bzp, sepp = map(lambda t: t.detach().cpu().numpy(), [p, fx, iy, br, bz, fxp, iyp, brp, bzp, sepp]) # move to CPU and numpy
         iv = inpoly(p) # inside vessel indices
         mfx, Mfx = np.min([fx[iv], fxp[iv]]), np.max([fx[iv], fxp[iv]])

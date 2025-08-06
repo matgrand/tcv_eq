@@ -9,4 +9,10 @@
 #SBATCH --time=23:59:00
 cd $HOME/repos/tcv_eq
 echo "running job $SLURM_JOB_ID"
+echo "Latest commit:"
+git log -1 --pretty=format:"[%h] %s"
+echo "Running training script CPU..."
 srun jupyter nbconvert train.ipynb --to python && python train.py && rm -rf train.py
+echo "Latest commit:"
+git log -1 --pretty=format:"[%h] %s"
+echo "Training script completed."
