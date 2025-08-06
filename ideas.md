@@ -60,7 +60,7 @@
 - Do I need a cleaner dataset to reach those precisions/accuracies?
 - [v] Test a training with absolute error (not MSE) [WORKS]
 - [ ] Test SoftPlus activation
-
+- [ ] Test if 3 onnx net + manual combination in C++ is faster than single ONNX conversion
 
 ### Dataset mods
 - [ ] make the r,z borders wider (limit of the grid)

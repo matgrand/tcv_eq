@@ -27,6 +27,7 @@ shots = [
     78893 % negative triangularity
     83848 % ?
     78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
+    87180 % doublet, ultra new, very hard
 ];
 disp('Shots to process:');
 disp(shots);
