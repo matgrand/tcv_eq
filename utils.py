@@ -186,7 +186,7 @@ def percentage_loss(a, b): # percentage loss (a = true, b = predicted)
 
 # PHYSICS_LS = 64 # 128 physics latent size [ph] 64 <-
 # PHYSICS_LS = 256 # try to go big
-PHYSICS_LS = 128 # 256 
+PHYSICS_LS = 32 #128 # 256 
 
 class PtsEncoder(Module): # positional encoding for the input vector
     def __init__(self):
@@ -203,9 +203,11 @@ class PtsEncoder(Module): # positional encoding for the input vector
             # Linear(128, 128), ActF(),
             # Linear(128, PHYSICS_LS), ActF(),  # full
 
-            Linear(2, 64), ActF(), # 1 layer
-            Linear(64, PHYSICS_LS), ActF(), #
+            # Linear(2, 64), ActF(), # 1 layer
+            # Linear(64, PHYSICS_LS), ActF(), #
 
+            Linear(2, 16), ActF(), # 1 layer small
+            Linear(16, PHYSICS_LS), ActF(), #
         )
     def forward(self, pts): return self.pts_encoder(pts) # pts: (BS, NP, 2) -> (BS, NP, PHYSICS_LS)
 
@@ -223,8 +225,11 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
             # Linear(256, 128), ActF(), # (256, 128) <-
             # Linear(128, PHYSICS_LS), Tanh(), # (128, PHYSICS_LS) <-
 
-            Linear(NIN, 128), ActF(), # 1 layer
-            Linear(128, PHYSICS_LS), ActF(), 
+            # Linear(NIN, 128), ActF(), # 1 layer
+            # Linear(128, PHYSICS_LS), ActF(), 
+
+            Linear(NIN, 32), ActF(), # 1 layer
+            Linear(32, PHYSICS_LS), ActF(), 
         )
     def forward(self, x): 
         assert x.shape[1] == NIN, f"x.shape[1] = {x.shape[1]}, NIN = {NIN}"
@@ -247,8 +252,11 @@ class FHead(Module): # [pt, ph] -> [1] function (flux/Br/Bz/curr density)
             # Linear(PHYSICS_LS, 256), ActF(), # full
             # Linear(256, nout), ActF(), # full
 
-            Linear(PHYSICS_LS, 128), ActF(), # 1 layer
-            Linear(128, nout), ActF(),
+            # Linear(PHYSICS_LS, 128), ActF(), # 1 layer
+            # Linear(128, nout), ActF(),
+
+            Linear(PHYSICS_LS, 32), ActF(), # 1 layer
+            Linear(32, nout), ActF(),
         )
         self.nout = nout # number of outputs
     def forward(self, v): return self.head(v) if self.nout > 1 else self.head(v).squeeze(-1)
@@ -265,8 +273,11 @@ class LCFSHead(Module): # physics -> LCFS [ph -> LCFS]
             # Linear(128, 64), ActF(),
             # Linear(64, NLCFS*2), ActF(),  # output is (NLCFS*2) for r and z coordinates
 
-            Linear(PHYSICS_LS, 64), ActF(), # 1 layer
-            Linear(64, NLCFS*2), ActF(),
+            # Linear(PHYSICS_LS, 64), ActF(), # 1 layer
+            # Linear(64, NLCFS*2), ActF(),
+    
+            Linear(PHYSICS_LS, 16), ActF(), # 1 layer
+            Linear(16, NLCFS*2), ActF(),
         )
     def forward(self, ph): return self.lcfs(ph)
 
