@@ -72,6 +72,8 @@ PHYS = 'phys' # physics inputs
 PTS = 'pts' # points 
 FG = 'fg' # full grid
 RT = 'rt' # real time output
+BRP = 'Brp' # Br from PINN  
+BZP = 'Bzp' # Bz from PINN
 
 INPUT_NAMES = [BM, FF, FT, IA, IP, IU, RB] # input names
 OUTPUT_NAMES = [FX, IY, BR, BZ, RQ, ZQ] # output names
@@ -95,7 +97,7 @@ TRAIN_DS_PATH = f'{DS_DIR}/train_ds.npz'
 EVAL_DS_PATH = f'{DS_DIR}/eval_ds.npz'
 
 # paths to the best models
-LOSS_NAMES = [FX, IY, BR, BZ, SEP] # loss names
+LOSS_NAMES = [FX, IY, BR, BZ, SEP, BRP, BZP] # loss names
 def model_path(loss_name, save_dir=SAVE_DIR):
     assert loss_name in LOSS_NAMES, f"loss_name should be one of {LOSS_NAMES}, got {loss_name}"
     return f"{save_dir}/best_{loss_name}.pth"
@@ -184,7 +186,7 @@ def percentage_loss(a, b): # percentage loss (a = true, b = predicted)
 
 # PHYSICS_LS = 64 # 128 physics latent size [ph] 64 <-
 # PHYSICS_LS = 256 # try to go big
-PHYSICS_LS = 512 # 256 
+PHYSICS_LS = 128 # 256 
 
 class PtsEncoder(Module): # positional encoding for the input vector
     def __init__(self):
