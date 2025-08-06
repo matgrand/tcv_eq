@@ -210,8 +210,8 @@ class InputNet(Module): # input -> latent physics vector [x -> ph]
         self.input_net = Sequential(
             Linear(NIN, 128), ActF(), # (NIN, 64) <-
             Linear(128, 64), ActF(), # (64, 64) <-
-            Linear(64, PHYSICS_LS), Tanh(), 
-            # Linear(64, PHYSICS_LS), ActF(), 
+            # Linear(64, PHYSICS_LS), Tanh(), 
+            Linear(64, PHYSICS_LS), ActF(), 
 
             # Linear(NIN, 256), ActF(), # (NIN, 256) <-
             # Linear(256, 128), ActF(), # (256, 128) <-
