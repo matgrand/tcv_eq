@@ -184,7 +184,7 @@ def percentage_loss(a, b): # percentage loss (a = true, b = predicted)
 
 # PHYSICS_LS = 64 # 128 physics latent size [ph] 64 <-
 # PHYSICS_LS = 256 # try to go big
-PHYSICS_LS = 256 
+PHYSICS_LS = 512 # 256 
 
 class PtsEncoder(Module): # positional encoding for the input vector
     def __init__(self):
