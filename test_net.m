@@ -23,7 +23,8 @@ shots = [
     % 86310 % double null
     % 78893 % negative triangularity
     % 83848 % ?
-    78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
+    % 78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
+    87188
 ];
 
 test_io_directly = true;
