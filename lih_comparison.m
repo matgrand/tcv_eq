@@ -24,6 +24,7 @@ addpath(genpath([pwd '/data']));
 % ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3011842/net.onnx'; % seems best, no 0*Iu required
 ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3048577/net.onnx'; 
 net_forward_mex(ONNX_NET_PATH); % first call to load the model
+TIME_INTERV = [0.4, 0.9]; % time interval
 
 % dummy control points
 nq = 10; % number of control points
@@ -44,9 +45,13 @@ cFx_net = []; cBr_net = []; cBz_net = [];
 for si = 1:length(shots) % 1->liuqe, 2->lih, 3->net
     shot = shots(si);
 
-    [L2, LX2, LY2] = lih('tcv', shot, [], 'debug', 1);
-    t = LY2.t'; % time vector
-    [L1, LX1, LY1] = liuqe('tcv', shot, t);
+    t = LY1.t'; % time vector
+    t_mask = t >= TIME_INTERV(1) & t <= TIME_INTERV(2); % time mask
+    t = t(t_mask); % apply time mask
+
+    [L1, LX1, LY1] = liuqe(shot);
+    % [L2, LX2, LY2] = lih('tcv', shot, [], 'debug', 1);
+    [L2, LX2, LY2] = lih('tcv', shot, t, 'debug', 1);
 
     Fx_liuqe = [Fx_liuqe, LY1.Fx];
     Fx_lih = [Fx_lih, LY2.Fx];
