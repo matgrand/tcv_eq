@@ -10,7 +10,6 @@
 #SBATCH --gres=gpu:rtx:1
 cd $HOME/repos/tcv_eq
 echo "running job $SLURM_JOB_ID"
-echo "Latest commit:"
 git log -1 --pretty=format:"[%h] %s"
 echo
 echo "Running training script RTX..."

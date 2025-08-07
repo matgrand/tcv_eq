@@ -184,9 +184,9 @@ def percentage_loss(a, b): # percentage loss (a = true, b = predicted)
     err = torch.abs(a - b) / span.unsqueeze(-1)  # calculate the error as a percentage of the span
     return torch.mean(err)  # return the mean error for each batch 
 
-# PHYSICS_LS = 64 # 128 physics latent size [ph] 64 <-
-# PHYSICS_LS = 256 # try to go big
-PHYSICS_LS = 256 #128 # 256 
+PHYSICS_LS = 64 # 128 physics latent size [ph] 64 <- 64 -> 40μ
+# PHYSICS_LS = 128 #128 -> 50μ
+# PHYSICS_LS = 256 # -> 70μ
 
 class PtsEncoder(Module): # positional encoding for the input vector
     def __init__(self):
