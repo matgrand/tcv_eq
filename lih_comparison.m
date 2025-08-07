@@ -78,7 +78,38 @@ for si = 1:length(shots) % 1->liuqe, 2->lih, 3->net
     Br_net = [Br_net, Br3];
     Bz_net = [Bz_net, Bz3];
 
+    %% analyze the diff
+    eLIH_Fx = abs(Fx_liuqe - Fx_lih);
+    eNet_Fx = abs(Fx_liuqe - Fx_net);
+    eLIH_Br = abs(Br_liuqe - Br_lih);
+    eNet_Br = abs(Br_liuqe - Br_net);
+    eLIH_Bz = abs(Bz_liuqe - Bz_lih);
+    eNet_Bz = abs(Bz_liuqe - Bz_net);
+    fprintf('Shot %d: LIUQE vs LIH vs NET\n', shot);
+    fprintf('Err LIH Fx: mean: %.2e, max: %.2e\n', mean(eLIH_Fx(:)), max(eLIH_Fx(:)));
+    fprintf('Err NET Fx: mean: %.2e, max: %.2e\n', mean(eNet_Fx(:)), max(eNet_Fx(:)));
+    fprintf('Err LIH Br: mean: %.2e, max: %.2e\n', mean(eLIH_Br(:)), max(eLIH_Br(:)));
+    fprintf('Err NET Br: mean: %.2e, max: %.2e\n', mean(eNet_Br(:)), max(eNet_Br(:)));
+    fprintf('Err LIH Bz: mean: %.2e, max: %.2e\n', mean(eLIH_Bz(:)), max(eLIH_Bz(:)));
+    fprintf('Err NET Bz: mean: %.2e, max: %.2e\n', mean(eNet_Bz(:)), max(eNet_Bz(:)));
 end
+
+%% analyze diff over all shots
+eLIH_Fx = abs(Fx_liuqe - Fx_lih);
+eNet_Fx = abs(Fx_liuqe - Fx_net);
+eLIH_Br = abs(Br_liuqe - Br_lih);
+eNet_Br = abs(Br_liuqe - Br_net);
+eLIH_Bz = abs(Bz_liuqe - Bz_lih);       
+eNet_Bz = abs(Bz_liuqe - Bz_net);
+fprintf('All shots: LIUQE vs LIH vs NET\n');
+fprintf('Err LIH Fx: mean: %.2e, max: %.2e\n
+', mean(eLIH_Fx(:)), max(eLIH_Fx(:)));
+fprintf('Err NET Fx: mean: %.2e, max: %.2e\n', mean(eNet_Fx(:)), max(eNet_Fx(:)));
+fprintf('Err LIH Br: mean: %.2e, max: %.2e\n', mean(eLIH_Br(:)), max(eLIH_Br(:)));
+fprintf('Err NET Br: mean: %.2e, max: %.2e\n', mean(eNet_Br(:)), max(eNet_Br(:)));
+fprintf('Err LIH Bz: mean: %.2e, max: %.2e\n', mean(eLIH_Bz(:)), max(eLIH_Bz(:)));
+fprintf('Err NET Bz: mean: %.2e, max: %.2e\n', mean(eNet_Bz(:)), max(eNet_Bz(:)));  
+
 
 
 
