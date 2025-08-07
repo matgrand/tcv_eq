@@ -44,12 +44,10 @@ cFx_net = []; cBr_net = []; cBz_net = [];
 
 for si = 1:length(shots) % 1->liuqe, 2->lih, 3->net
     shot = shots(si);
-    
-    [L1, LX1, LY1] = liuqe(shot);
 
-    t = LY1.t'; % time vector
-    t_mask = t >= TIME_INTERV(1) & t <= TIME_INTERV(2); % time mask
-    t = t(t_mask); % apply time mask
+    t = TIME_INTERV(1):0.01:TIME_INTERV(2); % time vector for the full grid
+
+    [L1, LX1, LY1] = liuqe(shot, t);
 
     % [L2, LX2, LY2] = lih('tcv', shot, [], 'debug', 1);
     [L2, LX2, LY2] = lih('tcv', shot, t, 'debug', 1);
@@ -81,8 +79,18 @@ end
 % network inference
 function [Fx, Br, Bz] = net_forward(LX, r, z)
     phys = [LX.Bm, LX.Ff, LX.Ft, LX.Ia, LX.Ip, LX.Iu, LX.rBt];
-    [Fx, Br, Bz] = net_forward_mex(single(phys), single(r), single(z));
-    Fx = double(Fx); Br = double(Br); Bz = double(Bz); % convert to double
+    fprintf('phys size: %s\n', mat2str(size(phys)));
+    Fx = zeros(size(r, 1), size(z, 1), size(phys, 2));
+    Br = zeros(size(r, 1), size(z, 1), size(phys, 2));
+    Bz = zeros(size(r, 1), size(z, 1), size(phys, 2));
+    fprintf('Fx size: %s, Br size: %s, Bz size: %s\n', mat2str(size(Fx)), mat2str(size(Br)), mat2str(size(Bz)));
+    for i = 1:size(phys, 2)
+        fprintf('Processing time step %d/%d\n', i, size(phys, 2));
+        phys_i = phys(:, i);
+        r_i = r(:);
+        z_i = z(:);
+        [Fx(:, :, i), Br(:, :, i), Bz(:, :, i)] = net_forward_single(phys_i, r_i, z_i);
+    end
 end
 
 % copied from meqpost
