@@ -6,12 +6,12 @@ mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
 
 
 shots = [
-    % 79742 % single null
+    79742 % single null
     % 86310 % double null
     % 78893 % negative triangularity
     % 83848 % ?
     % 78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
-    87188
+    % 87188
 ];
 
 
@@ -44,12 +44,13 @@ cFx_net = []; cBr_net = []; cBz_net = [];
 
 for si = 1:length(shots) % 1->liuqe, 2->lih, 3->net
     shot = shots(si);
+    
+    [L1, LX1, LY1] = liuqe(shot);
 
     t = LY1.t'; % time vector
     t_mask = t >= TIME_INTERV(1) & t <= TIME_INTERV(2); % time mask
     t = t(t_mask); % apply time mask
 
-    [L1, LX1, LY1] = liuqe(shot);
     % [L2, LX2, LY2] = lih('tcv', shot, [], 'debug', 1);
     [L2, LX2, LY2] = lih('tcv', shot, t, 'debug', 1);
 
