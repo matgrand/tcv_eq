@@ -57,3 +57,8 @@ Main data structures:
 ## Hybrid
 - to run shape controller (`shapectrl` for where the net is actually used), first `main_shape_ctrl`, then `test_closed_shape`
 
+
+
+
+- fbt per filtrare corrent =e di plamsa
+- Iy Ip mask to filter current too concentarted

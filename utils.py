@@ -139,8 +139,10 @@ vi, vo = np.hstack([vri, vzi]), np.hstack([vro, vzo])
 VESS = np.vstack([v, v[0]])[::-1]
 VESSI = np.vstack([vi, vi[0]])
 VESSO = np.vstack([vo, vo[0]])
-_vess_corners_idxs = [92, 101, 140, 165, 201, 211, 220, 338, 372, 411, 420]
-VESS_CORNERS = VESS[_vess_corners_idxs]  # corners of the vessel, used for plotting
+# _vess_corners_idxs = [92, 101, 140, 165, 201, 211, 220, 338, 372, 411, 420]
+# VESS_CORNERS = VESS[_vess_corners_idxs]  # corners of the vessel, used for plotting
+_vess_corners_idxs = [39,40,41,42,52,53,54,55,76,77,78,79,80,81,82,83,172,173,174,175,176,177,178,179,200,201,202,203,213,214,215,216]
+VESS_CORNERS = VESSI[_vess_corners_idxs]  # corners of the vessel, used for plotting
 
 def inpoly(pts, poly=VESS_CORNERS):
     pts_shape = pts.shape
@@ -805,7 +807,7 @@ def plot_network_outputs(ds:LiuqeDataset, model:FullNet, title="test", save_dir=
             plt.subplot(nraws, ncols, j*(ncols//2) + ncols//2), plt.title(f"{n} Error %")
             ep = 100*np.abs(v[iv]-vp[iv])/(l[1]-l[0]) # error in %
             # plt.scatter(p[iv,0], p[iv,1], c=ep, s=ms, vmin=0, vmax=np.max(ep)) # variable bar
-            plt.scatter(p[iv,0], p[iv,1], c=ep, s=ms, vmin=0, vmax=np.max(ep) if n == IY else 0.5) # fixed bar
+            plt.scatter(p[iv,0], p[iv,1], c=ep, s=ms, vmin=0, vmax=np.max(ep) if n == IY else 1.0) # fixed bar
             if show_lcfs: plt.plot(sep[:NLCFS], sep[NLCFS:], '--w', lw=1, alpha=α_sep)
             prep_plot(plt.gca()), plt.colorbar()
             if on_grid: # plot contours if on grid
