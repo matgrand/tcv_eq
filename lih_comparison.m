@@ -7,10 +7,10 @@ mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
 
 shots = [
     79742 % single null
-    % 86310 % double null
-    % 78893 % negative triangularity
-    % 83848 % ?
-    % 78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
+%     86310 % double null
+    78893 % negative triangularity
+    83848 % ?
+    78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
     % 87188
 ];
 
@@ -85,7 +85,7 @@ for si = 1:length(shots) % 1->liuqe, 2->lih, 3->net
     eNet_Br = abs(Br_liuqe - Br_net);
     eLIH_Bz = abs(Bz_liuqe - Bz_lih);
     eNet_Bz = abs(Bz_liuqe - Bz_net);
-    fprintf('Shot %d: LIUQE vs LIH vs NET\n', shot);
+    fprintf('\nShot %d: LIUQE vs LIH vs NET\n', shot);
     fprintf('Err LIH Fx: mean: %.2e, max: %.2e\n', mean(eLIH_Fx(:)), max(eLIH_Fx(:)));
     fprintf('Err NET Fx: mean: %.2e, max: %.2e\n', mean(eNet_Fx(:)), max(eNet_Fx(:)));
     fprintf('Err LIH Br: mean: %.2e, max: %.2e\n', mean(eLIH_Br(:)), max(eLIH_Br(:)));
@@ -101,9 +101,8 @@ eLIH_Br = abs(Br_liuqe - Br_lih);
 eNet_Br = abs(Br_liuqe - Br_net);
 eLIH_Bz = abs(Bz_liuqe - Bz_lih);       
 eNet_Bz = abs(Bz_liuqe - Bz_net);
-fprintf('All shots: LIUQE vs LIH vs NET\n');
-fprintf('Err LIH Fx: mean: %.2e, max: %.2e\n
-', mean(eLIH_Fx(:)), max(eLIH_Fx(:)));
+fprintf('\n\nAll shots: LIUQE vs LIH vs NET\n');
+fprintf('Err LIH Fx: mean: %.2e, max: %.2e\n', mean(eLIH_Fx(:)), max(eLIH_Fx(:)));
 fprintf('Err NET Fx: mean: %.2e, max: %.2e\n', mean(eNet_Fx(:)), max(eNet_Fx(:)));
 fprintf('Err LIH Br: mean: %.2e, max: %.2e\n', mean(eLIH_Br(:)), max(eLIH_Br(:)));
 fprintf('Err NET Br: mean: %.2e, max: %.2e\n', mean(eNet_Br(:)), max(eNet_Br(:)));
