@@ -46,7 +46,8 @@ for si = 1:length(shots) % 1->liuqe, 2->lih, 3->net
     shot = shots(si);
 
     t = TIME_INTERV(1):0.01:TIME_INTERV(2); % time vector for the full grid
-
+    nt = length(t);
+    
     [L1, LX1, LY1] = liuqe(shot, t);
 
     % [L2, LX2, LY2] = lih('tcv', shot, [], 'debug', 1);
@@ -56,40 +57,48 @@ for si = 1:length(shots) % 1->liuqe, 2->lih, 3->net
     Fx_lih = [Fx_lih, LY2.Fx];
 
     % calculate magnetic fields (copied from meqpost)
-    i4pirxdzx = 1./(4*pi*L.dzx*L.rx');
-    i4pirxdrx = 1./(4*pi*L.drx*L.rx');
-    [Br1, Bz1] = meqBrBz(LY1.Fx, i4pirxdzx, i4pirxdrx, L.nzx, L.nrx);
-    [Br2, Bz2] = meqBrBz(LY2.Fx, i4pirxdzx, i4pirxdrx, L.nzx, L.nrx);
+    i4pirxdzx = 1./(4*pi*L1.dzx*L1.rx');
+    i4pirxdrx = 1./(4*pi*L1.drx*L1.rx');
+    [Br1, Bz1] = meqBrBz(LY1.Fx, i4pirxdzx, i4pirxdrx, L1.nzx, L1.nrx);
+    [Br2, Bz2] = meqBrBz(LY2.Fx, i4pirxdzx, i4pirxdrx, L1.nzx, L1.nrx);
 
     Br_liuqe = [Br_liuqe, Br1];
     Bz_liuqe = [Bz_liuqe, Bz1];
     Br_lih = [Br_lih, Br2];
     Bz_lih = [Bz_lih, Bz2];
 
-    r = L.rrx(:);
-    z = L.zzx(:);
-    [Fx3, Br3, Bz3] = net_forward(LX_liuqe, r, z); % network inference
+    r = L1.rrx(:);
+    z = L1.zzx(:);
+    [Fx3, Br3, Bz3] = net_forward_lx(LX1, r, z); % network inference
+    Fx3 = Fx3'; Br3 = Br3'; Bz3 = Bz3';
+    Fx3 = reshape(Fx3, [65, 28, nt]);
+    Br3 = reshape(Br3, [65, 28, nt]);
+    Bz3 = reshape(Bz3, [65, 28, nt]);
     Fx_net = [Fx_net, Fx3];
     Br_net = [Br_net, Br3];
     Bz_net = [Bz_net, Bz3];
 
 end
 
+
+
 % calculate magnetic fields using the ONNX net
 % network inference
-function [Fx, Br, Bz] = net_forward(LX, r, z)
-    phys = [LX.Bm, LX.Ff, LX.Ft, LX.Ia, LX.Ip, LX.Iu, LX.rBt];
+function [Fx, Br, Bz] = net_forward_lx(LX, r, z)
+    phys = [LX.Bm; LX.Ff; LX.Ft; LX.Ia; LX.Ip; LX.Iu; LX.rBt];
     fprintf('phys size: %s\n', mat2str(size(phys)));
-    Fx = zeros(size(r, 1), size(z, 1), size(phys, 2));
-    Br = zeros(size(r, 1), size(z, 1), size(phys, 2));
-    Bz = zeros(size(r, 1), size(z, 1), size(phys, 2));
+    Fx = zeros(size(phys, 2), size(r, 1));
+    Br = zeros(size(phys, 2), size(r, 1));
+    Bz = zeros(size(phys, 2), size(r, 1));
     fprintf('Fx size: %s, Br size: %s, Bz size: %s\n', mat2str(size(Fx)), mat2str(size(Br)), mat2str(size(Bz)));
     for i = 1:size(phys, 2)
-        fprintf('Processing time step %d/%d\n', i, size(phys, 2));
+%         fprintf('Processing time step %d/%d\n', i, size(phys, 2));
         phys_i = phys(:, i);
         r_i = r(:);
         z_i = z(:);
-        [Fx(:, :, i), Br(:, :, i), Bz(:, :, i)] = net_forward_single(phys_i, r_i, z_i);
+        [Fxi, Bri, Bzi] = net_forward_mex(single(phys_i), single(r_i), single(z_i));
+%         fprintf('Fx size: %s, Br size: %s, Bz size: %s\n', mat2str(size(Fxi)), mat2str(size(Bri)), mat2str(size(Bzi)));
+        Fx(i,:) = Fxi; Br(i,:) = Bri; Bz(i,:) = Bzi;
     end
 end
 
