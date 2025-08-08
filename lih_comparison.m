@@ -87,12 +87,13 @@ for si = 1:length(shots) % 1->liuqe, 2->lih, 3->net
     eLIH_Bz = abs(Bz_liuqe - Bz_lih);
     eNet_Bz = abs(Bz_liuqe - Bz_net);
     fprintf('\nShot %d: LIUQE vs LIH vs NET\n', shot);
-    fprintf('Err LIH Fx: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Fx(:)), max(eLIH_Fx(:)));
-    fprintf('Err NET Fx: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Fx(:)), max(eNet_Fx(:)));
-    fprintf('Err LIH Br: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Br(:)), max(eLIH_Br(:)));
-    fprintf('Err NET Br: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Br(:)), max(eNet_Br(:)));
-    fprintf('Err LIH Bz: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Bz(:)), max(eLIH_Bz(:)));
-    fprintf('Err NET Bz: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Bz(:)), max(eNet_Bz(:)));
+    fprintf('Err LIH Fx: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Fx(:)), std(eLIH_Fx(:)), max(eLIH_Fx(:)));
+    fprintf('Err NET Fx: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Fx(:)), std(eNet_Fx(:)), max(eNet_Fx(:)));
+    fprintf('Err LIH Br: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Br(:)), std(eLIH_Br(:)), max(eLIH_Br(:)));
+    fprintf('Err NET Br: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Br(:)), std(eNet_Br(:)), max(eNet_Br(:)));
+    fprintf('Err LIH Bz: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Bz(:)), std(eLIH_Bz(:)), max(eLIH_Bz(:)));
+    fprintf('Err NET Bz: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Bz(:)), std(eNet_Bz(:)), max(eNet_Bz(:)));
+end
 end
 
 %% analyze diff over all shots
@@ -103,12 +104,12 @@ eNet_Br = abs(Br_liuqe - Br_net);
 eLIH_Bz = abs(Bz_liuqe - Bz_lih);       
 eNet_Bz = abs(Bz_liuqe - Bz_net);
 fprintf('\n\nAll shots: LIUQE vs LIH vs NET\n');
-fprintf('Err LIH Fx: mean: %.2e, max: %.2e\n', mean(eLIH_Fx(:)), max(eLIH_Fx(:)));
-fprintf('Err NET Fx: mean: %.2e, max: %.2e\n', mean(eNet_Fx(:)), max(eNet_Fx(:)));
-fprintf('Err LIH Br: mean: %.2e, max: %.2e\n', mean(eLIH_Br(:)), max(eLIH_Br(:)));
-fprintf('Err NET Br: mean: %.2e, max: %.2e\n', mean(eNet_Br(:)), max(eNet_Br(:)));
-fprintf('Err LIH Bz: mean: %.2e, max: %.2e\n', mean(eLIH_Bz(:)), max(eLIH_Bz(:)));
-fprintf('Err NET Bz: mean: %.2e, max: %.2e\n', mean(eNet_Bz(:)), max(eNet_Bz(:)));  
+fprintf('Err LIH Fx: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Fx(:)), std(eLIH_Fx(:)), max(eLIH_Fx(:)));
+fprintf('Err NET Fx: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Fx(:)), std(eNet_Fx(:)), max(eNet_Fx(:)));
+fprintf('Err LIH Br: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Br(:)), std(eLIH_Br(:)), max(eLIH_Br(:)));
+fprintf('Err NET Br: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Br(:)), std(eNet_Br(:)), max(eNet_Br(:)));
+fprintf('Err LIH Bz: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Bz(:)), std(eLIH_Bz(:)), max(eLIH_Bz(:)));
+fprintf('Err NET Bz: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Bz(:)), std(eNet_Bz(:)), max(eNet_Bz(:)));
 
 % calculate magnetic fields using the ONNX net
 % network inference
