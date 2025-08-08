@@ -94,7 +94,6 @@ for si = 1:length(shots) % 1->liuqe, 2->lih, 3->net
     fprintf('Err LIH Bz: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Bz(:)), std(eLIH_Bz(:)), max(eLIH_Bz(:)));
     fprintf('Err NET Bz: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Bz(:)), std(eNet_Bz(:)), max(eNet_Bz(:)));
 end
-end
 
 %% analyze diff over all shots
 eLIH_Fx = abs(Fx_liuqe - Fx_lih);
