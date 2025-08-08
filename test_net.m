@@ -19,22 +19,26 @@ catch
 end
 
 shots = [
-    % 79742 % single null
+    79742 % single null
     % 86310 % double null
     % 78893 % negative triangularity
     % 83848 % ?
     % 78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
-    87188
+    % 87188 % doublet
 ];
 
-test_io_directly = true;
+test_io_directly = false;
+video = false;
 
 %% net stuff
 % load the ONNX model
 addpath([pwd '/onnx_net_forward']);
 addpath(genpath([pwd '/data']));
 % ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3011842/net.onnx'; % seems best, no 0*Iu required
-ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3048577/net.onnx'; 
+% ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3048577/net.onnx'; 
+% ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3060130/net.onnx';
+% ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3057800/net.onnx'; % extremely small
+ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3063623/net.onnx'; % new ds
 net_forward_mex(ONNX_NET_PATH); % first call to load the model
 
 % dummy control points
@@ -103,7 +107,7 @@ for si = 1:length(shots)
     Fxq_perc_err = 100 * Fxq_abs_err ./ (Fx_range(2, :) - Fx_range(1, :)); % percentage error on control points
 
 
-    fprintf('Avg range value: %.4f', mean(Fx_range(2, :)));
+    fprintf('Avg range value: %.4f\n', mean(Fx_range(2, :)));
     fprintf('Fx on grid: \n  abs: avg %.4f, std %.4f, max %.4f \n  perc: avg %.2f%%, std %.2f%%, max %.2f%%\n', ...
         mean(Fxg_abs_err(:)), std(Fxg_abs_err(:)), max(Fxg_abs_err(:)), ...
         mean(Fxg_perc_err(:)), std(Fxg_perc_err(:)), max(Fxg_perc_err(:)));
@@ -170,7 +174,7 @@ for si = 1:length(shots)
     %     grid on;
     % end
     % sgtitle(sprintf('Shot %d Fx at Control Points', shot));
-
+    end
 end % end shots loop
 
 try 

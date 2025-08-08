@@ -21,7 +21,8 @@ try
     % model_path = [pwd '/data/3011842/net.onnx'];
     % model_path = [pwd '/data/3048577/net.onnx']; % 256 EMB SIZE
     % model_path = [pwd '/data/3048577/net.onnx']; % 256 EMB SIZE
-    model_path = [pwd '/data/local/net.onnx']; % 256 EMB SIZE
+%     model_path = [pwd '/data/local/net.onnx']; % 256 EMB SIZE
+		model_path = '/home/grandin/repos/liuqe-ml/data/3057800/net.onnx'; % extremely small
 
     % first call to load the model
     net_forward_mex(model_path);

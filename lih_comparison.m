@@ -2,12 +2,9 @@ clear all; close all; clc;
 
 disp('LIH Net LIUQE comparison...');
 
-mdsconnect('tcvdata.epfl.ch'); % Connect to the MDSplus server
-
-
 shots = [
     79742 % single null
-%     86310 % double null
+    86310 % double null
     78893 % negative triangularity
     83848 % ?
     78071 % standard, test ctrl pts (t=0.571) (warn: theta is wrong)
@@ -22,7 +19,11 @@ addpath([pwd '/onnx_net_forward']);
 addpath(genpath([pwd '/data']));
 
 % ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3011842/net.onnx'; % seems best, no 0*Iu required
-ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3048577/net.onnx'; 
+% ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3048577/net.onnx'; %bigger 
+% ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3060130/net.onnx'; % small one
+% ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3057800/net.onnx'; % extremely small one
+ONNX_NET_PATH = '/home/grandin/repos/liuqe-ml/data/3063623/net.onnx'; % new ds
+
 net_forward_mex(ONNX_NET_PATH); % first call to load the model
 TIME_INTERV = [0.4, 0.9]; % time interval
 
@@ -86,12 +87,12 @@ for si = 1:length(shots) % 1->liuqe, 2->lih, 3->net
     eLIH_Bz = abs(Bz_liuqe - Bz_lih);
     eNet_Bz = abs(Bz_liuqe - Bz_net);
     fprintf('\nShot %d: LIUQE vs LIH vs NET\n', shot);
-    fprintf('Err LIH Fx: mean: %.2e, max: %.2e\n', mean(eLIH_Fx(:)), max(eLIH_Fx(:)));
-    fprintf('Err NET Fx: mean: %.2e, max: %.2e\n', mean(eNet_Fx(:)), max(eNet_Fx(:)));
-    fprintf('Err LIH Br: mean: %.2e, max: %.2e\n', mean(eLIH_Br(:)), max(eLIH_Br(:)));
-    fprintf('Err NET Br: mean: %.2e, max: %.2e\n', mean(eNet_Br(:)), max(eNet_Br(:)));
-    fprintf('Err LIH Bz: mean: %.2e, max: %.2e\n', mean(eLIH_Bz(:)), max(eLIH_Bz(:)));
-    fprintf('Err NET Bz: mean: %.2e, max: %.2e\n', mean(eNet_Bz(:)), max(eNet_Bz(:)));
+    fprintf('Err LIH Fx: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Fx(:)), max(eLIH_Fx(:)));
+    fprintf('Err NET Fx: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Fx(:)), max(eNet_Fx(:)));
+    fprintf('Err LIH Br: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Br(:)), max(eLIH_Br(:)));
+    fprintf('Err NET Br: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Br(:)), max(eNet_Br(:)));
+    fprintf('Err LIH Bz: mean: %.2e, std: %.2e, max: %.2e\n', mean(eLIH_Bz(:)), max(eLIH_Bz(:)));
+    fprintf('Err NET Bz: mean: %.2e, std: %.2e, max: %.2e\n', mean(eNet_Bz(:)), max(eNet_Bz(:)));
 end
 
 %% analyze diff over all shots
@@ -109,9 +110,6 @@ fprintf('Err NET Br: mean: %.2e, max: %.2e\n', mean(eNet_Br(:)), max(eNet_Br(:))
 fprintf('Err LIH Bz: mean: %.2e, max: %.2e\n', mean(eLIH_Bz(:)), max(eLIH_Bz(:)));
 fprintf('Err NET Bz: mean: %.2e, max: %.2e\n', mean(eNet_Bz(:)), max(eNet_Bz(:)));  
 
-
-
-
 % calculate magnetic fields using the ONNX net
 % network inference
 function [Fx, Br, Bz] = net_forward_lx(LX, r, z)
@@ -122,12 +120,10 @@ function [Fx, Br, Bz] = net_forward_lx(LX, r, z)
     Bz = zeros(size(phys, 2), size(r, 1));
     fprintf('Fx size: %s, Br size: %s, Bz size: %s\n', mat2str(size(Fx)), mat2str(size(Br)), mat2str(size(Bz)));
     for i = 1:size(phys, 2)
-%         fprintf('Processing time step %d/%d\n', i, size(phys, 2));
         phys_i = phys(:, i);
         r_i = r(:);
         z_i = z(:);
         [Fxi, Bri, Bzi] = net_forward_mex(single(phys_i), single(r_i), single(z_i));
-%         fprintf('Fx size: %s, Br size: %s, Bz size: %s\n', mat2str(size(Fxi)), mat2str(size(Bri)), mat2str(size(Bzi)));
         Fx(i,:) = Fxi; Br(i,:) = Bri; Bz(i,:) = Bzi;
     end
 end
