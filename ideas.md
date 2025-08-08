@@ -61,7 +61,15 @@
 - [v] Test a training with absolute error (not MSE) [WORKS]
 - [ ] Test SoftPlus activation
 - [ ] Test if 3 onnx net + manual combination in C++ is faster than single ONNX conversion
+- [ ] Force linear response from the model to Input currents
 
 ### Dataset mods
 - [ ] make the r,z borders wider (limit of the grid)
 - [ ] Br, Bz calculated from finer grid
+
+
+### Defuse 
+- ask Alessandro Pau
+- use it to directly load pytorch datasets
+- filter out segments: ramp up, flat top etc...
+- labels for SN, DN etc, to balance examples

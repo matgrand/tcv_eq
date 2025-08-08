@@ -62,3 +62,21 @@ Main data structures:
 
 - fbt per filtrare corrent =e di plamsa
 - Iy Ip mask to filter current too concentarted
+- to filter blips: "blips" "neab"
+- `/home/admele/Code/hunt_for_blips.m`
+
+
+
+
+## Random
+
+### LOGBOOK
+- call sql works only from lac
+- ``
+- Topic SL o PDJ
+
+
+
+### Other
+- `liuqeplot`
+- `tcv_polview -cvt` 
