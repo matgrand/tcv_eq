@@ -87,7 +87,8 @@ DTYPE = 'float32'
 
 from scipy.interpolate import RegularGridInterpolator
 # INTERP_METHOD = 'linear' # fast, but less accurate
-INTERP_METHOD = 'quintic' # slowest, but most accurate
+# INTERP_METHOD = 'quintic' # slowest, but most accurate
+INTERP_METHOD = 'cubic' # slower, close accuracy to quintic, but little bit faster than quintic
 if INTERP_METHOD == 'linear': print('Warning: using linear interpolation, which is fast but less accurate')
 
 # DS_DIR = 'dss/ds' # where the final dataset will be stored
